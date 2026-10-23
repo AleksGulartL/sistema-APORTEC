@@ -1,4 +1,4 @@
-const { usuario } = require("../database/models");
+const { usuario } = require("../../database/models");
 
 async function listar() {
     return usuario.findAll({ order: [["id_usuario", "ASC"]] });
