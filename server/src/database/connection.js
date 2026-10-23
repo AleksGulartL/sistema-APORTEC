@@ -1,11 +1,16 @@
+require("dotenv").config();
 const { Sequelize } = require("sequelize");
 
-// new Sequelize(banco, usuario, senha, opcoes)
-const sequelize = new Sequelize("devWeb", "postgres", "2704", {
-    host: "localhost",
-    port: 5432,
-    dialect: "postgres",
-    logging: false, // troque para console.log para ver o SQL gerado pelo ORM
-});
+const sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASS,
+    {
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT) || 5432,
+        dialect: "postgres",
+        logging: false,
+    }
+);
 
 module.exports = sequelize;
