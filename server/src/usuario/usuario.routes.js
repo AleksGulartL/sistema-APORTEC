@@ -1,5 +1,5 @@
 const express = require("express");
-const emprestimosController = require("./emprestimos.controller");
+const emprestimosController = require("./usuario.controller");
 
 const router = express.Router();
 

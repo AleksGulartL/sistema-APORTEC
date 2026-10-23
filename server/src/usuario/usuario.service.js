@@ -1,4 +1,4 @@
-const emprestimosRepository = require("./emprestimos.repository");
+const emprestimosRepository = require("./usuario.repository");
 
 function validarEmprestimo(dados) {
     if (!dados.leitor_id) {

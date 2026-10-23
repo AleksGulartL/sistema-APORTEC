@@ -1,4 +1,4 @@
-const emprestimosService = require("./emprestimos.service");
+const emprestimosService = require("./usuario.service");
 
 async function listar(req, res) {
     try {
