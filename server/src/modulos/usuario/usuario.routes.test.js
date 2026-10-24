@@ -10,6 +10,14 @@ app.use(express.json());
 app.use(usuarioRoutes);
 
 describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
+    beforeAll(() => {
+        jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterAll(() => {
+        console.error.mockRestore();
+    });
+
     afterEach(() => {
         jest.clearAllMocks();
     });

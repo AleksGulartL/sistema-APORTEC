@@ -9,7 +9,15 @@ const app = express();
 app.use(express.json());
 app.use(clienteRoutes);
 
-describe("clienteRoutes - Testes de Rotas e Status HTTP", () => {
+describe("ClienteRoutes - Testes de Rotas e Status HTTP", () => {
+    beforeAll(() => {
+        jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterAll(() => {
+        console.error.mockRestore();
+    });
+
     afterEach(() => {
         jest.clearAllMocks();
     });

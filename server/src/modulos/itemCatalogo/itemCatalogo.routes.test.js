@@ -10,6 +10,14 @@ app.use(express.json());
 app.use(itemCatalogoRoutes);
 
 describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
+    beforeAll(() => {
+        jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterAll(() => {
+        console.error.mockRestore();
+    });
+
     afterEach(() => {
         jest.clearAllMocks();
     });
