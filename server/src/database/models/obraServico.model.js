@@ -38,25 +38,33 @@ const obraServico = sequelize.define(
 );
 
 obraServico.associate = (models) => {
-    obraServico.belongsTo(models.cliente, {
-        foreignKey: "id_cliente",
-        as: "cliente"
-    });
+    if (models.cliente) {
+        obraServico.belongsTo(models.cliente, {
+            foreignKey: "id_cliente",
+            as: "cliente"
+        });
+    }
 
-    obraServico.hasMany(models.orcamento, {
-        foreignKey: "id_obra",
-        as: "orcamento"
-    });
+    if (models.orcamento) {
+        obraServico.hasMany(models.orcamento, {
+            foreignKey: "id_obra",
+            as: "orcamento"
+        });
+    }
 
-    obraServico.hasMany(models.porta_produto, {
-        foreignKey: "id_obra",
-        as: "porta_produto"
-    });
+    if (models.porta_produto) {
+        obraServico.hasMany(models.porta_produto, {
+            foreignKey: "id_obra",
+            as: "porta_produto"
+        });
+    }
 
-    obraServico.hasMany(models.ordem_servico, {
-        foreignKey: "id_obra",
-        as: "ordem_servico"
-    });
+    if (models.ordem_servico) {
+        obraServico.hasMany(models.ordem_servico, {
+            foreignKey: "id_obra",
+            as: "ordem_servico"
+        });
+    }
 };
 
 module.exports = obraServico;
