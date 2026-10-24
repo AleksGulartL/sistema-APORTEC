@@ -30,5 +30,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar,
+    deletar
 };
