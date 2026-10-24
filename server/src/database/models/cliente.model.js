@@ -49,20 +49,26 @@ const cliente = sequelize.define(
 );
 
 cliente.associate = (models) => {
-    cliente.belongsTo(models.usuario, {
-        foreignKey: "id_usuario",
-        as: "usuario"
-    });
+    if (models.usuario) {
+        cliente.belongsTo(models.usuario, {
+            foreignKey: "id_usuario",
+            as: "usuario"
+        });
+    }
 
-    cliente.hasMany(models.obra_servico, {
-        foreignKey: "id_cliente",
-        as: "obra_servico"
-    });
+    if (models.obra_servico) {
+        cliente.hasMany(models.obra_servico, {
+            foreignKey: "id_cliente",
+            as: "obra_servico"
+        });
+    }
 
-    cliente.hasMany(models.orcamento, {
-        foreignKey: "id_cliente",
-        as: "orcamento"
-    });
+    if (models.orcamento) {
+        cliente.hasMany(models.orcamento, {
+            foreignKey: "id_cliente",
+            as: "orcamento"
+        });
+    }
 };
 
 module.exports = cliente;

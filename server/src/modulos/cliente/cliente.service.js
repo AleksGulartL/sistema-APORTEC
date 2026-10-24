@@ -1,28 +1,32 @@
 const clientesRepository = require("./clientes.repository");
 
 function validarCliente(dados) {
-    if (!dados.nome_completo) {
-        const erro = new Error("O campo 'nome_completo' é obrigatório.");
+    if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
+        const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
-    if (!dados.cnpj_cpf) {
-        const erro = new Error("O campo 'cnpj_cpf' é obrigatório.");
+
+    if (!dados.cnpj_cpf || typeof dados.cnpj_cpf !== "string" || !dados.cnpj_cpf.trim()) {
+        const erro = new Error("O campo 'cnpj_cpf' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
-    if (!dados.telefone) {
-        const erro = new Error("O campo 'telefone' é obrigatório.");
+
+    if (!dados.telefone || typeof dados.telefone !== "string" || !dados.telefone.trim()) {
+        const erro = new Error("O campo 'telefone' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
-    if (!dados.email) {
-        const erro = new Error("O campo 'email' é obrigatório.");
+
+    if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
+        const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
-    if (!dados.endereco) {
-        const erro = new Error("O campo 'endereco' é obrigatório.");
+
+    if (!dados.endereco || typeof dados.endereco !== "string" || !dados.endereco.trim()) {
+        const erro = new Error("O campo 'endereco' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
@@ -33,7 +37,13 @@ async function listar() {
 }
 
 async function buscarPorId(id) {
-    return clientesRepository.buscarPorId(id);
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
+    }
+    return clientesRepository.buscarPorId(idNum);
 }
 
 async function criar(dados) {
@@ -42,12 +52,25 @@ async function criar(dados) {
 }
 
 async function atualizar(id, dados) {
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
+    }
+
     validarCliente(dados);
-    return clientesRepository.atualizar(id, dados);
+    return clientesRepository.atualizar(idNum, dados);
 }
 
 async function deletar(id) {
-    return clientesRepository.deletar(id);
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
+    }
+    return clientesRepository.deletar(idNum);
 }
 
 module.exports = {
@@ -55,5 +78,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar,
+    deletar
 };
