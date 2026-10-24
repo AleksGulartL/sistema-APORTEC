@@ -10,16 +10,16 @@ const itemCatalogo = sequelize.define(
             autoIncrement: true,
             field: "id_item"
         },
-        codigo_referencia: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            unique: true,
-            field: "codigo_referencia"
-        },
         tipo: {
             type: DataTypes.ENUM("Insumo", "Porta", "Peca"),
             allowNull: false,
             field: "tipo"
+        },
+        codigo_referencia: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            unique: true,
+            field: "codigo_referencia"
         },
         descricao: {
             type: DataTypes.STRING,
@@ -27,19 +27,18 @@ const itemCatalogo = sequelize.define(
             field: "descricao"
         },
         unidade_medida: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(10),
             allowNull: false,
             field: "unidade_medida"
         },
         valor_unitario_padrao: {
             type: DataTypes.DECIMAL(10, 2),
-            allowNull: false,
-            defaultValue: 0.00,
+            allowNull: true,
             field: "valor_unitario_padrao"
         },
         quantidade_estoque: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
             defaultValue: 0,
             field: "quantidade_estoque"
         }
@@ -51,20 +50,19 @@ const itemCatalogo = sequelize.define(
 );
 
 itemCatalogo.associate = (models) => {
-    itemCatalogo.hasMany(models.item_orcamento, {
-        foreignKey: "id_item",
-        as: "item_orcamento"
-    });
+    if (models.item_orcamento) {
+        itemCatalogo.hasMany(models.item_orcamento, {
+            foreignKey: "id_item",
+            as: "item_orcamento"
+        });
+    }
 
-    itemCatalogo.hasMany(models.insumo_ordem_producao, {
-        foreignKey: "id_item",
-        as: "insumo_ordem_producao"
-    });
-
-    itemCatalogo.hasMany(models.movimentacao_estoque, {
-        foreignKey: "id_item",
-        as: "movimentacao_estoque"
-    });
+    if (models.composicao_porta) {
+        itemCatalogo.hasMany(models.composicao_porta, {
+            foreignKey: "id_item_componente",
+            as: "composicao_porta"
+        });
+    }
 };
 
 module.exports = itemCatalogo;
