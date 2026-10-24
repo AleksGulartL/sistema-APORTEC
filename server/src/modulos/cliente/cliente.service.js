@@ -1,4 +1,4 @@
-const clientesRepository = require("./clientes.repository");
+const clienteRepository = require("./cliente.repository");
 
 function validarCliente(dados) {
     if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
@@ -33,7 +33,7 @@ function validarCliente(dados) {
 }
 
 async function listar() {
-    return clientesRepository.listar();
+    return clienteRepository.listar();
 }
 
 async function buscarPorId(id) {
@@ -43,12 +43,12 @@ async function buscarPorId(id) {
         erro.status = 400;
         throw erro;
     }
-    return clientesRepository.buscarPorId(idNum);
+    return clienteRepository.buscarPorId(idNum);
 }
 
 async function criar(dados) {
     validarCliente(dados);
-    return clientesRepository.criar(dados);
+    return clienteRepository.criar(dados);
 }
 
 async function atualizar(id, dados) {
@@ -60,7 +60,7 @@ async function atualizar(id, dados) {
     }
 
     validarCliente(dados);
-    return clientesRepository.atualizar(idNum, dados);
+    return clienteRepository.atualizar(idNum, dados);
 }
 
 async function deletar(id) {
@@ -70,7 +70,7 @@ async function deletar(id) {
         erro.status = 400;
         throw erro;
     }
-    return clientesRepository.deletar(idNum);
+    return clienteRepository.deletar(idNum);
 }
 
 module.exports = {

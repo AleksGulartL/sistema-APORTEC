@@ -1,18 +1,18 @@
-const clientesService = require("./clientes.service");
+const clienteService = require("./cliente.service");
 
 async function listar(req, res) {
     try {
-        const clientes = await clientesService.listar();
-        return res.status(200).json(clientes);
+        const cliente = await clienteService.listar();
+        return res.status(200).json(cliente);
     } catch (erro) {
-        console.error("Erro ao buscar clientes:", erro);
+        console.error("Erro ao buscar cliente:", erro);
         return res.status(erro.status || 500).json({ erro: erro.message });
     }
 }
 
 async function buscarPorId(req, res) {
     try {
-        const registro = await clientesService.buscarPorId(req.params.id);
+        const registro = await clienteService.buscarPorId(req.params.id);
         if (!registro) {
             return res.status(404).json({ erro: "Cliente não encontrado." });
         }
@@ -25,7 +25,7 @@ async function buscarPorId(req, res) {
 
 async function criar(req, res) {
     try {
-        const registro = await clientesService.criar(req.body);
+        const registro = await clienteService.criar(req.body);
         return res.status(201).json(registro);
     } catch (erro) {
         console.error("Erro ao criar cliente:", erro);
@@ -38,7 +38,7 @@ async function criar(req, res) {
 
 async function atualizar(req, res) {
     try {
-        const registro = await clientesService.atualizar(req.params.id, req.body);
+        const registro = await clienteService.atualizar(req.params.id, req.body);
         if (!registro) {
             return res.status(404).json({ erro: "Cliente não encontrado." });
         }
@@ -54,7 +54,7 @@ async function atualizar(req, res) {
 
 async function deletar(req, res) {
     try {
-        const registro = await clientesService.deletar(req.params.id);
+        const registro = await clienteService.deletar(req.params.id);
         if (!registro) {
             return res.status(404).json({ erro: "Cliente não encontrado." });
         }
