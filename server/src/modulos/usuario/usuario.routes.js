@@ -1,15 +1,12 @@
 const express = require("express");
-const emprestimosController = require("./usuario.controller");
+const usuarioController = require("./usuario.controller");
 
 const router = express.Router();
 
-router.get("/emprestimos", emprestimosController.listar);
-router.get("/emprestimos/:id", emprestimosController.buscarPorId);
-router.post("/emprestimos", emprestimosController.criar);
-router.put("/emprestimos/:id", emprestimosController.atualizar);
-router.delete("/emprestimos/:id", emprestimosController.deletar);
+router.get("/usuarios", usuarioController.listar);
+router.get("/usuarios/:id", usuarioController.buscarPorId);
+router.post("/usuarios", usuarioController.criar);
+router.put("/usuarios/:id", usuarioController.atualizar);
+router.delete("/usuarios/:id", usuarioController.deletar);
 
 module.exports = router;
-
-
-

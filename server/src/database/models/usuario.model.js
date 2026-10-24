@@ -3,7 +3,6 @@ const sequelize = require("../connection");
 
 const usuario = sequelize.define(
     "usuario",
-
     {
         id_usuario: {
             type: DataTypes.INTEGER,
@@ -11,60 +10,67 @@ const usuario = sequelize.define(
             autoIncrement: true,
             field: "id_usuario"
         },
-        nome: {
+        nome_completo: {
             type: DataTypes.STRING,
             allowNull: false,
-            field: "nome"
+            field: "nome_completo"
         },
         email: {
             type: DataTypes.STRING,
             allowNull: false,
+            unique: true,
             field: "email"
         },
-        tipo_perfil: {
+        senha_hash: {
             type: DataTypes.STRING,
             allowNull: false,
-            field: "tipo_perfil"
+            field: "senha_hash"
         },
-        senha: {
+        cargo_funcao: {
             type: DataTypes.STRING,
-            allowNull: false,
-            field: "senha"
+            allowNull: true,
+            field: "cargo_funcao"
         },
-        data_criacao: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            field: "data_criacao"
-        },
+        ativo: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true,
+            field: "ativo"
+        }
     },
     {
         timestamps: false,
-        tableName: "usuario",
+        tableName: "usuario"
     }
-    
-)
-
+);
 
 usuario.associate = (models) => {
-    usuario.hasMany(models.cliente, {
-        foreignKey: "id_usuario",
-        as: "cliente",
-    });
+    if (models.cliente) {
+        usuario.hasMany(models.cliente, {
+            foreignKey: "id_usuario",
+            as: "cliente"
+        });
+    }
 
-    usuario.hasMany(models.ordem_producao, {
-        foreignKey: "id_usuario",
-        as: "ordem_producao",
-    });
-    usuario.hasMany(models.orcamento, {
-        foreignKey: "id_usuario",
-        as: "orcamento",
-    });
+    if (models.orcamento) {
+        usuario.hasMany(models.orcamento, {
+            foreignKey: "id_usuario",
+            as: "orcamento"
+        });
+    }
 
-    usuario.hasMany(models.servico_os, {
-        foreignKey: "id_usuario",
-        as: "servico_os",
-    });
+    if (models.ordem_producao) {
+        usuario.hasMany(models.ordem_producao, {
+            foreignKey: "id_usuario",
+            as: "ordem_producao"
+        });
+    }
 
+    if (models.ordem_servico) {
+        usuario.hasMany(models.ordem_servico, {
+            foreignKey: "id_usuario",
+            as: "ordem_servico"
+        });
+    }
 };
 
 module.exports = usuario;

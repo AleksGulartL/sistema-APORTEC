@@ -13,16 +13,16 @@ async function criar(dados) {
 }
 
 async function atualizar(id, dados) {
-    const usuario = await usuario.findByPk(id);
-    if (!usuario) return null;
-    return usuario.update(dados);
+    const registro = await usuario.findByPk(id);
+    if (!registro) return null;
+    return registro.update(dados);
 }
 
 async function deletar(id) {
-    const usuario = await usuario.findByPk(id);
-    if (!usuario) return null;
-    await usuario.destroy();
-    return usuario;
+    const registro = await usuario.findByPk(id);
+    if (!registro) return null;
+    await registro.destroy();
+    return registro;
 }
 
 module.exports = {
@@ -30,5 +30,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar,
+    deletar
 };

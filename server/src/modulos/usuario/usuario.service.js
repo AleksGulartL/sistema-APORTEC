@@ -1,43 +1,64 @@
-const emprestimosRepository = require("./usuario.repository");
+const usuarioRepository = require("./usuario.repository");
 
-function validarEmprestimo(dados) {
-    if (!dados.leitor_id) {
-        const erro = new Error("O campo 'leitor_id' é obrigatório.");
+function validarUsuario(dados) {
+    if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
+        const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
-    if (!dados.livro_id) {
-        const erro = new Error("O campo 'livro_id' é obrigatório.");
+
+    if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
+        const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }
-    if (!dados.data_prevista) {
-        const erro = new Error("O campo 'data_prevista' é obrigatório.");
+
+    if (!dados.senha_hash || typeof dados.senha_hash !== "string" || !dados.senha_hash.trim()) {
+        const erro = new Error("O campo 'senha_hash' é obrigatório.");
         erro.status = 400;
         throw erro;
     }
 }
 
 async function listar() {
-    return emprestimosRepository.listar();
+    return usuarioRepository.listar();
 }
 
 async function buscarPorId(id) {
-    return emprestimosRepository.buscarPorId(id);
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
+    }
+    return usuarioRepository.buscarPorId(idNum);
 }
 
 async function criar(dados) {
-    validarEmprestimo(dados);
-    return emprestimosRepository.criar(dados);
+    validarUsuario(dados);
+    return usuarioRepository.criar(dados);
 }
 
 async function atualizar(id, dados) {
-    validarEmprestimo(dados);
-    return emprestimosRepository.atualizar(id, dados);
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
+    }
+
+    validarUsuario(dados);
+    return usuarioRepository.atualizar(idNum, dados);
 }
 
 async function deletar(id) {
-    return emprestimosRepository.deletar(id);
+    const idNum = Number(id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
+    }
+    return usuarioRepository.deletar(idNum);
 }
 
 module.exports = {
@@ -45,5 +66,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar,
+    deletar
 };
