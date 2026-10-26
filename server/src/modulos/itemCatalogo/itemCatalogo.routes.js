@@ -3,10 +3,10 @@ const itemCatalogoController = require("./itemCatalogo.controller");
 
 const router = express.Router();
 
-router.get("/itens-catalogo", itemCatalogoController.listar);
-router.get("/itens-catalogo/:id", itemCatalogoController.buscarPorId);
-router.post("/itens-catalogo", itemCatalogoController.criar);
-router.put("/itens-catalogo/:id", itemCatalogoController.atualizar);
-router.delete("/itens-catalogo/:id", itemCatalogoController.deletar);
+router.get("/item_catalogo", itemCatalogoController.listar);
+router.get("/item_catalogo/:id", itemCatalogoController.buscarPorId);
+router.post("/item_catalogo", itemCatalogoController.criar);
+router.put("/item_catalogo/:id", itemCatalogoController.atualizar);
+router.delete("/item_catalogo/:id", itemCatalogoController.deletar);
 
 module.exports = router;

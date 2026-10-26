@@ -53,7 +53,7 @@ usuario.associate = (models) => {
 
     if (models.orcamento) {
         usuario.hasMany(models.orcamento, {
-            foreignKey: "id_usuario",
+            foreignKey: "id_usuario_criador",
             as: "orcamento"
         });
     }

@@ -138,12 +138,12 @@ CREATE TABLE orcamento (
 CREATE TABLE item_orcamento (
     id_item_orcamento SERIAL PRIMARY KEY,
     id_orcamento INT NOT NULL,
-    id_item INT NOT NULL,
+    id_item_catalogo INT NOT NULL,
     quantidade NUMERIC(10, 2) NOT NULL DEFAULT 1.00,
     valor_total NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     CONSTRAINT fk_item_orcamento_orcamento FOREIGN KEY (id_orcamento) 
         REFERENCES orcamento (id_orcamento) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_item_orcamento_item FOREIGN KEY (id_item) 
+    CONSTRAINT fk_item_orcamento_item_catalogo FOREIGN KEY (id_item_catalogo) 
         REFERENCES item_catalogo (id_item) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
