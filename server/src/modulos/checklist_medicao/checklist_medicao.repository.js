@@ -27,16 +27,16 @@ async function criar(dados) {
 }
 
 async function atualizar(id, dados) {
-    const checklist_medicao = await checklist_medicao.findByPk(id);
-    if (!checklist_medicao) return null;
-    return checklist_medicao.update(dados);
+    const registro = await checklist_medicao.findByPk(id);
+    if (!registro) return null;
+    return registro.update(dados);
 }
 
 async function deletar(id) {
-    const checklist_medicao = await checklist_medicao.findByPk(id);
-    if (!checklist_medicao) return null;
-    await checklist_medicao.destroy();
-    return checklist_medicao;
+    const registro = await checklist_medicao.findByPk(id);
+    if (!registro) return null;
+    await registro.destroy();
+    return registro;
 }
 
 module.exports = {

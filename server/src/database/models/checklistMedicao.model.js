@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection");
 
-const checklist_medicao = sequelize.define(
+const checklistMedicao = sequelize.define(
     "checklist_medicao",
     {
         id_medicao: {
@@ -52,13 +52,13 @@ const checklist_medicao = sequelize.define(
     }
 );
 
-checklist_medicao.associate = (models) => {
+checklistMedicao.associate = (models) => {
     if (models.pedido) {
-        checklist_medicao.belongsTo(models.pedido, {
+        checklistMedicao.belongsTo(models.pedido, {
             foreignKey: "id_pedido",
             as: "pedido"
         });
     }
 };
 
-module.exports = checklist_medicao;
+module.exports = checklistMedicao;

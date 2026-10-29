@@ -1,4 +1,4 @@
-const { orcamento, item_catalogo} = require("../../database/models");
+const { pedido, orcamento } = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
@@ -17,7 +17,7 @@ async function listar() {
 }
 
 async function buscarPorId(id) {
-    return item_orcamento.findByPk(id, {
+    return pedido.findByPk(id, {
         include: obterIncludes()
     });
 }
@@ -27,16 +27,16 @@ async function criar(dados) {
 }
 
 async function atualizar(id, dados) {
-    const pedido = await pedido.findByPk(id);
-    if (!pedido) return null;
-    return pedido.update(dados);
+    const registro = await pedido.findByPk(id);
+    if (!registro) return null;
+    return registro.update(dados);
 }
 
 async function deletar(id) {
-    const pedido = await pedido.findByPk(id);
-    if (!pedido) return null;
-    await pedido.destroy();
-    return pedido;
+    const registro = await pedido.findByPk(id);
+    if (!registro) return null;
+    await registro.destroy();
+    return registro;
 }
 
 module.exports = {

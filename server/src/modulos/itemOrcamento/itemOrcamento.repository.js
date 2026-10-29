@@ -1,4 +1,4 @@
-const { orcamento, item_catalogo} = require("../../database/models");
+const { item_orcamento, orcamento, item_catalogo } = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
