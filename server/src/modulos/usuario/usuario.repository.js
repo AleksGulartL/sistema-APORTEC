@@ -8,6 +8,10 @@ async function buscarPorId(id) {
     return usuario.findByPk(id);
 }
 
+async function buscarPorEmail(email) {
+    return usuario.findOne({ where: { email } });
+}
+
 async function criar(dados) {
     return usuario.create(dados);
 }
@@ -28,6 +32,7 @@ async function deletar(id) {
 module.exports = {
     listar,
     buscarPorId,
+    buscarPorEmail,
     criar,
     atualizar,
     deletar

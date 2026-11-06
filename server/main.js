@@ -4,6 +4,7 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 
+const authRoutes = require("./src/modulos/auth/auth.routes");
 const usuarioRoutes = require("./src/modulos/usuario/usuario.routes");
 const clienteRoutes = require("./src/modulos/cliente/cliente.routes");
 const itemCatalogoRoutes = require("./src/modulos/itemCatalogo/itemCatalogo.routes");
@@ -26,6 +27,7 @@ app.use(cors());
 app.use(express.json());
 
 // Rotas dos módulos do Sistema APORTEC
+app.use(authRoutes);
 app.use(usuarioRoutes);
 app.use(clienteRoutes);
 app.use(itemCatalogoRoutes);
@@ -41,6 +43,10 @@ app.use(ordemServicoRoutes);
 app.use(pecaUtilizadaRoutes);
 app.use(movimentacaoEstoqueRoutes);
 
-app.listen(PORT, () => {
-    console.log(`Servidor APORTEC rodando em http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Servidor APORTEC rodando em http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
