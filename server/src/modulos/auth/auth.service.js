@@ -52,7 +52,13 @@ async function autenticarUsuario(id, senha) {
 
     return {
         sucesso: true,
-        usuario: usuarioEncontrado,
+        usuario: {
+            id_usuario: usuarioEncontrado.id_usuario,
+            nome_completo: usuarioEncontrado.nome_completo,
+            email: usuarioEncontrado.email,
+            cargo_funcao: usuarioEncontrado.cargo_funcao,
+            ativo: usuarioEncontrado.ativo,
+        },
     };
 }
 

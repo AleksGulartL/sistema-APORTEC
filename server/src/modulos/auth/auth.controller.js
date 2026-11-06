@@ -41,18 +41,20 @@ async function registrar(req, res) {
 }
 
 async function logout(req, res) {
-    try {
-        req.logout(function (err) {
-            if (err) {
-                console.log("Erro ao fazer logout:", err);
-                return res.status(500).json({ erro: err.message });
-            }
-            return res.status(200).json({ message: "Logout successful" });
+    if (typeof req.logout === "function") {
+        return req.logout((err) => {
+            if (err) return res.status(500).json({ erro: err.message });
+            return res.status(200).json({
+                mensagem: "Logout realizado com sucesso.",
+                message: "Logout successful",
+            });
         });
-    } catch (erro) {
-        console.log("Erro ao fazer logout:", erro);
-        return res.status(500).json({ erro: erro.message });
     }
+
+    return res.status(200).json({
+        mensagem: "Logout realizado com sucesso.",
+        message: "Logout successful",
+    });
 }
 
 
