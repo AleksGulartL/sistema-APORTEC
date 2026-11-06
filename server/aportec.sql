@@ -74,10 +74,14 @@ CREATE TYPE tipo_movimentacao_enum AS ENUM (
 
 CREATE TABLE usuario (
     id_usuario SERIAL PRIMARY KEY,
-    nome VARCHAR(150) NOT NULL,
+    nome_completo VARCHAR(150),
+    nome VARCHAR(150),
     email VARCHAR(150) UNIQUE NOT NULL,
-    tipo_perfil tipo_perfil_enum NOT NULL,
-    senha VARCHAR(255) NOT NULL,
+    tipo_perfil tipo_perfil_enum,
+    cargo_funcao VARCHAR(100),
+    senha_hash VARCHAR(255),
+    senha VARCHAR(255),
+    ativo BOOLEAN DEFAULT TRUE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -52,7 +52,7 @@ const itemCatalogo = sequelize.define(
 itemCatalogo.associate = (models) => {
     if (models.item_orcamento) {
         itemCatalogo.hasMany(models.item_orcamento, {
-            foreignKey: "id_item",
+            foreignKey: "id_item_catalogo",
             as: "item_orcamento"
         });
     }

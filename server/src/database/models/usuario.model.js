@@ -60,14 +60,14 @@ usuario.associate = (models) => {
 
     if (models.ordem_producao) {
         usuario.hasMany(models.ordem_producao, {
-            foreignKey: "id_usuario",
+            foreignKey: "id_responsavel_tecnico",
             as: "ordem_producao"
         });
     }
 
     if (models.ordem_servico) {
         usuario.hasMany(models.ordem_servico, {
-            foreignKey: "id_usuario",
+            foreignKey: "id_tecnico_responsavel",
             as: "ordem_servico"
         });
     }
