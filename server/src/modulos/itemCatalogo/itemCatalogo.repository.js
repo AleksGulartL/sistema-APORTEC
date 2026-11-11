@@ -1,7 +1,19 @@
+const { Op, Sequelize } = require("sequelize");
 const { item_catalogo } = require("../../database/models");
 
 async function listar() {
-    return item_catalogo.findAll({ order: [["id_item", "ASC"]] });
+    return item_catalogo.findAll({ order: [["id", "ASC"]] });
+}
+
+async function listarAlertasEstoqueMinimo() {
+    return item_catalogo.findAll({
+        where: Sequelize.where(
+            Sequelize.literal("(quantidade_atual - quantidade_reservada)"),
+            Op.lte,
+            Sequelize.col("estoque_minimo")
+        ),
+        order: [["id", "ASC"]],
+    });
 }
 
 async function buscarPorId(id) {
@@ -27,8 +39,9 @@ async function deletar(id) {
 
 module.exports = {
     listar,
+    listarAlertasEstoqueMinimo,
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

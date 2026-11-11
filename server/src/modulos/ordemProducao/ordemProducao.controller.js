@@ -25,7 +25,18 @@ async function buscarPorId(req, res) {
 
 async function criar(req, res) {
     try {
-        const op = await ordemProducaoService.criar(req.body);
+        const usuario = req.usuario || req.user;
+        if (usuario) {
+            const perfil = String(usuario.perfil || usuario.cargo_funcao || usuario.role || "")
+                .trim()
+                .toUpperCase();
+            if (["TECNICO", "TÉCNICO", "CLIENTE"].includes(perfil)) {
+                return res.status(403).json({
+                    erro: "Acesso negado. O perfil não tem permissão para esta ação.",
+                });
+            }
+        }
+        const op = await ordemProducaoService.criar(req.body, usuario);
         return res.status(201).json(op);
     } catch (erro) {
         console.error("Erro ao criar ordem de produção:", erro);
@@ -68,10 +79,27 @@ async function deletar(req, res) {
     }
 }
 
+async function concluir(req, res) {
+    try {
+        const op = await ordemProducaoService.concluirOrdemProducao(req.params.id, req.body?.usuario_id);
+        if (!op) {
+            return res.status(404).json({ erro: "Ordem de produção não encontrada." });
+        }
+        return res.status(200).json({
+            mensagem: "Ordem de produção concluída com sucesso.",
+            ordem_producao: op,
+        });
+    } catch (erro) {
+        console.error("Erro ao concluir ordem de produção:", erro);
+        return res.status(erro.status || 400).json({ erro: erro.message });
+    }
+}
+
 module.exports = {
     listar,
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
+    concluir,
 };

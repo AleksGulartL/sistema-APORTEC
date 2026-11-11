@@ -20,6 +20,14 @@ Object.keys(db).forEach((modelName) => {
     }
 });
 
+// Aliases de compatibilidade para as entidades unificadas (De -> Para)
+db.obra_servico = db.obra;
+db.orcamento = db.pedido;
+db.ordem_producao = db.pedido;
+db.item_orcamento = db.pedido_item;
+db.insumo_ordem_producao = db.movimentacao_estoque;
+db.peca_utilizada = db.movimentacao_estoque;
+
 db.sequelize = sequelize;
 db.Sequelize = require("sequelize").Sequelize;
 

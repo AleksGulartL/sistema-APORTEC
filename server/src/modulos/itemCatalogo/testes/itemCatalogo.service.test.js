@@ -118,4 +118,24 @@ describe("ItemCatalogoService - Testes Unitários", () => {
         // VALIDAÇÃO: Confirma a presença do id_item gerado no objeto retornado
         expect(resultado).toHaveProperty("id_item", 1);
     });
+
+    test("RF10: Deve listar itens com alerta de estoque mínimo atingido", async () => {
+        const mockAlertas = [
+            {
+                id_item: 4,
+                codigo_referencia: "SENS-01",
+                descricao: "Sensor de Presença",
+                tipo: "Peca",
+                quantidade_estoque: 2,
+                quantidade_reservada: 1,
+                estoque_minimo: 5,
+            },
+        ];
+        itemCatalogoRepository.listarAlertasEstoqueMinimo.mockResolvedValue(mockAlertas);
+
+        const resultado = await itemCatalogoService.listarAlertasEstoqueMinimo();
+
+        expect(resultado).toEqual(mockAlertas);
+        expect(itemCatalogoRepository.listarAlertasEstoqueMinimo).toHaveBeenCalledTimes(1);
+    });
 });

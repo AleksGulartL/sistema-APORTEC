@@ -7,6 +7,8 @@ router.get("/orcamento", orcamentoController.listar);
 router.get("/orcamento/:id", orcamentoController.buscarPorId);
 router.post("/orcamento", orcamentoController.criar);
 router.put("/orcamento/:id", orcamentoController.atualizar);
+router.post("/orcamento/:id/aprovar", orcamentoController.aprovar);
+router.patch("/orcamento/:id/aprovar", orcamentoController.aprovar);
 router.delete("/orcamento/:id", orcamentoController.deletar);
 
 module.exports = router;

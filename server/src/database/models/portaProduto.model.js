@@ -1,79 +1,134 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection");
 
-const porta_produto = sequelize.define(
+const toNumberOrNull = (val) => (val !== undefined && val !== null ? Number(val) : val);
+
+const portaProduto = sequelize.define(
     "porta_produto",
     {
-        id_porta: {
-            type: DataTypes.INTEGER,
+        id: {
+            type: DataTypes.BIGINT,
             primaryKey: true,
             autoIncrement: true,
-            field: "id_porta"
+            field: "id",
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+        },
+        id_porta: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("id", val);
+            },
         },
         numero_serie: {
             type: DataTypes.STRING(100),
             allowNull: false,
             unique: true,
-            field: "numero_serie"
+            field: "numero_serie",
+        },
+        obra_id: {
+            type: DataTypes.BIGINT,
+            allowNull: false,
+            field: "obra_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("obra_id"));
+            },
         },
         id_obra: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            field: "id_obra"
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("obra_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("obra_id", val);
+            },
+        },
+        pedido_origem_id: {
+            type: DataTypes.BIGINT,
+            allowNull: true,
+            field: "pedido_origem_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("pedido_origem_id"));
+            },
         },
         id_pedido_origem: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            field: "id_pedido_origem"
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("pedido_origem_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("pedido_origem_id", val);
+            },
         },
         modelo_automatizador: {
             type: DataTypes.STRING(100),
             allowNull: false,
-            field: "modelo_automatizador"
+            field: "modelo_automatizador",
         },
         data_instalacao: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: true,
-            field: "data_instalacao"
+            field: "data_instalacao",
         },
         fim_garantia_motor: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: true,
-            field: "fim_garantia_motor"
+            field: "fim_garantia_motor",
         },
         fim_garantia_geral: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             allowNull: true,
-            field: "fim_garantia_geral"
-        }
+            field: "fim_garantia_geral",
+        },
     },
     {
-        timestamps: false,
-        tableName: "porta_produto"
+        tableName: "porta_produto",
+        timestamps: true,
+        paranoid: true,
+        underscored: true,
     }
 );
 
-porta_produto.associate = (models) => {
-    if (models.obra_servico) {
-        porta_produto.belongsTo(models.obra_servico, {
-            foreignKey: "id_obra",
-            as: "obra_servico"
+portaProduto.associate = (models) => {
+    if (models.obra) {
+        portaProduto.belongsTo(models.obra, {
+            foreignKey: "obra_id",
+            as: "obra",
+        });
+        portaProduto.belongsTo(models.obra, {
+            foreignKey: "obra_id",
+            as: "obra_servico",
         });
     }
 
     if (models.pedido) {
-        porta_produto.belongsTo(models.pedido, {
-            foreignKey: "id_pedido_origem",
-            as: "pedido_origem"
+        portaProduto.belongsTo(models.pedido, {
+            foreignKey: "pedido_origem_id",
+            as: "pedido_origem",
         });
     }
 
     if (models.ordem_servico) {
-        porta_produto.hasMany(models.ordem_servico, {
-            foreignKey: "id_porta",
-            as: "ordem_servico"
+        portaProduto.hasMany(models.ordem_servico, {
+            foreignKey: "porta_id",
+            as: "ordem_servico",
+        });
+        portaProduto.hasMany(models.ordem_servico, {
+            foreignKey: "porta_id",
+            as: "ordens_servico",
+        });
+    }
+
+    if (models.movimentacao_estoque) {
+        portaProduto.hasMany(models.movimentacao_estoque, {
+            foreignKey: "porta_id",
+            as: "movimentacoes_estoque",
         });
     }
 };
 
-module.exports = porta_produto;
+module.exports = portaProduto;

@@ -1,5 +1,19 @@
 const usuarioRepository = require("./usuario.repository");
 
+const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO"];
+
+function normalizarPerfil(cargoOuPerfil) {
+    if (!cargoOuPerfil) return "TECNICO";
+    const upper = String(cargoOuPerfil).trim().toUpperCase();
+    if (PERFIS_VALIDOS.includes(upper)) return upper;
+    if (upper.includes("ADM") || upper.includes("GERENTE")) return "ADM";
+    if (upper.includes("VEND") || upper.includes("COMERC")) return "COMERCIAL";
+    if (upper.includes("ENGENH") || upper.includes("MEDI")) return "ENGENHARIA";
+    if (upper.includes("PROD") || upper.includes("FABRIC")) return "PRODUCAO";
+    if (upper.includes("ALMOX") || upper.includes("ESTOQ")) return "ALMOXARIFADO";
+    return "TECNICO";
+}
+
 function validarUsuario(dados) {
     if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
         const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
@@ -17,6 +31,16 @@ function validarUsuario(dados) {
         const erro = new Error("O campo 'senha_hash' é obrigatório.");
         erro.status = 400;
         throw erro;
+    }
+
+    if (dados.perfil !== undefined && dados.perfil !== null) {
+        if (!PERFIS_VALIDOS.includes(String(dados.perfil).toUpperCase())) {
+            const erro = new Error(
+                "O campo 'perfil' deve ser 'ADM', 'COMERCIAL', 'ENGENHARIA', 'PRODUCAO', 'ALMOXARIFADO' ou 'TECNICO'."
+            );
+            erro.status = 400;
+            throw erro;
+        }
     }
 }
 
@@ -36,7 +60,13 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarUsuario(dados);
-    return usuarioRepository.criar(dados);
+    const payload = { ...dados };
+    if (payload.perfil) {
+        payload.perfil = String(payload.perfil).toUpperCase();
+    } else if (payload.cargo_funcao) {
+        payload.perfil = normalizarPerfil(payload.cargo_funcao);
+    }
+    return usuarioRepository.criar(payload);
 }
 
 async function atualizar(id, dados) {
@@ -48,7 +78,11 @@ async function atualizar(id, dados) {
     }
 
     validarUsuario(dados);
-    return usuarioRepository.atualizar(idNum, dados);
+    const payload = { ...dados };
+    if (payload.perfil) {
+        payload.perfil = String(payload.perfil).toUpperCase();
+    }
+    return usuarioRepository.atualizar(idNum, payload);
 }
 
 async function deletar(id) {
@@ -66,5 +100,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

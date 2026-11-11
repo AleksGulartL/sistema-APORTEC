@@ -23,6 +23,32 @@ async function buscarPorId(req, res) {
     }
 }
 
+async function obterProntuarioPorId(req, res) {
+    try {
+        const prontuario = await portaProdutoService.obterProntuarioPorId(req.params.id);
+        if (!prontuario) {
+            return res.status(404).json({ erro: "Porta/produto não encontrado." });
+        }
+        return res.status(200).json(prontuario);
+    } catch (erro) {
+        console.error("Erro ao consultar prontuário da porta:", erro);
+        return res.status(erro.status || 500).json({ erro: erro.message });
+    }
+}
+
+async function obterProntuarioPorNumeroSerie(req, res) {
+    try {
+        const prontuario = await portaProdutoService.obterProntuarioPorNumeroSerie(req.params.numero_serie);
+        if (!prontuario) {
+            return res.status(404).json({ erro: "Porta/produto não encontrado." });
+        }
+        return res.status(200).json(prontuario);
+    } catch (erro) {
+        console.error("Erro ao consultar prontuário da porta por número de série:", erro);
+        return res.status(erro.status || 500).json({ erro: erro.message });
+    }
+}
+
 async function criar(req, res) {
     try {
         const porta = await portaProdutoService.criar(req.body);
@@ -74,7 +100,9 @@ async function deletar(req, res) {
 module.exports = {
     listar,
     buscarPorId,
+    obterProntuarioPorId,
+    obterProntuarioPorNumeroSerie,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

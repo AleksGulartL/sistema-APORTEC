@@ -1,8 +1,9 @@
 const obrasServicosRepository = require("./obrasServicos.repository");
 
 function validarObraServico(dados) {
-    const idClienteNum = Number(dados.id_cliente);
-    if (!dados.id_cliente || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+    const idClienteRaw = dados.cliente_id !== undefined ? dados.cliente_id : dados.id_cliente;
+    const idClienteNum = Number(idClienteRaw);
+    if (!idClienteRaw || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
         const erro = new Error("O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.");
         erro.status = 400;
         throw erro;
@@ -31,7 +32,13 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarObraServico(dados);
-    return obrasServicosRepository.criar(dados);
+    const clienteId = Number(dados.cliente_id !== undefined ? dados.cliente_id : dados.id_cliente);
+    const payload = {
+        ...dados,
+        cliente_id: clienteId,
+        id_cliente: clienteId,
+    };
+    return obrasServicosRepository.criar(payload);
 }
 
 async function atualizar(id, dados) {
@@ -43,7 +50,13 @@ async function atualizar(id, dados) {
     }
 
     validarObraServico(dados);
-    return obrasServicosRepository.atualizar(idNum, dados);
+    const clienteId = Number(dados.cliente_id !== undefined ? dados.cliente_id : dados.id_cliente);
+    const payload = {
+        ...dados,
+        cliente_id: clienteId,
+        id_cliente: clienteId,
+    };
+    return obrasServicosRepository.atualizar(idNum, payload);
 }
 
 async function deletar(id) {
@@ -61,5 +74,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

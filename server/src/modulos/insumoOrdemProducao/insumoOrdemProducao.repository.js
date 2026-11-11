@@ -1,50 +1,73 @@
-const { insumo_ordem_producao, ordem_producao, item_catalogo } = require("../../database/models");
+const { Op } = require("sequelize");
+const { movimentacao_estoque, pedido, item_catalogo } = require("../../database/models");
+const movimentacaoEstoqueRepository = require("../movimentacaoEstoque/movimentacaoEstoque.repository");
 
 function obterIncludes() {
     const includes = [];
-    if (ordem_producao) {
+    if (pedido) {
         includes.push({
-            model: ordem_producao,
-            as: "ordem_producao"
+            model: pedido,
+            as: "ordem_producao",
         });
     }
     if (item_catalogo) {
         includes.push({
             model: item_catalogo,
-            as: "item_catalogo"
+            as: "item_catalogo",
         });
     }
     return includes;
 }
 
 async function listar() {
-    return insumo_ordem_producao.findAll({
-        order: [["id_insumo_op", "ASC"]],
-        include: obterIncludes()
+    return movimentacao_estoque.findAll({
+        where: {
+            pedido_id: { [Op.ne]: null },
+            tipo_movimentacao: { [Op.in]: ["Reserva_Producao", "Baixa_Producao"] },
+        },
+        order: [["id", "ASC"]],
+        include: obterIncludes(),
     });
 }
 
 async function buscarPorId(id) {
-    return insumo_ordem_producao.findByPk(id, {
-        include: obterIncludes()
+    return movimentacao_estoque.findByPk(id, {
+        include: obterIncludes(),
     });
 }
 
 async function criar(dados) {
-    return insumo_ordem_producao.create(dados);
+    const statusBaixa = dados.status_baixa || "Pendente";
+    const tipoMov = statusBaixa === "Baixado" ? "Baixa_Producao" : "Reserva_Producao";
+    const qtd =
+        statusBaixa === "Baixado"
+            ? Number(dados.quantidade_baixada ?? dados.quantidade_planejada ?? 1)
+            : Number(dados.quantidade_planejada ?? 1);
+
+    return movimentacaoEstoqueRepository.criar({
+        ...dados,
+        pedido_id: Number(dados.id_op ?? dados.pedido_id),
+        item_id: Number(dados.id_item ?? dados.item_id),
+        tipo_movimentacao: tipoMov,
+        status_baixa: statusBaixa,
+        quantidade_planejada: Number(dados.quantidade_planejada),
+        quantidade: qtd,
+    });
 }
 
 async function atualizar(id, dados) {
-    const registro = await insumo_ordem_producao.findByPk(id);
-    if (!registro) return null;
-    return registro.update(dados);
+    const payload = { ...dados };
+    if (payload.status_baixa === "Baixado") {
+        payload.tipo_movimentacao = "Baixa_Producao";
+        if (payload.quantidade_baixada !== undefined) {
+            payload.quantidade = Number(payload.quantidade_baixada);
+        }
+    }
+    return movimentacaoEstoqueRepository.atualizar(id, payload);
 }
 
 async function deletar(id) {
-    const registro = await insumo_ordem_producao.findByPk(id);
-    if (!registro) return null;
-    await registro.destroy();
-    return registro;
+    return movimentacaoEstoqueRepository.deletar(id);
 }
 
 module.exports = {
@@ -52,5 +75,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

@@ -10,6 +10,15 @@ const sequelize = new Sequelize(
         port: Number(process.env.DB_PORT),
         dialect: "postgres",
         logging: false,
+        define: {
+            timestamps: true,
+            paranoid: true,
+            underscored: true,
+            freezeTableName: true,
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+            deletedAt: "deleted_at",
+        },
     }
 );
 

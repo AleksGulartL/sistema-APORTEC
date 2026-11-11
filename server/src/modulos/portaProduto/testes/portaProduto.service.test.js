@@ -48,4 +48,55 @@ describe("PortaProdutoService - Testes Unitários", () => {
         const resultado = await portaProdutoService.deletar(1);
         expect(resultado).toEqual({ id_porta: 1 });
     });
+
+    test("RF15: Deve retornar o Prontuário da Porta consolidando garantias, origem, obra e assistências técnicas", async () => {
+        portaProdutoRepository.buscarProntuarioCompleto.mockResolvedValue({
+            id: 1,
+            numero_serie: "PORTA-2026-001",
+            modelo_automatizador: "Pivotante Dupla Master",
+            data_instalacao: "2026-01-10",
+            fim_garantia_motor: "2028-01-10",
+            fim_garantia_geral: "2027-01-10",
+            obra: {
+                id: 3,
+                endereco_instalacao: "Av. Industrial, 500",
+                cliente: { id: 2, nome_completo: "Shopping Center Sul" },
+            },
+            pedido_origem: {
+                id: 105,
+                status: "Concluido",
+                itens: [
+                    {
+                        item_id: 2,
+                        quantidade: 1,
+                        item_catalogo: { descricao: "Motor Pivotante Duplo" },
+                    },
+                ],
+                movimentacao_estoque: [],
+            },
+            ordens_servico: [
+                {
+                    id: 11,
+                    status_os: "Concluida",
+                    data_hora_execucao_fim: "2026-06-15T14:00:00Z",
+                    peca_utilizada: [
+                        {
+                            item_id: 8,
+                            quantidade: 1,
+                            item_catalogo: { descricao: "Sensor Óptico" },
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const prontuario = await portaProdutoService.obterProntuarioPorId(1);
+
+        expect(prontuario.numero_serie).toBe("PORTA-2026-001");
+        expect(prontuario.em_garantia_motor).toBe(true);
+        expect(prontuario.em_garantia_geral).toBe(true);
+        expect(prontuario.componentes_originais).toHaveLength(1);
+        expect(prontuario.historico_pecas_substituidas).toHaveLength(1);
+        expect(prontuario.chamados_assistencia).toHaveLength(1);
+    });
 });

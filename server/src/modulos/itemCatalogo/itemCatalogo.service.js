@@ -1,6 +1,6 @@
 const itemCatalogoRepository = require("./itemCatalogo.repository");
 
-const TIPOS_VALIDOS = ["Insumo", "Porta", "Peca"];
+const TIPOS_VALIDOS = ["Insumo", "Porta", "Peca", "Material", "Servico", "MATERIAL", "SERVICO"];
 
 function validarItemCatalogo(dados) {
     if (!dados.tipo) {
@@ -35,9 +35,18 @@ function validarItemCatalogo(dados) {
         }
     }
 
-    if (dados.quantidade_estoque !== undefined && dados.quantidade_estoque !== null) {
-        if (typeof dados.quantidade_estoque !== "number" || dados.quantidade_estoque < 0) {
+    const qtdEstoque = dados.quantidade_estoque !== undefined ? dados.quantidade_estoque : dados.quantidade_atual;
+    if (qtdEstoque !== undefined && qtdEstoque !== null) {
+        if (typeof qtdEstoque !== "number" || qtdEstoque < 0) {
             const erro = new Error("A 'quantidade_estoque' deve ser um número maior ou igual a zero.");
+            erro.status = 400;
+            throw erro;
+        }
+    }
+
+    if (dados.estoque_minimo !== undefined && dados.estoque_minimo !== null) {
+        if (typeof dados.estoque_minimo !== "number" || dados.estoque_minimo < 0) {
+            const erro = new Error("O 'estoque_minimo' deve ser um número maior ou igual a zero.");
             erro.status = 400;
             throw erro;
         }
@@ -46,6 +55,20 @@ function validarItemCatalogo(dados) {
 
 async function listar() {
     return itemCatalogoRepository.listar();
+}
+
+async function listarAlertasEstoqueMinimo() {
+    if (typeof itemCatalogoRepository.listarAlertasEstoqueMinimo === "function") {
+        const resultado = await itemCatalogoRepository.listarAlertasEstoqueMinimo();
+        if (resultado !== undefined) return resultado;
+    }
+    const todos = await itemCatalogoRepository.listar();
+    return (todos || []).filter((item) => {
+        const atual = Number(item.quantidade_atual ?? item.quantidade_estoque ?? 0);
+        const reservada = Number(item.quantidade_reservada ?? 0);
+        const minimo = Number(item.estoque_minimo ?? 0);
+        return atual - reservada <= minimo;
+    });
 }
 
 async function buscarPorId(id) {
@@ -60,7 +83,11 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarItemCatalogo(dados);
-    return itemCatalogoRepository.criar(dados);
+    const payload = { ...dados };
+    if (payload.quantidade_estoque !== undefined && payload.quantidade_atual === undefined) {
+        payload.quantidade_atual = payload.quantidade_estoque;
+    }
+    return itemCatalogoRepository.criar(payload);
 }
 
 async function atualizar(id, dados) {
@@ -72,7 +99,11 @@ async function atualizar(id, dados) {
     }
 
     validarItemCatalogo(dados);
-    return itemCatalogoRepository.atualizar(idNum, dados);
+    const payload = { ...dados };
+    if (payload.quantidade_estoque !== undefined && payload.quantidade_atual === undefined) {
+        payload.quantidade_atual = payload.quantidade_estoque;
+    }
+    return itemCatalogoRepository.atualizar(idNum, payload);
 }
 
 async function deletar(id) {
@@ -87,8 +118,9 @@ async function deletar(id) {
 
 module.exports = {
     listar,
+    listarAlertasEstoqueMinimo,
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

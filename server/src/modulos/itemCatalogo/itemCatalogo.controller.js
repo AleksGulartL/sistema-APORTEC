@@ -10,6 +10,16 @@ async function listar(req, res) {
     }
 }
 
+async function listarAlertasEstoqueMinimo(req, res) {
+    try {
+        const alertas = await itemCatalogoService.listarAlertasEstoqueMinimo();
+        return res.status(200).json(alertas);
+    } catch (erro) {
+        console.error("Erro ao buscar alertas de estoque mínimo:", erro);
+        return res.status(erro.status || 500).json({ erro: erro.message });
+    }
+}
+
 async function buscarPorId(req, res) {
     try {
         const item = await itemCatalogoService.buscarPorId(req.params.id);
@@ -67,8 +77,9 @@ async function deletar(req, res) {
 
 module.exports = {
     listar,
+    listarAlertasEstoqueMinimo,
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

@@ -1,29 +1,29 @@
-const { ordem_servico, obra_servico, porta_produto, usuario, peca_utilizada } = require("../../database/models");
+const { ordem_servico, obra, porta_produto, usuario, movimentacao_estoque } = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
-    if (obra_servico) {
+    if (obra) {
         includes.push({
-            model: obra_servico,
-            as: "obra_servico"
+            model: obra,
+            as: "obra_servico",
         });
     }
     if (porta_produto) {
         includes.push({
             model: porta_produto,
-            as: "porta_produto"
+            as: "porta_produto",
         });
     }
     if (usuario) {
         includes.push({
             model: usuario,
-            as: "tecnico_responsavel"
+            as: "tecnico_responsavel",
         });
     }
-    if (peca_utilizada) {
+    if (movimentacao_estoque) {
         includes.push({
-            model: peca_utilizada,
-            as: "peca_utilizada"
+            model: movimentacao_estoque,
+            as: "peca_utilizada",
         });
     }
     return includes;
@@ -31,14 +31,14 @@ function obterIncludes() {
 
 async function listar() {
     return ordem_servico.findAll({
-        order: [["id_os", "ASC"]],
-        include: obterIncludes()
+        order: [["id", "ASC"]],
+        include: obterIncludes(),
     });
 }
 
 async function buscarPorId(id) {
     return ordem_servico.findByPk(id, {
-        include: obterIncludes()
+        include: obterIncludes(),
     });
 }
 
@@ -64,5 +64,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

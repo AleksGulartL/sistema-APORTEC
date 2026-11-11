@@ -1,74 +1,134 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection");
 
+const toNumberOrNull = (val) => (val !== undefined && val !== null ? Number(val) : val);
+
 const usuario = sequelize.define(
     "usuario",
     {
-        id_usuario: {
-            type: DataTypes.INTEGER,
+        id: {
+            type: DataTypes.BIGINT,
             primaryKey: true,
             autoIncrement: true,
-            field: "id_usuario"
+            field: "id",
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+        },
+        id_usuario: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("id", val);
+            },
         },
         nome_completo: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(150),
             allowNull: false,
-            field: "nome_completo"
+            field: "nome_completo",
+        },
+        nome: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return this.getDataValue("nome_completo");
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("nome_completo", val);
+            },
         },
         email: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(150),
             allowNull: false,
             unique: true,
-            field: "email"
+            field: "email",
         },
         senha_hash: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(255),
             allowNull: false,
-            field: "senha_hash"
+            field: "senha_hash",
+        },
+        senha: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return this.getDataValue("senha_hash");
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("senha_hash", val);
+            },
+        },
+        perfil: {
+            type: DataTypes.ENUM("ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO"),
+            allowNull: false,
+            defaultValue: "TECNICO",
+            field: "perfil",
+        },
+        tipo_perfil: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return this.getDataValue("perfil");
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("perfil", val);
+            },
         },
         cargo_funcao: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(100),
             allowNull: true,
-            field: "cargo_funcao"
+            field: "cargo_funcao",
         },
         ativo: {
             type: DataTypes.BOOLEAN,
+            allowNull: false,
             defaultValue: true,
-            field: "ativo"
-        }
+            field: "ativo",
+        },
+        data_criacao: {
+            type: DataTypes.VIRTUAL, // virtual o que é: não é um campo do banco de dados, é um campo virtual que é criado pelo get 
+            get() {
+                return this.getDataValue("createdAt") || this.getDataValue("created_at");
+            },
+        },
     },
     {
-        timestamps: false,
-        tableName: "usuario"
+        tableName: "usuario",
+        timestamps: true,
+        paranoid: true, // serve para fazer o delete no banco de dados, ou seja, quando deletar um usuario ele não será deletado do banco de dados, mas sim marcado como deletado
+        underscored: true, // serve para que o sequelize converta os nomes das colunas do banco de dados para o formato snake_case
     }
 );
 
 usuario.associate = (models) => {
-    if (models.cliente) {
-        usuario.hasMany(models.cliente, {
-            foreignKey: "id_usuario",
-            as: "cliente"
+    if (models.pedido) {
+        usuario.hasMany(models.pedido, {
+            foreignKey: "usuario_criador_id",
+            as: "pedidos_criados",
         });
-    }
-
-    if (models.orcamento) {
-        usuario.hasMany(models.orcamento, {
-            foreignKey: "id_usuario_criador",
-            as: "orcamento"
-        });
-    }
-
-    if (models.ordem_producao) {
-        usuario.hasMany(models.ordem_producao, {
-            foreignKey: "id_usuario",
-            as: "ordem_producao"
+        usuario.hasMany(models.pedido, {
+            foreignKey: "responsavel_producao_id",
+            as: "ordens_producao",
         });
     }
 
     if (models.ordem_servico) {
         usuario.hasMany(models.ordem_servico, {
-            foreignKey: "id_usuario",
-            as: "ordem_servico"
+            foreignKey: "tecnico_responsavel_id",
+            as: "ordens_servico",
+        });
+    }
+
+    if (models.checklist_medicao) {
+        usuario.hasMany(models.checklist_medicao, {
+            foreignKey: "tecnico_id",
+            as: "checklists_medicao",
+        });
+    }
+
+    if (models.movimentacao_estoque) {
+        usuario.hasMany(models.movimentacao_estoque, {
+            foreignKey: "usuario_id",
+            as: "movimentacoes_estoque",
         });
     }
 };

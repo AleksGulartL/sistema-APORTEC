@@ -52,6 +52,32 @@ async function atualizar(req, res) {
     }
 }
 
+async function atualizarStatusEtapa(req, res) {
+    try {
+        const resultado = await pedidoService.atualizarStatusEtapa(req.params.id, req.body);
+        if (!resultado) {
+            return res.status(404).json({ erro: "Pedido não encontrado." });
+        }
+        return res.status(200).json(resultado);
+    } catch (erro) {
+        console.error("Erro ao atualizar status da etapa do pedido:", erro);
+        return res.status(erro.status || 400).json({ erro: erro.message });
+    }
+}
+
+async function coletarAssinaturaAceite(req, res) {
+    try {
+        const resultado = await pedidoService.coletarAssinaturaAceite(req.params.id, req.body);
+        if (!resultado) {
+            return res.status(404).json({ erro: "Pedido não encontrado." });
+        }
+        return res.status(200).json(resultado);
+    } catch (erro) {
+        console.error("Erro ao coletar assinatura de aceite do pedido:", erro);
+        return res.status(erro.status || 400).json({ erro: erro.message });
+    }
+}
+
 async function deletar(req, res) {
     try {
         const pedido = await pedidoService.deletar(req.params.id);
@@ -70,5 +96,7 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    atualizarStatusEtapa,
+    coletarAssinaturaAceite,
+    deletar,
 };

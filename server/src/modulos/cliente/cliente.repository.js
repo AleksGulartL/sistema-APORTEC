@@ -1,11 +1,16 @@
-const { cliente } = require("../../database/models");
+const { cliente, obra } = require("../../database/models");
 
 async function listar() {
-    return cliente.findAll({ order: [["id_cliente", "ASC"]] });
+    return cliente.findAll({
+        order: [["id", "ASC"]],
+        include: obra ? [{ model: obra, as: "obras" }] : [],
+    });
 }
 
 async function buscarPorId(id) {
-    return cliente.findByPk(id);
+    return cliente.findByPk(id, {
+        include: obra ? [{ model: obra, as: "obras" }] : [],
+    });
 }
 
 async function criar(dados) {
@@ -30,5 +35,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

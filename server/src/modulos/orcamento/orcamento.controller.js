@@ -52,6 +52,19 @@ async function atualizar(req, res) {
     }
 }
 
+async function aprovar(req, res) {
+    try {
+        const registro = await orcamentoService.aprovar(req.params.id, req.body);
+        if (!registro) {
+            return res.status(404).json({ erro: "Orçamento não encontrado." });
+        }
+        return res.status(200).json(registro);
+    } catch (erro) {
+        console.error("Erro ao aprovar orçamento:", erro);
+        return res.status(erro.status || 400).json({ erro: erro.message });
+    }
+}
+
 async function deletar(req, res) {
     try {
         const registro = await orcamentoService.deletar(req.params.id);
@@ -70,5 +83,6 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    aprovar,
+    deletar,
 };

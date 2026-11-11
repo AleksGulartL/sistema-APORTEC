@@ -1,128 +1,205 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection");
 
-const ordem_servico = sequelize.define(
+const toNumberOrNull = (val) => (val !== undefined && val !== null ? Number(val) : val);
+
+const ordemServico = sequelize.define(
     "ordem_servico",
     {
-        id_os: {
-            type: DataTypes.INTEGER,
+        id: {
+            type: DataTypes.BIGINT,
             primaryKey: true,
             autoIncrement: true,
-            field: "id_os"
+            field: "id",
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+        },
+        id_os: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("id", val);
+            },
+        },
+        obra_id: {
+            type: DataTypes.BIGINT,
+            allowNull: false,
+            field: "obra_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("obra_id"));
+            },
         },
         id_obra: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            field: "id_obra"
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("obra_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("obra_id", val);
+            },
+        },
+        porta_id: {
+            type: DataTypes.BIGINT,
+            allowNull: true,
+            field: "porta_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("porta_id"));
+            },
         },
         id_porta: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("porta_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("porta_id", val);
+            },
+        },
+        pedido_id: {
+            type: DataTypes.BIGINT,
             allowNull: true,
-            field: "id_porta"
+            field: "pedido_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("pedido_id"));
+            },
+        },
+        id_pedido: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("pedido_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("pedido_id", val);
+            },
+        },
+        tecnico_responsavel_id: {
+            type: DataTypes.BIGINT,
+            allowNull: false,
+            field: "tecnico_responsavel_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("tecnico_responsavel_id"));
+            },
         },
         id_tecnico_responsavel: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            field: "id_tecnico_responsavel"
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("tecnico_responsavel_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("tecnico_responsavel_id", val);
+            },
         },
         tipo_servico: {
-            type: DataTypes.ENUM("Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"),
+            type: DataTypes.STRING(50),
             allowNull: false,
-            field: "tipo_servico"
+            field: "tipo_servico",
         },
         origem_cobertura: {
-            type: DataTypes.ENUM("Garantia", "Contrato", "Avulso"),
+            type: DataTypes.STRING(30),
             allowNull: true,
-            field: "origem_cobertura"
+            field: "origem_cobertura",
         },
         descricao_problema: {
             type: DataTypes.TEXT,
             allowNull: true,
-            field: "descricao_problema"
+            field: "descricao_problema",
         },
         analise_especificacao_servico: {
             type: DataTypes.TEXT,
             allowNull: true,
-            field: "analise_especificacao_servico"
+            field: "analise_especificacao_servico",
         },
         observacoes: {
             type: DataTypes.TEXT,
             allowNull: true,
-            field: "observacoes"
+            field: "observacoes",
         },
         status_os: {
-            type: DataTypes.ENUM("Aberta", "Em Andamento", "Finalizada", "Cancelada"),
+            type: DataTypes.STRING(30),
             allowNull: false,
             defaultValue: "Aberta",
-            field: "status_os"
+            field: "status_os",
         },
         data_agendamento: {
             type: DataTypes.DATE,
             allowNull: true,
-            field: "data_agendamento"
+            field: "data_agendamento",
         },
         data_hora_execucao_inicio: {
             type: DataTypes.DATE,
             allowNull: true,
-            field: "data_hora_execucao_inicio"
+            field: "data_hora_execucao_inicio",
         },
         data_hora_execucao_fim: {
             type: DataTypes.DATE,
             allowNull: true,
-            field: "data_hora_execucao_fim"
+            field: "data_hora_execucao_fim",
         },
         assinatura_cliente_digital: {
             type: DataTypes.TEXT,
             allowNull: true,
-            field: "assinatura_cliente_digital"
+            field: "assinatura_cliente_digital",
         },
         assinatura_tecnico_digital: {
             type: DataTypes.TEXT,
             allowNull: true,
-            field: "assinatura_tecnico_digital"
-        }
+            field: "assinatura_tecnico_digital",
+        },
     },
     {
-        timestamps: false,
-        tableName: "ordem_servico"
+        tableName: "ordem_servico",
+        timestamps: true,
+        paranoid: true,
+        underscored: true,
     }
 );
 
-ordem_servico.associate = (models) => {
-    if (models.obra_servico) {
-        ordem_servico.belongsTo(models.obra_servico, {
-            foreignKey: "id_obra",
-            as: "obra_servico"
+ordemServico.associate = (models) => {
+    if (models.obra) {
+        ordemServico.belongsTo(models.obra, {
+            foreignKey: "obra_id",
+            as: "obra",
+        });
+        ordemServico.belongsTo(models.obra, {
+            foreignKey: "obra_id",
+            as: "obra_servico",
         });
     }
 
     if (models.porta_produto) {
-        ordem_servico.belongsTo(models.porta_produto, {
-            foreignKey: "id_porta",
-            as: "porta_produto"
+        ordemServico.belongsTo(models.porta_produto, {
+            foreignKey: "porta_id",
+            as: "porta_produto",
+        });
+    }
+
+    if (models.pedido) {
+        ordemServico.belongsTo(models.pedido, {
+            foreignKey: "pedido_id",
+            as: "pedido",
         });
     }
 
     if (models.usuario) {
-        ordem_servico.belongsTo(models.usuario, {
-            foreignKey: "id_tecnico_responsavel",
-            as: "tecnico_responsavel"
-        });
-    }
-
-    if (models.peca_utilizada) {
-        ordem_servico.hasMany(models.peca_utilizada, {
-            foreignKey: "id_os",
-            as: "peca_utilizada"
+        ordemServico.belongsTo(models.usuario, {
+            foreignKey: "tecnico_responsavel_id",
+            as: "tecnico_responsavel",
         });
     }
 
     if (models.movimentacao_estoque) {
-        ordem_servico.hasMany(models.movimentacao_estoque, {
-            foreignKey: "id_ordem_servico",
-            as: "movimentacao_estoque"
+        ordemServico.hasMany(models.movimentacao_estoque, {
+            foreignKey: "ordem_servico_id",
+            as: "movimentacao_estoque",
+        });
+        ordemServico.hasMany(models.movimentacao_estoque, {
+            foreignKey: "ordem_servico_id",
+            as: "peca_utilizada",
         });
     }
 };
 
-module.exports = ordem_servico;
+module.exports = ordemServico;

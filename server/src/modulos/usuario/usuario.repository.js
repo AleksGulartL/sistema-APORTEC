@@ -1,7 +1,7 @@
 const { usuario } = require("../../database/models");
 
 async function listar() {
-    return usuario.findAll({ order: [["id_usuario", "ASC"]] });
+    return usuario.findAll({ order: [["id", "ASC"]] });
 }
 
 async function buscarPorId(id) {
@@ -35,5 +35,5 @@ module.exports = {
     buscarPorEmail,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

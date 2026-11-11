@@ -1,17 +1,29 @@
-const { porta_produto, obra_servico, pedido } = require("../../database/models");
+const {
+    porta_produto,
+    obra,
+    cliente,
+    pedido,
+    pedido_item,
+    checklist_medicao,
+    ordem_servico,
+    usuario,
+    movimentacao_estoque,
+    item_catalogo,
+} = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
-    if (obra_servico) {
+    if (obra) {
         includes.push({
-            model: obra_servico,
-            as: "obra_servico"
+            model: obra,
+            as: "obra_servico",
+            include: cliente ? [{ model: cliente, as: "cliente" }] : [],
         });
     }
     if (pedido) {
         includes.push({
             model: pedido,
-            as: "pedido_origem"
+            as: "pedido_origem",
         });
     }
     return includes;
@@ -19,21 +31,107 @@ function obterIncludes() {
 
 async function listar() {
     return porta_produto.findAll({
-        order: [["id_porta", "ASC"]],
-        include: obterIncludes()
+        order: [["id", "ASC"]],
+        include: obterIncludes(),
     });
 }
 
 async function buscarPorId(id) {
     return porta_produto.findByPk(id, {
-        include: obterIncludes()
+        include: obterIncludes(),
     });
 }
 
 async function buscarPorNumeroSerie(numeroSerie) {
     return porta_produto.findOne({
         where: { numero_serie: numeroSerie },
-        include: obterIncludes()
+        include: obterIncludes(),
+    });
+}
+
+// RF15 - Consulta Consolidada ao Prontuário da Porta (Histórico Completo por ID ou Número de Série)
+async function buscarProntuarioCompleto(filtro) {
+    const includesProntuario = [
+        ...(obra
+            ? [
+                  {
+                      model: obra,
+                      as: "obra",
+                      include: cliente ? [{ model: cliente, as: "cliente" }] : [],
+                  },
+              ]
+            : []),
+        ...(pedido
+            ? [
+                  {
+                      model: pedido,
+                      as: "pedido_origem",
+                      include: [
+                          ...(checklist_medicao
+                              ? [{ model: checklist_medicao, as: "checklist_medicao" }]
+                              : []),
+                          ...(pedido_item
+                              ? [
+                                    {
+                                        model: pedido_item,
+                                        as: "itens",
+                                        include: item_catalogo
+                                            ? [{ model: item_catalogo, as: "item_catalogo" }]
+                                            : [],
+                                    },
+                                ]
+                              : []),
+                          ...(movimentacao_estoque
+                              ? [
+                                    {
+                                        model: movimentacao_estoque,
+                                        as: "movimentacao_estoque",
+                                        include: item_catalogo
+                                            ? [{ model: item_catalogo, as: "item_catalogo" }]
+                                            : [],
+                                    },
+                                ]
+                              : []),
+                      ],
+                  },
+              ]
+            : []),
+        ...(ordem_servico
+            ? [
+                  {
+                      model: ordem_servico,
+                      as: "ordens_servico",
+                      include: [
+                          ...(usuario ? [{ model: usuario, as: "tecnico_responsavel" }] : []),
+                          ...(movimentacao_estoque
+                              ? [
+                                    {
+                                        model: movimentacao_estoque,
+                                        as: "peca_utilizada",
+                                        include: item_catalogo
+                                            ? [{ model: item_catalogo, as: "item_catalogo" }]
+                                            : [],
+                                    },
+                                ]
+                              : []),
+                      ],
+                  },
+              ]
+            : []),
+        ...(movimentacao_estoque
+            ? [
+                  {
+                      model: movimentacao_estoque,
+                      as: "movimentacoes_estoque",
+                      include: item_catalogo ? [{ model: item_catalogo, as: "item_catalogo" }] : [],
+                  },
+              ]
+            : []),
+    ];
+
+    return porta_produto.findOne({
+        where: filtro,
+        include: includesProntuario,
     });
 }
 
@@ -58,7 +156,8 @@ module.exports = {
     listar,
     buscarPorId,
     buscarPorNumeroSerie,
+    buscarProntuarioCompleto,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

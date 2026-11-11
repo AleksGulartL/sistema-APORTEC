@@ -1,72 +1,69 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection");
 
+const toNumberOrNull = (val) => (val !== undefined && val !== null ? Number(val) : val);
+
 const cliente = sequelize.define(
     "cliente",
     {
-        id_cliente: {
-            type: DataTypes.INTEGER,
+        id: {
+            type: DataTypes.BIGINT,
             primaryKey: true,
             autoIncrement: true,
-            field: "id_cliente"
+            field: "id",
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
         },
-        id_usuario: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            field: "id_usuario"
+        id_cliente: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("id", val);
+            },
         },
         nome_completo: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(150),
             allowNull: false,
-            field: "nome_completo"
+            field: "nome_completo",
         },
         cnpj_cpf: {
             type: DataTypes.STRING(20),
             allowNull: false,
             unique: true,
-            field: "cnpj_cpf"
+            field: "cnpj_cpf",
         },
         telefone: {
-            type: DataTypes.STRING(20),
+            type: DataTypes.STRING(25),
             allowNull: false,
-            field: "telefone"
+            field: "telefone",
         },
         email: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(150),
             allowNull: false,
-            field: "email"
+            field: "email",
         },
         endereco: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: false,
-            field: "endereco"
-        }
+            field: "endereco",
+        },
     },
     {
-        timestamps: false,
-        tableName: "cliente"
+        tableName: "cliente",
+        timestamps: true,
+        paranoid: true,
+        underscored: true,
     }
 );
 
 cliente.associate = (models) => {
-    if (models.usuario) {
-        cliente.belongsTo(models.usuario, {
-            foreignKey: "id_usuario",
-            as: "usuario"
-        });
-    }
-
-    if (models.obra_servico) {
-        cliente.hasMany(models.obra_servico, {
-            foreignKey: "id_cliente",
-            as: "obra_servico"
-        });
-    }
-
-    if (models.orcamento) {
-        cliente.hasMany(models.orcamento, {
-            foreignKey: "id_cliente",
-            as: "orcamento"
+    if (models.obra) {
+        cliente.hasMany(models.obra, {
+            foreignKey: "cliente_id",
+            as: "obras",
         });
     }
 };
