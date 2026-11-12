@@ -1,22 +1,20 @@
 const {
     pedido,
-    obra,
     cliente,
     usuario,
     pedido_item,
     item_catalogo,
     checklist_medicao,
-    porta_produto,
-    movimentacao_estoque,
+    ordem_servico,
 } = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
-    if (obra) {
+    if (cliente) {
         includes.push({
-            model: obra,
-            as: "obra",
-            include: cliente ? [{ model: cliente, as: "cliente" }] : [],
+            model: cliente,
+            as: "cliente",
+            include: usuario ? [{ model: usuario, as: "usuario", attributes: ["id", "nome_completo", "email", "perfil"] }] : [],
         });
     }
     if (usuario) {
@@ -42,6 +40,12 @@ function obterIncludes() {
             as: "checklist_medicao",
         });
     }
+    if (ordem_servico) {
+        includes.push({
+            model: ordem_servico,
+            as: "ordens_servico",
+        });
+    }
     return includes;
 }
 
@@ -58,14 +62,12 @@ async function buscarPorId(id) {
     });
 }
 
-// RF06 - Se o pedido está sendo convertido a partir de um orçamento existente na tabela unificada, atualiza o registro
 async function criar(dados) {
     const idOrcamento = dados.id_orcamento ? Number(dados.id_orcamento) : null;
-    if (idOrcamento && !dados.obra_id) {
+    if (idOrcamento && !dados.cliente_id) {
         const existente = await pedido.findByPk(idOrcamento);
         if (existente) {
             return existente.update({
-                data_conversao: dados.data_conversao || new Date(),
                 status: dados.status_fluxo || "Aguardando",
                 bloqueio_fabricacao:
                     dados.bloqueio_fabricacao !== undefined ? dados.bloqueio_fabricacao : existente.bloqueio_fabricacao,
@@ -90,23 +92,18 @@ async function deletar(id) {
     return registro;
 }
 
-// RF12 - Gera checklist de materiais de pré-saída quando o pedido fica "Pronto para Instalacao"
+// RF12 - Gera checklist de materiais de pré-saída usando diretamente pedido_item
 async function gerarChecklistPreSaida(pedidoId) {
     const regPedido = await buscarPorId(pedidoId);
     if (!regPedido) return null;
 
     const itensPedido = regPedido.itens || [];
-    const movimentacoes = movimentacao_estoque
-        ? await movimentacao_estoque.findAll({
-              where: { pedido_id: pedidoId },
-              include: item_catalogo ? [{ model: item_catalogo, as: "item_catalogo" }] : [],
-          })
-        : [];
 
     return {
         pedido_id: regPedido.id,
         status: regPedido.status,
-        obra: regPedido.obra || null,
+        cliente: regPedido.cliente || null,
+        endereco_instalacao: regPedido.endereco_instalacao || regPedido.cliente?.endereco || null,
         medidas_vao: regPedido.checklist_medicao?.medidas_vao || null,
         modelo_automatizador: regPedido.checklist_medicao?.modelo_automatizador || null,
         itens_conferencia: itensPedido.map((i) => ({
@@ -115,48 +112,8 @@ async function gerarChecklistPreSaida(pedidoId) {
             unidade_medida: i.item_catalogo?.unidade_medida || "UN",
             quantidade_prevista: Number(i.quantidade),
         })),
-        insumos_separados: movimentacoes.map((m) => ({
-            movimentacao_id: m.id,
-            item_id: m.item_id,
-            descricao: m.item_catalogo?.descricao || "Insumo",
-            quantidade: Number(m.quantidade),
-            status_baixa: m.status_baixa,
-        })),
         gerado_em: new Date(),
     };
-}
-
-// RF13 - Registra porta instalada ao coletar assinatura digital de aceite
-async function registrarPortaInstalada(regPedido, dadosAceite) {
-    if (!porta_produto || !regPedido) return null;
-    const numeroSerie =
-        dadosAceite.numero_serie || `APORTEC-${new Date().getFullYear()}-${String(regPedido.id).padStart(4, "0")}`;
-    const modeloAutomatizador =
-        dadosAceite.modelo_automatizador ||
-        regPedido.checklist_medicao?.modelo_automatizador ||
-        "Automatizador Padrão APORTEC";
-
-    const hoje = new Date();
-    const dataInstalacao = dadosAceite.data_instalacao || hoje.toISOString().slice(0, 10);
-
-    const umAnoDepois = new Date(hoje);
-    umAnoDepois.setFullYear(umAnoDepois.getFullYear() + 1);
-    const garantiaPadrao = umAnoDepois.toISOString().slice(0, 10);
-
-    const [porta] = await porta_produto.findOrCreate({
-        where: { numero_serie: numeroSerie },
-        defaults: {
-            numero_serie: numeroSerie,
-            obra_id: regPedido.obra_id,
-            pedido_origem_id: regPedido.id,
-            modelo_automatizador: modeloAutomatizador,
-            data_instalacao: dataInstalacao,
-            fim_garantia_motor: dadosAceite.fim_garantia_motor || garantiaPadrao,
-            fim_garantia_geral: dadosAceite.fim_garantia_geral || garantiaPadrao,
-        },
-    });
-
-    return porta;
 }
 
 module.exports = {
@@ -166,5 +123,4 @@ module.exports = {
     atualizar,
     deletar,
     gerarChecklistPreSaida,
-    registrarPortaInstalada,
 };

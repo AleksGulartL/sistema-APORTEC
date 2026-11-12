@@ -24,10 +24,50 @@ const cliente = sequelize.define(
                 if (val !== undefined) this.setDataValue("id", val);
             },
         },
-        nome_completo: {
-            type: DataTypes.STRING(150),
+        usuario_id: {
+            type: DataTypes.BIGINT,
             allowNull: false,
-            field: "nome_completo",
+            unique: true,
+            field: "usuario_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("usuario_id"));
+            },
+        },
+        id_usuario: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("usuario_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("usuario_id", val);
+            },
+        },
+        nome_completo: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return this.usuario?.nome_completo || this.getDataValue("nome_completo") || null;
+            },
+            set(val) {
+                this.setDataValue("nome_completo", val);
+            },
+        },
+        nome: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return this.usuario?.nome_completo || this.getDataValue("nome_completo") || null;
+            },
+            set(val) {
+                this.setDataValue("nome_completo", val);
+            },
+        },
+        email: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return this.usuario?.email || this.getDataValue("email") || null;
+            },
+            set(val) {
+                this.setDataValue("email", val);
+            },
         },
         cnpj_cpf: {
             type: DataTypes.STRING(20),
@@ -39,11 +79,6 @@ const cliente = sequelize.define(
             type: DataTypes.STRING(25),
             allowNull: false,
             field: "telefone",
-        },
-        email: {
-            type: DataTypes.STRING(150),
-            allowNull: false,
-            field: "email",
         },
         endereco: {
             type: DataTypes.TEXT,
@@ -60,10 +95,24 @@ const cliente = sequelize.define(
 );
 
 cliente.associate = (models) => {
-    if (models.obra) {
-        cliente.hasMany(models.obra, {
+    if (models.usuario) {
+        cliente.belongsTo(models.usuario, {
+            foreignKey: "usuario_id",
+            as: "usuario",
+        });
+    }
+
+    if (models.pedido) {
+        cliente.hasMany(models.pedido, {
             foreignKey: "cliente_id",
-            as: "obras",
+            as: "pedidos",
+        });
+    }
+
+    if (models.ordem_servico) {
+        cliente.hasMany(models.ordem_servico, {
+            foreignKey: "cliente_id",
+            as: "ordens_servico",
         });
     }
 };

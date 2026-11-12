@@ -183,10 +183,10 @@ export default function Clientes() {
                         }
                         title={
                             <Typography variant="h6" fontWeight="bold">
-                                {cliente.nome_completo || cliente.nome}
+                                {cliente.usuario?.nome_completo || cliente.nome_completo || cliente.nome}
                             </Typography>
                         }
-                        subheader={`ID do Cliente: ${cliente.id_cliente || cliente.id}`}
+                        subheader={`ID do Cliente: ${cliente.id_cliente || cliente.id} | Usuário Vinculado: #${cliente.usuario_id || cliente.usuario?.id || "-"}`}
                         action={
                             <Button
                                 startIcon={<ArrowBackIcon />}
@@ -210,10 +210,10 @@ export default function Clientes() {
                             </Grid>
                             <Grid item xs={12} sm={6}>
                                 <Typography variant="subtitle2" color="text.secondary">
-                                    E-mail
+                                    E-mail (via Usuário)
                                 </Typography>
                                 <Typography variant="body1" fontWeight="medium">
-                                    {cliente.email || "-"}
+                                    {cliente.usuario?.email || cliente.email || "-"}
                                 </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>

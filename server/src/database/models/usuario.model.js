@@ -59,7 +59,7 @@ const usuario = sequelize.define(
             },
         },
         perfil: {
-            type: DataTypes.ENUM("ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO"),
+            type: DataTypes.ENUM("ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO", "CLIENTE"),
             allowNull: false,
             defaultValue: "TECNICO",
             field: "perfil",
@@ -100,6 +100,13 @@ const usuario = sequelize.define(
 );
 
 usuario.associate = (models) => {
+    if (models.cliente) {
+        usuario.hasOne(models.cliente, {
+            foreignKey: "usuario_id",
+            as: "cliente",
+        });
+    }
+
     if (models.pedido) {
         usuario.hasMany(models.pedido, {
             foreignKey: "usuario_criador_id",
@@ -122,13 +129,6 @@ usuario.associate = (models) => {
         usuario.hasMany(models.checklist_medicao, {
             foreignKey: "tecnico_id",
             as: "checklists_medicao",
-        });
-    }
-
-    if (models.movimentacao_estoque) {
-        usuario.hasMany(models.movimentacao_estoque, {
-            foreignKey: "usuario_id",
-            as: "movimentacoes_estoque",
         });
     }
 };

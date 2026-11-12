@@ -64,9 +64,8 @@ async function listarAlertasEstoqueMinimo() {
     const todos = await itemCatalogoRepository.listar();
     return (todos || []).filter((item) => {
         const atual = Number(item.quantidade_atual ?? item.quantidade_estoque ?? 0);
-        const reservada = Number(item.quantidade_reservada ?? 0);
         const minimo = Number(item.estoque_minimo ?? 0);
-        return atual - reservada <= minimo;
+        return atual <= minimo;
     });
 }
 

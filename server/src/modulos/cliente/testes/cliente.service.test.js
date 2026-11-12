@@ -78,4 +78,31 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
         // VALIDAÇÃO: Confirma se o objeto gerado possui a propriedade chave id_cliente
         expect(resultado).toHaveProperty("id_cliente", 1);
     });
+
+    test("Deve cadastrar cliente vinculado a um usuario_id existente sem exigir repetição de nome_completo e email (Alternativa A)", async () => {
+        const dadosEspecializacao = {
+            usuario_id: 10,
+            cnpj_cpf: "98765432000188",
+            telefone: "49988887777",
+            endereco: "Av. Getúlio Vargas, 500",
+        };
+
+        clienteRepository.criar.mockResolvedValue({
+            id: 2,
+            id_cliente: 2,
+            ...dadosEspecializacao,
+            usuario: {
+                id: 10,
+                nome_completo: "Construtora Alfa",
+                email: "contato@construtoraalfa.com",
+                perfil: "CLIENTE",
+            },
+        });
+
+        const resultado = await clienteService.criar(dadosEspecializacao);
+
+        expect(resultado).toHaveProperty("id_cliente", 2);
+        expect(resultado).toHaveProperty("usuario_id", 10);
+        expect(resultado.usuario.nome_completo).toBe("Construtora Alfa");
+    });
 });

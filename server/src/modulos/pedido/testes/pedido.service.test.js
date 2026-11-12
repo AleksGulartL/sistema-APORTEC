@@ -3,7 +3,7 @@ const pedidoRepository = require("../pedido.repository");
 
 jest.mock("../pedido.repository");
 
-describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13)", () => {
+describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () => {
     afterEach(() => {
         jest.clearAllMocks();
     });
@@ -31,7 +31,6 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13)", () => {
                     quantidade_prevista: 2,
                 },
             ],
-            insumos_separados: [],
         });
 
         const resultado = await pedidoService.atualizarStatusEtapa(10, {
@@ -66,23 +65,17 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13)", () => {
         expect(pedidoRepository.atualizar).not.toHaveBeenCalled();
     });
 
-    test("RF13: Deve coletar assinatura digital de aceite da instalação, concluir o pedido e registrar porta instalada", async () => {
+    test("RF13 & RF15: Deve coletar assinatura digital de aceite, concluir o pedido e gravar numero_serie_porta e fim_garantia no próprio pedido", async () => {
         pedidoRepository.buscarPorId.mockResolvedValue({
             id: 10,
             id_pedido: 10,
-            obra_id: 3,
+            cliente_id: 3,
             status: "Pronto para Instalacao",
         });
-        pedidoRepository.atualizar.mockResolvedValue({
-            id: 10,
-            status: "Concluido",
-            assinatura_cliente_instalacao: "ASSINATURA_DIGITAL_BASE64_CLIENTE",
-        });
-        pedidoRepository.registrarPortaInstalada.mockResolvedValue({
-            id: 1,
-            numero_serie: "APORTEC-2026-0010",
-            pedido_origem_id: 10,
-        });
+        pedidoRepository.atualizar.mockImplementation(async (id, payload) => ({
+            id,
+            ...payload,
+        }));
 
         const resultado = await pedidoService.coletarAssinaturaAceite(10, {
             assinatura_cliente_instalacao: "ASSINATURA_DIGITAL_BASE64_CLIENTE",
@@ -92,13 +85,12 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13)", () => {
             10,
             expect.objectContaining({
                 assinatura_cliente_instalacao: "ASSINATURA_DIGITAL_BASE64_CLIENTE",
+                numero_serie_porta: expect.stringMatching(/^APORTEC-\d{4}-0010$/),
                 status: "Concluido",
-                status_op: "Concluida",
             })
         );
-        expect(resultado.porta_instalada).toMatchObject({
-            numero_serie: "APORTEC-2026-0010",
-        });
+        expect(resultado.pedido.numero_serie_porta).toMatch(/^APORTEC-\d{4}-0010$/);
+        expect(resultado.pedido.fim_garantia).toBeDefined();
     });
 
     test("RF13: Deve lançar erro 400 se assinatura digital não for informada no aceite", async () => {

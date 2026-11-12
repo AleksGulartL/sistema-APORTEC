@@ -1,10 +1,28 @@
 const clienteRepository = require("./cliente.repository");
 
 function validarCliente(dados) {
-    if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
-        const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
-        erro.status = 400;
-        throw erro;
+    const usuarioId = dados.usuario_id ?? dados.id_usuario;
+    const temUsuarioId = usuarioId !== undefined && usuarioId !== null && String(usuarioId).trim() !== "";
+
+    if (temUsuarioId) {
+        const idUsuarioNum = Number(usuarioId);
+        if (!Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
+            const erro = new Error("O campo 'usuario_id' deve ser um número inteiro válido.");
+            erro.status = 400;
+            throw erro;
+        }
+    } else {
+        if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
+            const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
+            erro.status = 400;
+            throw erro;
+        }
+
+        if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
+            const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
+            erro.status = 400;
+            throw erro;
+        }
     }
 
     if (!dados.cnpj_cpf || typeof dados.cnpj_cpf !== "string" || !dados.cnpj_cpf.trim()) {
@@ -15,12 +33,6 @@ function validarCliente(dados) {
 
     if (!dados.telefone || typeof dados.telefone !== "string" || !dados.telefone.trim()) {
         const erro = new Error("O campo 'telefone' é obrigatório e deve ser um texto válido.");
-        erro.status = 400;
-        throw erro;
-    }
-
-    if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
-        const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
         erro.status = 400;
         throw erro;
     }

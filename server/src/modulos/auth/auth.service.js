@@ -6,7 +6,7 @@ const SALT_ROUNDS = 10;
 // Hash bcrypt fictício para garantir tempo de resposta constante e evitar enumeração de usuários
 const HASH_FICTICIO = "$2b$10$wT0vB5pDcfZ2v4VzG0WlzeQk6F.Vb4v9mYgZzM/3vO4JbKgX6f5q6";
 
-const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "TECNICO"];
+const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "TECNICO", "CLIENTE"];
 
 function normalizarPerfil(cargo) {
     if (!cargo) return "COMERCIAL";
@@ -14,6 +14,7 @@ function normalizarPerfil(cargo) {
     if (PERFIS_VALIDOS.includes(upper)) return upper;
     if (upper.includes("ADM") || upper.includes("ADMIN") || upper.includes("ADMINISTRADOR")) return "ADM";
     if (upper.includes("TECNICO")) return "TECNICO";
+    if (upper.includes("CLIENT")) return "CLIENTE";
     return "COMERCIAL";
 }
 

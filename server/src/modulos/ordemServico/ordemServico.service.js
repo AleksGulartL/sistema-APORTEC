@@ -5,38 +5,43 @@ const ORIGENS_COBERTURA = ["Garantia", "Contrato", "Avulso"];
 const STATUS_OS = ["Aberta", "Em Andamento", "Finalizada", "Cancelada"];
 
 function validarOrdemServico(dados, isUpdate = false) {
+    const idCliente = dados.cliente_id ?? dados.id_cliente;
+    const idTecnico = dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel;
+
     if (!isUpdate) {
-        const idObraNum = Number(dados.id_obra);
-        if (!dados.id_obra || !Number.isInteger(idObraNum) || idObraNum <= 0) {
-            const erro = new Error("O campo 'id_obra' é obrigatório e deve ser um número inteiro válido.");
+        const idClienteNum = Number(idCliente);
+        if (!idCliente || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+            const erro = new Error("O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
-        const idTecnicoNum = Number(dados.id_tecnico_responsavel);
-        if (!dados.id_tecnico_responsavel || !Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
+        const idTecnicoNum = Number(idTecnico);
+        if (!idTecnico || !Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
             const erro = new Error("O campo 'id_tecnico_responsavel' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
         if (!dados.tipo_servico || !TIPOS_SERVICO.includes(dados.tipo_servico)) {
-            const erro = new Error("O campo 'tipo_servico' é obrigatório e deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.");
+            const erro = new Error(
+                "O campo 'tipo_servico' é obrigatório e deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'."
+            );
             erro.status = 400;
             throw erro;
         }
     } else {
-        if (dados.id_obra !== undefined) {
-            const idObraNum = Number(dados.id_obra);
-            if (!Number.isInteger(idObraNum) || idObraNum <= 0) {
-                const erro = new Error("O campo 'id_obra' deve ser um número inteiro válido.");
+        if (idCliente !== undefined) {
+            const idClienteNum = Number(idCliente);
+            if (!Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+                const erro = new Error("O campo 'id_cliente' deve ser um número inteiro válido.");
                 erro.status = 400;
                 throw erro;
             }
         }
 
-        if (dados.id_tecnico_responsavel !== undefined) {
-            const idTecnicoNum = Number(dados.id_tecnico_responsavel);
+        if (idTecnico !== undefined) {
+            const idTecnicoNum = Number(idTecnico);
             if (!Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
                 const erro = new Error("O campo 'id_tecnico_responsavel' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -45,16 +50,19 @@ function validarOrdemServico(dados, isUpdate = false) {
         }
 
         if (dados.tipo_servico !== undefined && !TIPOS_SERVICO.includes(dados.tipo_servico)) {
-            const erro = new Error("O campo 'tipo_servico' deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.");
+            const erro = new Error(
+                "O campo 'tipo_servico' deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'."
+            );
             erro.status = 400;
             throw erro;
         }
     }
 
-    if (dados.id_porta !== undefined && dados.id_porta !== null) {
-        const idPortaNum = Number(dados.id_porta);
-        if (!Number.isInteger(idPortaNum) || idPortaNum <= 0) {
-            const erro = new Error("O campo 'id_porta' deve ser um número inteiro válido.");
+    const idPedido = dados.pedido_id ?? dados.id_pedido;
+    if (idPedido !== undefined && idPedido !== null) {
+        const idPedidoNum = Number(idPedido);
+        if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
+            const erro = new Error("O campo 'id_pedido' deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
@@ -84,17 +92,9 @@ function validarOrdemServico(dados, isUpdate = false) {
         }
     }
 
-    if (dados.data_hora_execucao_inicio !== undefined && dados.data_hora_execucao_inicio !== null) {
-        if (isNaN(new Date(dados.data_hora_execucao_inicio).getTime())) {
-            const erro = new Error("A 'data_hora_execucao_inicio' deve ser uma data válida.");
-            erro.status = 400;
-            throw erro;
-        }
-    }
-
-    if (dados.data_hora_execucao_fim !== undefined && dados.data_hora_execucao_fim !== null) {
-        if (isNaN(new Date(dados.data_hora_execucao_fim).getTime())) {
-            const erro = new Error("A 'data_hora_execucao_fim' deve ser uma data válida.");
+    if (dados.data_conclusao !== undefined && dados.data_conclusao !== null) {
+        if (isNaN(new Date(dados.data_conclusao).getTime())) {
+            const erro = new Error("A 'data_conclusao' deve ser uma data válida.");
             erro.status = 400;
             throw erro;
         }
@@ -117,14 +117,21 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarOrdemServico(dados);
+    const idCliente = Number(dados.cliente_id ?? dados.id_cliente);
+    const idTecnico = Number(dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel);
+    const idPedido = dados.pedido_id ?? dados.id_pedido;
+
     const dadosFormatados = {
         ...dados,
-        id_obra: Number(dados.id_obra),
-        id_tecnico_responsavel: Number(dados.id_tecnico_responsavel),
+        cliente_id: idCliente,
+        id_cliente: idCliente,
+        tecnico_responsavel_id: idTecnico,
+        id_tecnico_responsavel: idTecnico,
     };
 
-    if (dadosFormatados.id_porta !== undefined && dadosFormatados.id_porta !== null) {
-        dadosFormatados.id_porta = Number(dadosFormatados.id_porta);
+    if (idPedido !== undefined && idPedido !== null) {
+        dadosFormatados.pedido_id = Number(idPedido);
+        dadosFormatados.id_pedido = Number(idPedido);
     }
 
     delete dadosFormatados.id_os;
@@ -142,14 +149,20 @@ async function atualizar(id, dados) {
     validarOrdemServico(dados, true);
     const dadosFormatados = { ...dados };
 
-    if (dadosFormatados.id_obra !== undefined) {
-        dadosFormatados.id_obra = Number(dadosFormatados.id_obra);
+    if (dadosFormatados.id_cliente !== undefined || dadosFormatados.cliente_id !== undefined) {
+        const idCliente = Number(dadosFormatados.cliente_id ?? dadosFormatados.id_cliente);
+        dadosFormatados.cliente_id = idCliente;
+        dadosFormatados.id_cliente = idCliente;
     }
-    if (dadosFormatados.id_tecnico_responsavel !== undefined) {
-        dadosFormatados.id_tecnico_responsavel = Number(dadosFormatados.id_tecnico_responsavel);
+    if (dadosFormatados.id_tecnico_responsavel !== undefined || dadosFormatados.tecnico_responsavel_id !== undefined) {
+        const idTecnico = Number(dadosFormatados.tecnico_responsavel_id ?? dadosFormatados.id_tecnico_responsavel);
+        dadosFormatados.tecnico_responsavel_id = idTecnico;
+        dadosFormatados.id_tecnico_responsavel = idTecnico;
     }
-    if (dadosFormatados.id_porta !== undefined && dadosFormatados.id_porta !== null) {
-        dadosFormatados.id_porta = Number(dadosFormatados.id_porta);
+    if (dadosFormatados.id_pedido !== undefined || dadosFormatados.pedido_id !== undefined) {
+        const idPedido = Number(dadosFormatados.pedido_id ?? dadosFormatados.id_pedido);
+        dadosFormatados.pedido_id = idPedido;
+        dadosFormatados.id_pedido = idPedido;
     }
 
     delete dadosFormatados.id_os;
@@ -171,5 +184,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

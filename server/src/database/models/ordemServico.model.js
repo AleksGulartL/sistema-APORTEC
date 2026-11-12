@@ -24,40 +24,6 @@ const ordemServico = sequelize.define(
                 if (val !== undefined) this.setDataValue("id", val);
             },
         },
-        obra_id: {
-            type: DataTypes.BIGINT,
-            allowNull: false,
-            field: "obra_id",
-            get() {
-                return toNumberOrNull(this.getDataValue("obra_id"));
-            },
-        },
-        id_obra: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("obra_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("obra_id", val);
-            },
-        },
-        porta_id: {
-            type: DataTypes.BIGINT,
-            allowNull: true,
-            field: "porta_id",
-            get() {
-                return toNumberOrNull(this.getDataValue("porta_id"));
-            },
-        },
-        id_porta: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("porta_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("porta_id", val);
-            },
-        },
         pedido_id: {
             type: DataTypes.BIGINT,
             allowNull: true,
@@ -73,6 +39,23 @@ const ordemServico = sequelize.define(
             },
             set(val) {
                 if (val !== undefined) this.setDataValue("pedido_id", val);
+            },
+        },
+        cliente_id: {
+            type: DataTypes.BIGINT,
+            allowNull: false,
+            field: "cliente_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("cliente_id"));
+            },
+        },
+        id_cliente: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                return toNumberOrNull(this.getDataValue("cliente_id"));
+            },
+            set(val) {
+                if (val !== undefined) this.setDataValue("cliente_id", val);
             },
         },
         tecnico_responsavel_id: {
@@ -102,51 +85,36 @@ const ordemServico = sequelize.define(
             allowNull: true,
             field: "origem_cobertura",
         },
-        descricao_problema: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            field: "descricao_problema",
-        },
-        analise_especificacao_servico: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            field: "analise_especificacao_servico",
-        },
-        observacoes: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            field: "observacoes",
-        },
         status_os: {
             type: DataTypes.STRING(30),
             allowNull: false,
             defaultValue: "Aberta",
             field: "status_os",
         },
-        data_agendamento: {
-            type: DataTypes.DATE,
+        descricao_problema: {
+            type: DataTypes.TEXT,
             allowNull: true,
-            field: "data_agendamento",
+            field: "descricao_problema",
         },
-        data_hora_execucao_inicio: {
-            type: DataTypes.DATE,
+        parecer_tecnico: {
+            type: DataTypes.TEXT,
             allowNull: true,
-            field: "data_hora_execucao_inicio",
-        },
-        data_hora_execucao_fim: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: "data_hora_execucao_fim",
+            field: "parecer_tecnico",
         },
         assinatura_cliente_digital: {
             type: DataTypes.TEXT,
             allowNull: true,
             field: "assinatura_cliente_digital",
         },
-        assinatura_tecnico_digital: {
-            type: DataTypes.TEXT,
+        data_agendamento: {
+            type: DataTypes.DATE,
             allowNull: true,
-            field: "assinatura_tecnico_digital",
+            field: "data_agendamento",
+        },
+        data_conclusao: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            field: "data_conclusao",
         },
     },
     {
@@ -158,21 +126,10 @@ const ordemServico = sequelize.define(
 );
 
 ordemServico.associate = (models) => {
-    if (models.obra) {
-        ordemServico.belongsTo(models.obra, {
-            foreignKey: "obra_id",
-            as: "obra",
-        });
-        ordemServico.belongsTo(models.obra, {
-            foreignKey: "obra_id",
-            as: "obra_servico",
-        });
-    }
-
-    if (models.porta_produto) {
-        ordemServico.belongsTo(models.porta_produto, {
-            foreignKey: "porta_id",
-            as: "porta_produto",
+    if (models.cliente) {
+        ordemServico.belongsTo(models.cliente, {
+            foreignKey: "cliente_id",
+            as: "cliente",
         });
     }
 
@@ -187,17 +144,6 @@ ordemServico.associate = (models) => {
         ordemServico.belongsTo(models.usuario, {
             foreignKey: "tecnico_responsavel_id",
             as: "tecnico_responsavel",
-        });
-    }
-
-    if (models.movimentacao_estoque) {
-        ordemServico.hasMany(models.movimentacao_estoque, {
-            foreignKey: "ordem_servico_id",
-            as: "movimentacao_estoque",
-        });
-        ordemServico.hasMany(models.movimentacao_estoque, {
-            foreignKey: "ordem_servico_id",
-            as: "peca_utilizada",
         });
     }
 };

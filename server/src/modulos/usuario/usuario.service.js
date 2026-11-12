@@ -1,12 +1,13 @@
 const usuarioRepository = require("./usuario.repository");
 
-const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO"];
+const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO", "CLIENTE"];
 
 function normalizarPerfil(cargoOuPerfil) {
     if (!cargoOuPerfil) return "TECNICO";
     const upper = String(cargoOuPerfil).trim().toUpperCase();
     if (PERFIS_VALIDOS.includes(upper)) return upper;
     if (upper.includes("ADM") || upper.includes("GERENTE")) return "ADM";
+    if (upper.includes("CLIENT")) return "CLIENTE";
     if (upper.includes("VEND") || upper.includes("COMERC")) return "COMERCIAL";
     if (upper.includes("ENGENH") || upper.includes("MEDI")) return "ENGENHARIA";
     if (upper.includes("PROD") || upper.includes("FABRIC")) return "PRODUCAO";

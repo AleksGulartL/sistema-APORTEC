@@ -16,27 +16,20 @@ const STATUS_FLUXO_VALIDOS = [
 const ETAPAS_FABRICACAO = ["Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao", "Concluido"];
 
 function validarPedido(dados, isUpdate = false) {
-    const temObra = dados.id_obra !== undefined;
+    const idCliente = dados.cliente_id ?? dados.id_cliente;
+    const temCliente = idCliente !== undefined && idCliente !== null;
 
-    if (!isUpdate && !temObra) {
+    if (!isUpdate && !temCliente) {
         const idOrcamentoNum = Number(dados.id_orcamento);
         if (!dados.id_orcamento || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
-            const erro = new Error("O campo 'id_orcamento' é obrigatório e deve ser um número inteiro válido.");
+            const erro = new Error("O campo 'cliente_id' (ou 'id_orcamento') é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
-    } else if (dados.id_orcamento !== undefined) {
-        const idOrcamentoNum = Number(dados.id_orcamento);
-        if (!Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
-            const erro = new Error("O campo 'id_orcamento' deve ser um número inteiro válido.");
-            erro.status = 400;
-            throw erro;
-        }
-    }
-
-    if (dados.data_conversao !== undefined && dados.data_conversao !== null) {
-        if (isNaN(new Date(dados.data_conversao).getTime())) {
-            const erro = new Error("A 'data_conversao' deve ser uma data válida.");
+    } else if (temCliente) {
+        const idClienteNum = Number(idCliente);
+        if (!Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+            const erro = new Error("O campo 'cliente_id' deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
@@ -51,10 +44,11 @@ function validarPedido(dados, isUpdate = false) {
         }
     }
 
-    if (dados.status_fluxo !== undefined && dados.status_fluxo !== null) {
-        if (!STATUS_FLUXO_VALIDOS.includes(dados.status_fluxo)) {
+    const statusInformado = dados.status || dados.status_fluxo;
+    if (statusInformado !== undefined && statusInformado !== null) {
+        if (!STATUS_FLUXO_VALIDOS.includes(statusInformado)) {
             const erro = new Error(
-                "O campo 'status_fluxo' deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
+                "O campo 'status' deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
             );
             erro.status = 400;
             throw erro;
@@ -99,11 +93,11 @@ async function criar(dados) {
     if (dados.id_orcamento !== undefined) {
         dadosFormatados.id_orcamento = Number(dados.id_orcamento);
     }
-    if (dados.id_obra !== undefined) {
-        dadosFormatados.obra_id = Number(dados.id_obra);
+    if (dados.id_cliente !== undefined || dados.cliente_id !== undefined) {
+        dadosFormatados.cliente_id = Number(dados.cliente_id ?? dados.id_cliente);
     }
-    if (dados.id_usuario_criador !== undefined) {
-        dadosFormatados.usuario_criador_id = Number(dados.id_usuario_criador);
+    if (dados.id_usuario_criador !== undefined || dados.usuario_criador_id !== undefined) {
+        dadosFormatados.usuario_criador_id = Number(dados.usuario_criador_id ?? dados.id_usuario_criador);
     }
     if (dados.status_fluxo) {
         dadosFormatados.status = dados.status_fluxo;
@@ -128,6 +122,9 @@ async function atualizar(id, dados) {
     if (dadosFormatados.id_orcamento !== undefined) {
         dadosFormatados.id_orcamento = Number(dadosFormatados.id_orcamento);
     }
+    if (dadosFormatados.id_cliente !== undefined || dadosFormatados.cliente_id !== undefined) {
+        dadosFormatados.cliente_id = Number(dadosFormatados.cliente_id ?? dadosFormatados.id_cliente);
+    }
     if (dadosFormatados.status_fluxo) {
         dadosFormatados.status = dadosFormatados.status_fluxo;
     }
@@ -146,7 +143,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
         throw erro;
     }
 
-    const novoStatus = dados.status_fluxo;
+    const novoStatus = dados.status || dados.status_fluxo;
     if (!novoStatus || !STATUS_FLUXO_VALIDOS.includes(novoStatus)) {
         const erro = new Error(
             "O campo 'status' é obrigatório e deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
@@ -173,7 +170,6 @@ async function atualizarStatusEtapa(id, dados = {}) {
         status_fluxo: novoStatus,
     };
     if (novoStatus === "Concluido") {
-        payloadAtualizacao.status_op = "Concluida";
         payloadAtualizacao.data_conclusao = new Date();
     }
 
@@ -190,7 +186,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
     };
 }
 
-// RF13 - Coletar Assinatura Digital de Aceite na Obra e iniciar garantia da Porta Instalada
+// RF13 & RF15 - Coletar Assinatura Digital de Aceite e registrar número de série e garantia no próprio Pedido
 async function coletarAssinaturaAceite(id, dados = {}) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
@@ -210,22 +206,27 @@ async function coletarAssinaturaAceite(id, dados = {}) {
     if (!existente) return null;
 
     const agora = new Date();
+    const umAnoDepois = new Date(agora);
+    umAnoDepois.setFullYear(umAnoDepois.getFullYear() + 1);
+
+    const numeroSeriePorta =
+        dados.numero_serie_porta ||
+        dados.numero_serie ||
+        existente.numero_serie_porta ||
+        `APORTEC-${agora.getFullYear()}-${String(idNum).padStart(4, "0")}`;
+
+    const fimGarantia = dados.fim_garantia || umAnoDepois.toISOString().slice(0, 10);
+
     const pedidoAtualizado = await pedidoRepository.atualizar(idNum, {
         assinatura_cliente_instalacao: assinatura.trim(),
-        data_aceite_instalacao: agora,
+        numero_serie_porta: numeroSeriePorta,
+        fim_garantia: fimGarantia,
         status: "Concluido",
-        status_op: "Concluida",
         data_conclusao: agora,
     });
 
-    let portaInstalada = null;
-    if (typeof pedidoRepository.registrarPortaInstalada === "function") {
-        portaInstalada = await pedidoRepository.registrarPortaInstalada(existente, dados);
-    }
-
     return {
         pedido: pedidoAtualizado,
-        porta_instalada: portaInstalada,
     };
 }
 

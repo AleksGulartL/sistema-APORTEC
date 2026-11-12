@@ -78,15 +78,6 @@ const itemCatalogo = sequelize.define(
                 if (val !== undefined) this.setDataValue("quantidade_atual", val);
             },
         },
-        quantidade_reservada: {
-            type: DataTypes.DECIMAL(12, 2),
-            allowNull: false,
-            defaultValue: 0.0,
-            field: "quantidade_reservada",
-            get() {
-                return toNumberOrNull(this.getDataValue("quantidade_reservada"));
-            },
-        },
         estoque_minimo: {
             type: DataTypes.DECIMAL(12, 2),
             allowNull: false,
@@ -96,20 +87,12 @@ const itemCatalogo = sequelize.define(
                 return toNumberOrNull(this.getDataValue("estoque_minimo"));
             },
         },
-        quantidade_disponivel: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                const atual = Number(this.getDataValue("quantidade_atual") || 0);
-                const reservada = Number(this.getDataValue("quantidade_reservada") || 0);
-                return Number((atual - reservada).toFixed(2));
-            },
-        },
         abaixo_estoque_minimo: {
             type: DataTypes.VIRTUAL,
             get() {
-                const disponivel = Number(this.quantidade_disponivel || 0);
+                const atual = Number(this.getDataValue("quantidade_atual") || 0);
                 const minimo = Number(this.getDataValue("estoque_minimo") || 0);
-                return disponivel <= minimo;
+                return atual <= minimo;
             },
         },
     },
@@ -126,13 +109,6 @@ itemCatalogo.associate = (models) => {
         itemCatalogo.hasMany(models.pedido_item, {
             foreignKey: "item_id",
             as: "pedido_itens",
-        });
-    }
-
-    if (models.movimentacao_estoque) {
-        itemCatalogo.hasMany(models.movimentacao_estoque, {
-            foreignKey: "item_id",
-            as: "movimentacoes_estoque",
         });
     }
 };

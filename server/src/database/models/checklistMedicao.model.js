@@ -100,27 +100,6 @@ const checklistMedicao = sequelize.define(
             defaultValue: "Pendente",
             field: "status_aprovacao",
         },
-        observacoes_pendencia: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            field: "observacoes_pendencia",
-        },
-        anexos: {
-            type: DataTypes.JSONB,
-            allowNull: false,
-            defaultValue: [],
-            field: "anexos",
-        },
-        anexo_croqui_url: {
-            type: DataTypes.STRING(255),
-            allowNull: true,
-            field: "anexo_croqui_url",
-        },
-        anexo_fotos_url: {
-            type: DataTypes.STRING(255),
-            allowNull: true,
-            field: "anexo_fotos_url",
-        },
     },
     {
         tableName: "checklist_medicao",

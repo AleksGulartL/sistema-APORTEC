@@ -24,30 +24,12 @@ async function recalcularTotaisPedido(pedidoId) {
 
     const itens = await pedido_item.findAll({
         where: { pedido_id: pedidoId },
-        include: item_catalogo ? [{ model: item_catalogo, as: "item_catalogo" }] : [],
     });
 
-    let totalMercadorias = 0;
-    let totalServicos = 0;
-
-    for (const item of itens) {
-        const subtotal = Number(item.valor_total || 0);
-        const tipoItem = String(item.item_catalogo?.tipo || "Material").toUpperCase();
-        if (tipoItem === "SERVICO") {
-            totalServicos += subtotal;
-        } else {
-            totalMercadorias += subtotal;
-        }
-    }
-
-    const bruto = totalMercadorias + totalServicos;
-    const descontoPct = Number(registroPedido.desconto_percentual || 0);
-    const liquido = Number((bruto * (1 - descontoPct / 100)).toFixed(2));
+    const valorTotal = itens.reduce((soma, item) => soma + Number(item.valor_total || 0), 0);
 
     await registroPedido.update({
-        total_mercadorias: Number(totalMercadorias.toFixed(2)),
-        total_servicos: Number(totalServicos.toFixed(2)),
-        valor_total: liquido,
+        valor_total: Number(valorTotal.toFixed(2)),
     });
 }
 

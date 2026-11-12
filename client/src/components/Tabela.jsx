@@ -45,10 +45,10 @@ export default function Tabela({ dados = [], onSelecionar }) {
                 <TableBody>
                     {dados.map((item, index) => {
                         const id = item.id_cliente || item.id || item.id_usuario || index + 1;
-                        const nome = item.nome_completo || item.nome || "-";
+                        const nome = item.usuario?.nome_completo || item.nome_completo || item.nome || "-";
                         const doc = item.cnpj_cpf || "-";
                         const tel = item.telefone || "-";
-                        const email = item.email || "-";
+                        const email = item.usuario?.email || item.email || "-";
                         const end = item.endereco || "-";
 
                         return (

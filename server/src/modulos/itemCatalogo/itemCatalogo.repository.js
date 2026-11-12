@@ -8,7 +8,7 @@ async function listar() {
 async function listarAlertasEstoqueMinimo() {
     return item_catalogo.findAll({
         where: Sequelize.where(
-            Sequelize.literal("(quantidade_atual - quantidade_reservada)"),
+            Sequelize.col("quantidade_atual"),
             Op.lte,
             Sequelize.col("estoque_minimo")
         ),

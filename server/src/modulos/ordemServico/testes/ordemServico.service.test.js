@@ -8,32 +8,47 @@ describe("OrdemServicoService - Testes Unitários", () => {
         jest.clearAllMocks();
     });
 
-    test("Deve criar ordem de serviço com sucesso sem exigir id_os", async () => {
+    test("Deve criar ordem de serviço com sucesso vinculada diretamente ao cliente e pedido", async () => {
         const dadosEntrada = {
-            id_obra: 1,
+            id_cliente: 1,
+            id_pedido: 10,
             id_tecnico_responsavel: 2,
             tipo_servico: "Instalacao",
             origem_cobertura: "Garantia",
-            status_os: "Aberta"
+            status_os: "Aberta",
         };
         const mockCriado = { id_os: 1, ...dadosEntrada };
         ordemServicoRepository.criar.mockResolvedValue(mockCriado);
 
         const resultado = await ordemServicoService.criar(dadosEntrada);
         expect(resultado).toEqual(mockCriado);
-        expect(ordemServicoRepository.criar).toHaveBeenCalledWith(dadosEntrada);
+        expect(ordemServicoRepository.criar).toHaveBeenCalledWith(
+            expect.objectContaining({
+                cliente_id: 1,
+                pedido_id: 10,
+                tecnico_responsavel_id: 2,
+                tipo_servico: "Instalacao",
+            })
+        );
     });
 
-    test("Deve lançar erro 400 se id_obra for ausente", async () => {
-        await expect(ordemServicoService.criar({ id_tecnico_responsavel: 2, tipo_servico: "Instalacao" }))
-            .rejects
-            .toMatchObject({ message: "O campo 'id_obra' é obrigatório e deve ser um número inteiro válido.", status: 400 });
+    test("Deve lançar erro 400 se id_cliente for ausente", async () => {
+        await expect(
+            ordemServicoService.criar({ id_tecnico_responsavel: 2, tipo_servico: "Instalacao" })
+        ).rejects.toMatchObject({
+            message: "O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.",
+            status: 400,
+        });
     });
 
     test("Deve lançar erro 400 se tipo_servico for inválido", async () => {
-        await expect(ordemServicoService.criar({ id_obra: 1, id_tecnico_responsavel: 2, tipo_servico: "Invalido" }))
-            .rejects
-            .toMatchObject({ message: "O campo 'tipo_servico' é obrigatório e deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.", status: 400 });
+        await expect(
+            ordemServicoService.criar({ id_cliente: 1, id_tecnico_responsavel: 2, tipo_servico: "Invalido" })
+        ).rejects.toMatchObject({
+            message:
+                "O campo 'tipo_servico' é obrigatório e deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.",
+            status: 400,
+        });
     });
 
     test("Deve atualizar ordem de serviço com sucesso", async () => {

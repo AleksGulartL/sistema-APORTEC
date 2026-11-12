@@ -33,36 +33,27 @@ const pedido = sequelize.define(
                 if (val !== undefined && !this.getDataValue("id")) this.setDataValue("id", val);
             },
         },
-        id_op: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined && !this.getDataValue("id")) this.setDataValue("id", val);
-            },
-        },
         codigo_proposta: {
             type: DataTypes.STRING(50),
             allowNull: true,
             unique: true,
             field: "codigo_proposta",
         },
-        obra_id: {
+        cliente_id: {
             type: DataTypes.BIGINT,
             allowNull: false,
-            field: "obra_id",
+            field: "cliente_id",
             get() {
-                return toNumberOrNull(this.getDataValue("obra_id"));
+                return toNumberOrNull(this.getDataValue("cliente_id"));
             },
         },
-        id_obra: {
+        id_cliente: {
             type: DataTypes.VIRTUAL,
             get() {
-                return toNumberOrNull(this.getDataValue("obra_id"));
+                return toNumberOrNull(this.getDataValue("cliente_id"));
             },
             set(val) {
-                if (val !== undefined) this.setDataValue("obra_id", val);
+                if (val !== undefined) this.setDataValue("cliente_id", val);
             },
         },
         usuario_criador_id: {
@@ -99,20 +90,16 @@ const pedido = sequelize.define(
                 if (val !== undefined) this.setDataValue("responsavel_producao_id", val);
             },
         },
+        endereco_instalacao: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: "endereco_instalacao",
+        },
         tipo_pedido: {
             type: DataTypes.STRING(50),
             allowNull: false,
             defaultValue: "Instalacao",
             field: "tipo_pedido",
-        },
-        tipo_orcamento: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.getDataValue("tipo_pedido");
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("tipo_pedido", val);
-            },
         },
         status_aprovacao: {
             type: DataTypes.STRING(30),
@@ -135,12 +122,6 @@ const pedido = sequelize.define(
                 if (val !== undefined) this.setDataValue("status", val);
             },
         },
-        status_op: {
-            type: DataTypes.STRING(30),
-            allowNull: false,
-            defaultValue: "Planejada",
-            field: "status_op",
-        },
         bloqueio_fabricacao: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -152,33 +133,6 @@ const pedido = sequelize.define(
             allowNull: true,
             defaultValue: "Aguardando aprovação comercial e checklist técnico de medição.",
             field: "motivo_bloqueio",
-        },
-        total_mercadorias: {
-            type: DataTypes.DECIMAL(12, 2),
-            allowNull: false,
-            defaultValue: 0.0,
-            field: "total_mercadorias",
-            get() {
-                return toNumberOrNull(this.getDataValue("total_mercadorias"));
-            },
-        },
-        total_servicos: {
-            type: DataTypes.DECIMAL(12, 2),
-            allowNull: false,
-            defaultValue: 0.0,
-            field: "total_servicos",
-            get() {
-                return toNumberOrNull(this.getDataValue("total_servicos"));
-            },
-        },
-        desconto_percentual: {
-            type: DataTypes.DECIMAL(5, 2),
-            allowNull: false,
-            defaultValue: 0.0,
-            field: "desconto_percentual",
-            get() {
-                return toNumberOrNull(this.getDataValue("desconto_percentual"));
-            },
         },
         valor_total: {
             type: DataTypes.DECIMAL(12, 2),
@@ -194,34 +148,26 @@ const pedido = sequelize.define(
             allowNull: true,
             field: "condicoes_pagamento",
         },
+        numero_serie_porta: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+            unique: true,
+            field: "numero_serie_porta",
+        },
+        fim_garantia: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
+            field: "fim_garantia",
+        },
+        assinatura_cliente_instalacao: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: "assinatura_cliente_instalacao",
+        },
         data_aprovacao: {
             type: DataTypes.DATE,
             allowNull: true,
             field: "data_aprovacao",
-        },
-        data_fechamento: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: "data_fechamento",
-        },
-        data_conversao: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: "data_conversao",
-        },
-        data_inicio_producao: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: "data_inicio_producao",
-        },
-        data_inicio: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.getDataValue("data_inicio_producao");
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("data_inicio_producao", val);
-            },
         },
         data_previsao_fim: {
             type: DataTypes.DATEONLY,
@@ -233,16 +179,6 @@ const pedido = sequelize.define(
             allowNull: true,
             field: "data_conclusao",
         },
-        assinatura_cliente_instalacao: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            field: "assinatura_cliente_instalacao",
-        },
-        data_aceite_instalacao: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: "data_aceite_instalacao",
-        },
     },
     {
         tableName: "pedido",
@@ -253,14 +189,10 @@ const pedido = sequelize.define(
 );
 
 pedido.associate = (models) => {
-    if (models.obra) {
-        pedido.belongsTo(models.obra, {
-            foreignKey: "obra_id",
-            as: "obra",
-        });
-        pedido.belongsTo(models.obra, {
-            foreignKey: "obra_id",
-            as: "obra_servico",
+    if (models.cliente) {
+        pedido.belongsTo(models.cliente, {
+            foreignKey: "cliente_id",
+            as: "cliente",
         });
     }
 
@@ -297,28 +229,10 @@ pedido.associate = (models) => {
         });
     }
 
-    if (models.porta_produto) {
-        pedido.hasMany(models.porta_produto, {
-            foreignKey: "pedido_origem_id",
-            as: "portas",
-        });
-    }
-
     if (models.ordem_servico) {
         pedido.hasMany(models.ordem_servico, {
             foreignKey: "pedido_id",
             as: "ordens_servico",
-        });
-    }
-
-    if (models.movimentacao_estoque) {
-        pedido.hasMany(models.movimentacao_estoque, {
-            foreignKey: "pedido_id",
-            as: "movimentacao_estoque",
-        });
-        pedido.hasMany(models.movimentacao_estoque, {
-            foreignKey: "pedido_id",
-            as: "insumo_ordem_producao",
         });
     }
 };

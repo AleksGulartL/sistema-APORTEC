@@ -1,29 +1,24 @@
-const { ordem_servico, obra, porta_produto, usuario, movimentacao_estoque } = require("../../database/models");
+const { ordem_servico, cliente, pedido, usuario } = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
-    if (obra) {
+    if (cliente) {
         includes.push({
-            model: obra,
-            as: "obra_servico",
+            model: cliente,
+            as: "cliente",
+            include: usuario ? [{ model: usuario, as: "usuario", attributes: ["id", "nome_completo", "email", "perfil"] }] : [],
         });
     }
-    if (porta_produto) {
+    if (pedido) {
         includes.push({
-            model: porta_produto,
-            as: "porta_produto",
+            model: pedido,
+            as: "pedido",
         });
     }
     if (usuario) {
         includes.push({
             model: usuario,
             as: "tecnico_responsavel",
-        });
-    }
-    if (movimentacao_estoque) {
-        includes.push({
-            model: movimentacao_estoque,
-            as: "peca_utilizada",
         });
     }
     return includes;

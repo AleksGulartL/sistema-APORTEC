@@ -1,9 +1,9 @@
 -- =============================================================================
 -- SISTEMA DE GESTÃO OPERACIONAL E PRODUTIVA - APORTEC
--- Modelagem Relacional Refatorada (3FN, Otimizada para ORM / Sequelize)
+-- Modelagem Relacional Simplificada (3FN - 7 Tabelas + Especialização 1:1)
 -- =============================================================================
 
--- Limpeza de estruturas legadas e tipos antigos para recriação limpa
+-- Limpeza de estruturas legadas e atuais para recriação limpa
 DROP TABLE IF EXISTS movimentacao_estoque CASCADE;
 DROP TABLE IF EXISTS peca_utilizada CASCADE;
 DROP TABLE IF EXISTS insumo_ordem_producao CASCADE;
@@ -21,19 +21,6 @@ DROP TABLE IF EXISTS item_catalogo CASCADE;
 DROP TABLE IF EXISTS cliente CASCADE;
 DROP TABLE IF EXISTS usuario CASCADE;
 
-DROP TYPE IF EXISTS tipo_perfil_enum CASCADE;
-DROP TYPE IF EXISTS tipo_item_enum CASCADE;
-DROP TYPE IF EXISTS tipo_orcamento_enum CASCADE;
-DROP TYPE IF EXISTS status_aprovacao_enum CASCADE;
-DROP TYPE IF EXISTS status_fluxo_pedido_enum CASCADE;
-DROP TYPE IF EXISTS status_medicao_enum CASCADE;
-DROP TYPE IF EXISTS status_op_enum CASCADE;
-DROP TYPE IF EXISTS status_baixa_enum CASCADE;
-DROP TYPE IF EXISTS tipo_servico_enum CASCADE;
-DROP TYPE IF EXISTS origem_cobertura_enum CASCADE;
-DROP TYPE IF EXISTS status_os_enum CASCADE;
-DROP TYPE IF EXISTS tipo_movimentacao_enum CASCADE;
-
 -- =============================================================================
 -- FUNÇÃO DE AUDITORIA AUTOMÁTICA (updated_at)
 -- =============================================================================
@@ -47,6 +34,7 @@ $$ LANGUAGE plpgsql;
 
 -- =============================================================================
 -- 1. TABELA: usuario (RF01 - Cadastro de Usuários, Login e Perfis RBAC)
+-- Centraliza nome_completo e email para todos os atores do sistema (incluindo CLIENTE)
 -- =============================================================================
 CREATE TABLE usuario (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -61,7 +49,7 @@ CREATE TABLE usuario (
     deleted_at TIMESTAMPTZ NULL,
     CONSTRAINT uq_usuario_email UNIQUE (email),
     CONSTRAINT chk_usuario_perfil CHECK (
-        perfil IN ('ADM', 'COMERCIAL', 'ENGENHARIA', 'PRODUCAO', 'ALMOXARIFADO', 'TECNICO')
+        perfil IN ('ADM', 'COMERCIAL', 'ENGENHARIA', 'PRODUCAO', 'ALMOXARIFADO', 'TECNICO', 'CLIENTE')
     )
 );
 
@@ -70,49 +58,31 @@ BEFORE UPDATE ON usuario
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 2. TABELA: cliente (RF02 - Cadastro Centralizado de Clientes PF/PJ)
+-- 2. TABELA: cliente (RF02 - Especialização 1:1 de usuario sem repetir nome/email)
 -- =============================================================================
 CREATE TABLE cliente (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nome_completo VARCHAR(150) NOT NULL,
+    usuario_id BIGINT NOT NULL,
     cnpj_cpf VARCHAR(20) NOT NULL,
     telefone VARCHAR(25) NOT NULL,
-    email VARCHAR(150) NOT NULL,
     endereco TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT uq_cliente_cnpj_cpf UNIQUE (cnpj_cpf)
+    CONSTRAINT uq_cliente_usuario UNIQUE (usuario_id),
+    CONSTRAINT uq_cliente_cnpj_cpf UNIQUE (cnpj_cpf),
+    CONSTRAINT fk_cliente_usuario FOREIGN KEY (usuario_id)
+        REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+CREATE INDEX idx_cliente_usuario_id ON cliente (usuario_id) WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_cliente_updated_at
 BEFORE UPDATE ON cliente
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 3. TABELA: obra (RF03 - Locais de Instalação / Endereços do Cliente)
--- =============================================================================
-CREATE TABLE obra (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    cliente_id BIGINT NOT NULL,
-    endereco_instalacao TEXT NOT NULL,
-    responsavel_local VARCHAR(150),
-    contato_local VARCHAR(50),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT fk_obra_cliente FOREIGN KEY (cliente_id)
-        REFERENCES cliente (id) ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
-CREATE INDEX idx_obra_cliente_id ON obra (cliente_id) WHERE deleted_at IS NULL;
-
-CREATE TRIGGER trg_obra_updated_at
-BEFORE UPDATE ON obra
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
-
--- =============================================================================
--- 4. TABELA: item_catalogo (RF04, RF10, RF11 - Catálogo e Saldos de Estoque)
+-- 3. TABELA: item_catalogo (RF04, RF10, RF11 - Catálogo e Controle Direto de Estoque)
 -- =============================================================================
 CREATE TABLE item_catalogo (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -123,11 +93,10 @@ CREATE TABLE item_catalogo (
     unidade_medida VARCHAR(20) NOT NULL,
     valor_unitario_padrao NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     quantidade_atual NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    quantidade_reservada NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     estoque_minimo NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ NULL,
+    deleted_at TIMESTAMPTZ NULL, 
     CONSTRAINT uq_item_catalogo_codigo UNIQUE (codigo_referencia),
     CONSTRAINT chk_item_catalogo_tipo CHECK (
         tipo IN ('Insumo', 'Porta', 'Peca', 'Material', 'Servico', 'MATERIAL', 'SERVICO')
@@ -135,55 +104,47 @@ CREATE TABLE item_catalogo (
     CONSTRAINT chk_item_catalogo_saldos_nao_negativos CHECK (
         valor_unitario_padrao >= 0
         AND quantidade_atual >= 0
-        AND quantidade_reservada >= 0
         AND estoque_minimo >= 0
     )
 );
 
--- Índice parcial para alerta rápido de reposição de compras (RF10)
 CREATE INDEX idx_item_catalogo_alerta_minimo
-    ON item_catalogo (id, quantidade_atual, quantidade_reservada, estoque_minimo)
-    WHERE (quantidade_atual - quantidade_reservada) <= estoque_minimo AND deleted_at IS NULL;
+    ON item_catalogo (id, quantidade_atual, estoque_minimo)
+    WHERE quantidade_atual <= estoque_minimo AND deleted_at IS NULL;
 
 CREATE TRIGGER trg_item_catalogo_updated_at
 BEFORE UPDATE ON item_catalogo
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 5. TABELA: pedido (RF04, RF05, RF06, RF08, RF09, RF12, RF13)
--- Unifica Orçamento Comercial + Pedido de Venda + Ordem de Produção (OP)
--- Normalizada em 3FN (cliente derivado via obra_id -> obra.cliente_id)
+-- 4. TABELA: pedido (RF03, RF04, RF05, RF06, RF08, RF09, RF12, RF13, RF15)
+-- Unifica Orçamento + Pedido/OP + Local de Instalação + Prontuário da Porta Instalada
 -- =============================================================================
 CREATE TABLE pedido (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     codigo_proposta VARCHAR(50) UNIQUE,
-    obra_id BIGINT NOT NULL,
+    cliente_id BIGINT NOT NULL,
     usuario_criador_id BIGINT NOT NULL,
     responsavel_producao_id BIGINT NULL,
-    tipo_pedido VARCHAR(50) NOT NULL,
+    endereco_instalacao TEXT,
+    tipo_pedido VARCHAR(50) NOT NULL DEFAULT 'Instalacao',
     status_aprovacao VARCHAR(30) NOT NULL DEFAULT 'Pendente',
     status VARCHAR(50) NOT NULL DEFAULT 'Aguardando',
-    status_op VARCHAR(30) NOT NULL DEFAULT 'Planejada',
     bloqueio_fabricacao BOOLEAN NOT NULL DEFAULT TRUE,
     motivo_bloqueio TEXT DEFAULT 'Aguardando aprovação comercial e checklist técnico de medição.',
-    total_mercadorias NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    total_servicos NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    desconto_percentual NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
     valor_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     condicoes_pagamento TEXT,
+    numero_serie_porta VARCHAR(100) UNIQUE,
+    fim_garantia DATE NULL,
+    assinatura_cliente_instalacao TEXT NULL,
     data_aprovacao TIMESTAMPTZ NULL,
-    data_fechamento TIMESTAMPTZ NULL,
-    data_conversao TIMESTAMPTZ NULL,
-    data_inicio_producao TIMESTAMPTZ NULL,
     data_previsao_fim DATE NULL,
     data_conclusao TIMESTAMPTZ NULL,
-    assinatura_cliente_instalacao TEXT NULL,
-    data_aceite_instalacao TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT fk_pedido_obra FOREIGN KEY (obra_id)
-        REFERENCES obra (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id)
+        REFERENCES cliente (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_pedido_usuario_criador FOREIGN KEY (usuario_criador_id)
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_pedido_responsavel_producao FOREIGN KEY (responsavel_producao_id)
@@ -208,16 +169,7 @@ CREATE TABLE pedido (
             'Cancelado'
         )
     ),
-    CONSTRAINT chk_pedido_status_op CHECK (
-        status_op IN ('Planejada', 'Em Fabricacao', 'Concluida', 'Cancelada')
-    ),
-    CONSTRAINT chk_pedido_valores CHECK (
-        total_mercadorias >= 0
-        AND total_servicos >= 0
-        AND valor_total >= 0
-        AND desconto_percentual >= 0
-        AND desconto_percentual <= 100
-    ),
+    CONSTRAINT chk_pedido_valor_total CHECK (valor_total >= 0),
     -- Trava de segurança no banco (RF08): impede avanço produtivo se bloqueio_fabricacao = TRUE
     CONSTRAINT chk_pedido_desbloqueio_fabricacao CHECK (
         status NOT IN ('Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido')
@@ -225,7 +177,7 @@ CREATE TABLE pedido (
     )
 );
 
-CREATE INDEX idx_pedido_obra_id ON pedido (obra_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_pedido_cliente_id ON pedido (cliente_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pedido_status_bloqueio ON pedido (status, bloqueio_fabricacao) WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_pedido_updated_at
@@ -233,7 +185,7 @@ BEFORE UPDATE ON pedido
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 6. TABELA: pedido_item (RF04, RF06 - Itens do Orçamento/Pedido com Snapshot)
+-- 5. TABELA: pedido_item (RF04, RF06, RF11 - Relação N:M entre Pedido e Item)
 -- =============================================================================
 CREATE TABLE pedido_item (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -262,7 +214,7 @@ BEFORE UPDATE ON pedido_item
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 7. TABELA: checklist_medicao (RF07, RF08 - Levantamento Técnico e Validação)
+-- 6. TABELA: checklist_medicao (RF07, RF08 - Levantamento Técnico 1:1 com Pedido)
 -- =============================================================================
 CREATE TABLE checklist_medicao (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -277,10 +229,6 @@ CREATE TABLE checklist_medicao (
     piso_ok BOOLEAN NOT NULL DEFAULT TRUE,
     ponto_eletrico_ok BOOLEAN NOT NULL DEFAULT TRUE,
     status_aprovacao VARCHAR(30) NOT NULL DEFAULT 'Pendente',
-    observacoes_pendencia TEXT,
-    anexos JSONB NOT NULL DEFAULT '[]'::jsonb,
-    anexo_croqui_url VARCHAR(255),
-    anexo_fotos_url VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
@@ -293,7 +241,6 @@ CREATE TABLE checklist_medicao (
         status_aprovacao IN ('Pendente', 'Aprovado', 'Reprovado')
     ),
     CONSTRAINT chk_checklist_folhas CHECK (quantidade_folhas > 0),
-    -- Trava de segurança (RF07/RF08): impede aprovar checklist se houver pendência de infraestrutura
     CONSTRAINT chk_checklist_infraestrutura_aprovada CHECK (
         status_aprovacao <> 'Aprovado'
         OR (viga_ok = TRUE AND piso_ok = TRUE AND ponto_eletrico_ok = TRUE)
@@ -305,63 +252,28 @@ BEFORE UPDATE ON checklist_medicao
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 8. TABELA: porta_produto (RF13, RF15 - Ativo Instalado / Prontuário da Porta)
--- =============================================================================
-CREATE TABLE porta_produto (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    numero_serie VARCHAR(100) NOT NULL,
-    obra_id BIGINT NOT NULL,
-    pedido_origem_id BIGINT NULL,
-    modelo_automatizador VARCHAR(100) NOT NULL,
-    data_instalacao DATE,
-    fim_garantia_motor DATE,
-    fim_garantia_geral DATE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT uq_porta_numero_serie UNIQUE (numero_serie),
-    CONSTRAINT fk_porta_obra FOREIGN KEY (obra_id)
-        REFERENCES obra (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_porta_pedido_origem FOREIGN KEY (pedido_origem_id)
-        REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE SET NULL
-);
-
-CREATE INDEX idx_porta_obra_id ON porta_produto (obra_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_porta_pedido_origem_id ON porta_produto (pedido_origem_id) WHERE deleted_at IS NULL;
-
-CREATE TRIGGER trg_porta_produto_updated_at
-BEFORE UPDATE ON porta_produto
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
-
--- =============================================================================
--- 9. TABELA: ordem_servico (RF03, RF13, RF14, RF15 - Instalação e Assistência)
+-- 7. TABELA: ordem_servico (RF03, RF13, RF14, RF15 - Instalação e Pós-Venda)
 -- =============================================================================
 CREATE TABLE ordem_servico (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    obra_id BIGINT NOT NULL,
-    porta_id BIGINT NULL,
     pedido_id BIGINT NULL,
+    cliente_id BIGINT NOT NULL,
     tecnico_responsavel_id BIGINT NOT NULL,
     tipo_servico VARCHAR(50) NOT NULL,
     origem_cobertura VARCHAR(30),
-    descricao_problema TEXT,
-    analise_especificacao_servico TEXT,
-    observacoes TEXT,
     status_os VARCHAR(30) NOT NULL DEFAULT 'Aberta',
-    data_agendamento TIMESTAMPTZ,
-    data_hora_execucao_inicio TIMESTAMPTZ,
-    data_hora_execucao_fim TIMESTAMPTZ,
+    descricao_problema TEXT,
+    parecer_tecnico TEXT,
     assinatura_cliente_digital TEXT,
-    assinatura_tecnico_digital TEXT,
+    data_agendamento TIMESTAMPTZ,
+    data_conclusao TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT fk_os_obra FOREIGN KEY (obra_id)
-        REFERENCES obra (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_os_porta FOREIGN KEY (porta_id)
-        REFERENCES porta_produto (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_os_pedido FOREIGN KEY (pedido_id)
         REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_os_cliente FOREIGN KEY (cliente_id)
+        REFERENCES cliente (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_os_tecnico FOREIGN KEY (tecnico_responsavel_id)
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT chk_os_tipo_servico CHECK (
@@ -375,65 +287,106 @@ CREATE TABLE ordem_servico (
     )
 );
 
-CREATE INDEX idx_os_porta_historico ON ordem_servico (porta_id, created_at DESC) WHERE deleted_at IS NULL;
-CREATE INDEX idx_os_obra_id ON ordem_servico (obra_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_os_cliente_id ON ordem_servico (cliente_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_os_pedido_id ON ordem_servico (pedido_id) WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_ordem_servico_updated_at
 BEFORE UPDATE ON ordem_servico
 FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
--- 10. TABELA: movimentacao_estoque (RF09, RF10, RF11, RF15)
--- Ledger Unificado de Entradas, Reservas/Insumos de Produção e Peças de OS
+-- 5 CONSULTAS SQL PARA AVALIAÇÃO DE BANCO DE DADOS I
+-- (JOIN, GROUP BY, HAVING, Subconsultas sobre o esquema enxuto de 7 tabelas)
 -- =============================================================================
-CREATE TABLE movimentacao_estoque (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    item_id BIGINT NOT NULL,
-    usuario_id BIGINT NULL,
-    pedido_id BIGINT NULL,
-    ordem_servico_id BIGINT NULL,
-    porta_id BIGINT NULL,
-    tipo_movimentacao VARCHAR(40) NOT NULL,
-    status_baixa VARCHAR(30) NOT NULL DEFAULT 'Baixado',
-    quantidade_planejada NUMERIC(12, 2) NULL,
-    quantidade NUMERIC(12, 2) NOT NULL,
-    lote_serie_componente VARCHAR(100),
-    fornecedor VARCHAR(150),
-    data_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT fk_mov_item FOREIGN KEY (item_id)
-        REFERENCES item_catalogo (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_mov_usuario FOREIGN KEY (usuario_id)
-        REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_mov_pedido FOREIGN KEY (pedido_id)
-        REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_mov_os FOREIGN KEY (ordem_servico_id)
-        REFERENCES ordem_servico (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_mov_porta FOREIGN KEY (porta_id)
-        REFERENCES porta_produto (id) ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT chk_mov_tipo CHECK (
-        tipo_movimentacao IN ('Entrada', 'Reserva_Producao', 'Baixa_Producao', 'Baixa_OS', 'Ajuste', 'Estorno')
-    ),
-    CONSTRAINT chk_mov_status_baixa CHECK (
-        status_baixa IN ('Pendente', 'Reservado', 'Baixado', 'Estornado')
-    ),
-    CONSTRAINT chk_mov_quantidade CHECK (
-        quantidade >= 0 AND (quantidade_planejada IS NULL OR quantidade_planejada > 0)
-    ),
-    CONSTRAINT chk_mov_rastreabilidade_origem CHECK (
-        (tipo_movimentacao IN ('Reserva_Producao', 'Baixa_Producao') AND pedido_id IS NOT NULL)
-        OR (tipo_movimentacao = 'Baixa_OS' AND ordem_servico_id IS NOT NULL)
-        OR (tipo_movimentacao IN ('Entrada', 'Ajuste', 'Estorno'))
-    )
-);
 
-CREATE INDEX idx_mov_estoque_item_id ON movimentacao_estoque (item_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_mov_estoque_pedido_id ON movimentacao_estoque (pedido_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_mov_estoque_os_id ON movimentacao_estoque (ordem_servico_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_mov_estoque_porta_id ON movimentacao_estoque (porta_id) WHERE deleted_at IS NULL;
+/*
+-- CONSULTA 1: Faturamento e Volume de Pedidos por Cliente (JOIN + GROUP BY + HAVING)
+SELECT
+    c.id AS cliente_id,
+    u.nome_completo AS nome_cliente,
+    u.email AS email_cliente,
+    c.cnpj_cpf,
+    COUNT(p.id) AS total_pedidos,
+    SUM(p.valor_total) AS faturamento_acumulado
+FROM cliente c
+INNER JOIN usuario u ON u.id = c.usuario_id
+INNER JOIN pedido p ON p.cliente_id = c.id
+WHERE p.deleted_at IS NULL
+  AND p.status = 'Concluido'
+GROUP BY c.id, u.nome_completo, u.email, c.cnpj_cpf
+HAVING SUM(p.valor_total) > 10000.00
+ORDER BY faturamento_acumulado DESC;
 
-CREATE TRIGGER trg_movimentacao_estoque_updated_at
-BEFORE UPDATE ON movimentacao_estoque
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
+-- CONSULTA 2: Ranking de Insumos e Motores Mais Utilizados nos Pedidos (JOIN Triplo + GROUP BY)
+SELECT
+    ic.id AS item_id,
+    ic.codigo_referencia,
+    ic.descricao,
+    ic.categoria,
+    SUM(pi.quantidade) AS quantidade_total_utilizada,
+    SUM(pi.valor_total) AS receita_gerada_item
+FROM item_catalogo ic
+INNER JOIN pedido_item pi ON pi.item_id = ic.id
+INNER JOIN pedido p ON p.id = pi.pedido_id
+WHERE p.status_aprovacao = 'Aprovado'
+  AND pi.deleted_at IS NULL
+GROUP BY ic.id, ic.codigo_referencia, ic.descricao, ic.categoria
+ORDER BY quantidade_total_utilizada DESC;
+
+-- CONSULTA 3: Produtividade da Equipe Técnica em Ordens de Serviço (LEFT JOIN + GROUP BY)
+SELECT
+    u.id AS tecnico_id,
+    u.nome_completo AS nome_tecnico,
+    u.email,
+    COUNT(os.id) AS total_os_atendidas,
+    COUNT(CASE WHEN os.tipo_servico = 'Manutencao Corretiva' THEN 1 END) AS total_manutencoes_corretivas
+FROM usuario u
+LEFT JOIN ordem_servico os
+    ON os.tecnico_responsavel_id = u.id
+    AND os.status_os = 'Finalizada'
+    AND os.deleted_at IS NULL
+WHERE u.perfil = 'TECNICO'
+  AND u.deleted_at IS NULL
+GROUP BY u.id, u.nome_completo, u.email
+ORDER BY total_os_atendidas DESC;
+
+-- CONSULTA 4: Alerta de Insumos Abaixo do Estoque Mínimo Demandados em Produção (Subconsulta + EXISTS)
+SELECT
+    ic.id,
+    ic.codigo_referencia,
+    ic.descricao,
+    ic.quantidade_atual,
+    ic.estoque_minimo
+FROM item_catalogo ic
+WHERE ic.quantidade_atual <= ic.estoque_minimo
+  AND ic.deleted_at IS NULL
+  AND EXISTS (
+      SELECT 1
+      FROM pedido_item pi
+      INNER JOIN pedido p ON p.id = pi.pedido_id
+      WHERE pi.item_id = ic.id
+        AND p.status IN ('Aguardando', 'Em Fabricacao')
+        AND p.deleted_at IS NULL
+  )
+ORDER BY ic.quantidade_atual ASC;
+
+-- CONSULTA 5: Pedidos Acima do Ticket Médio com Dados do Cliente e Status do Checklist (Subconsulta Escalar + JOIN)
+SELECT
+    p.id AS pedido_id,
+    p.codigo_proposta,
+    u_cli.nome_completo AS cliente_nome,
+    u_cli.email AS cliente_email,
+    cm.status_aprovacao AS status_checklist,
+    p.valor_total
+FROM pedido p
+INNER JOIN cliente c ON c.id = p.cliente_id
+INNER JOIN usuario u_cli ON u_cli.id = c.usuario_id
+LEFT JOIN checklist_medicao cm ON cm.pedido_id = p.id
+WHERE p.deleted_at IS NULL
+  AND p.valor_total > (
+      SELECT AVG(p2.valor_total)
+      FROM pedido p2
+      WHERE p2.deleted_at IS NULL
+  )
+ORDER BY p.valor_total DESC;
+*/
