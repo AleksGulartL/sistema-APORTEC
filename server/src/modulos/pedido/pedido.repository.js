@@ -66,7 +66,7 @@ async function criar(dados) {
         if (existente) {
             return existente.update({
                 data_conversao: dados.data_conversao || new Date(),
-                status: dados.status || dados.status_fluxo || "Aguardando",
+                status: dados.status_fluxo || "Aguardando",
                 bloqueio_fabricacao:
                     dados.bloqueio_fabricacao !== undefined ? dados.bloqueio_fabricacao : existente.bloqueio_fabricacao,
                 motivo_bloqueio:

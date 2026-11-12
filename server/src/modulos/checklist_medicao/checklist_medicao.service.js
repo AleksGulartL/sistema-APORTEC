@@ -2,16 +2,10 @@ const checklist_medicaoRepository = require("./checklist_medicao.repository");
 
 const STATUS_APROVACAO = ["Pendente", "Aprovado", "Reprovado"];
 
-function obterPedidoId(dados) {
-    return dados.pedido_id !== undefined ? dados.pedido_id : dados.id_pedido;
-}
-
 function validarChecklistMedicao(dados, isUpdate = false) {
-    const rawPedidoId = obterPedidoId(dados);
-
     if (!isUpdate) {
-        const idPedidoNum = Number(rawPedidoId);
-        if (!rawPedidoId || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
+        const idPedidoNum = Number(dados.id_pedido);
+        if (!dados.id_pedido || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
             const erro = new Error("O campo 'id_pedido' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
@@ -23,8 +17,8 @@ function validarChecklistMedicao(dados, isUpdate = false) {
             throw erro;
         }
     } else {
-        if (rawPedidoId !== undefined) {
-            const idPedidoNum = Number(rawPedidoId);
+        if (dados.id_pedido !== undefined) {
+            const idPedidoNum = Number(dados.id_pedido);
             if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
                 const erro = new Error("O campo 'id_pedido' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -66,9 +60,8 @@ function validarChecklistMedicao(dados, isUpdate = false) {
         }
     }
 
-    const statusAprovacao = dados.status_aprovacao !== undefined ? dados.status_aprovacao : dados.status_medicao;
-    if (statusAprovacao !== undefined && statusAprovacao !== null) {
-        if (!STATUS_APROVACAO.includes(statusAprovacao)) {
+    if (dados.status_aprovacao !== undefined && dados.status_aprovacao !== null) {
+        if (!STATUS_APROVACAO.includes(dados.status_aprovacao)) {
             const erro = new Error("O campo 'status_aprovacao' deve ser 'Pendente', 'Aprovado' ou 'Reprovado'.");
             erro.status = 400;
             throw erro;
@@ -77,7 +70,7 @@ function validarChecklistMedicao(dados, isUpdate = false) {
         // RF07 & RF08 - Impede aprovação do checklist quando há pendências de infraestrutura (viga, piso, ponto elétrico)
         const temPendenciaInfra =
             dados.viga_ok === false || dados.piso_ok === false || dados.ponto_eletrico_ok === false;
-        if (statusAprovacao === "Aprovado" && temPendenciaInfra) {
+        if (dados.status_aprovacao === "Aprovado" && temPendenciaInfra) {
             const erro = new Error(
                 "Não é possível aprovar o checklist de medição com pendências de infraestrutura (viga, piso ou ponto elétrico)."
             );
@@ -119,16 +112,12 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarChecklistMedicao(dados);
-    const pedidoId = Number(obterPedidoId(dados));
+    const pedidoId = Number(dados.id_pedido);
     const dadosFormatados = {
         ...dados,
         pedido_id: pedidoId,
         id_pedido: pedidoId,
     };
-
-    if (dados.status_medicao && !dadosFormatados.status_aprovacao) {
-        dadosFormatados.status_aprovacao = dados.status_medicao;
-    }
 
     delete dadosFormatados.id_medicao;
     delete dadosFormatados.id;
@@ -146,13 +135,9 @@ async function atualizar(id, dados) {
     validarChecklistMedicao(dados, true);
     const dadosFormatados = { ...dados };
 
-    const rawPedidoId = obterPedidoId(dados);
-    if (rawPedidoId !== undefined) {
-        dadosFormatados.pedido_id = Number(rawPedidoId);
-        dadosFormatados.id_pedido = Number(rawPedidoId);
-    }
-    if (dados.status_medicao && !dadosFormatados.status_aprovacao) {
-        dadosFormatados.status_aprovacao = dados.status_medicao;
+    if (dados.id_pedido !== undefined) {
+        dadosFormatados.pedido_id = Number(dados.id_pedido);
+        dadosFormatados.id_pedido = Number(dados.id_pedido);
     }
 
     delete dadosFormatados.id_medicao;

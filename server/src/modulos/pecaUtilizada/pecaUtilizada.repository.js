@@ -37,8 +37,8 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    const osId = Number(dados.id_os ?? dados.ordem_servico_id);
-    let portaId = dados.porta_id ?? dados.id_porta ?? null;
+    const osId = Number(dados.id_os);
+    let portaId = dados.id_porta ?? null;
 
     if (!portaId && osId && ordem_servico) {
         const regOs = await ordem_servico.findByPk(osId);
@@ -51,10 +51,10 @@ async function criar(dados) {
         ...dados,
         ordem_servico_id: osId,
         porta_id: portaId,
-        item_id: Number(dados.id_item ?? dados.item_id),
+        item_id: Number(dados.id_item),
         tipo_movimentacao: "Baixa_OS",
         status_baixa: "Baixado",
-        quantidade: Number(dados.quantidade_utilizada ?? dados.quantidade ?? 1),
+        quantidade: Number(dados.quantidade_utilizada ?? 1),
     });
 }
 

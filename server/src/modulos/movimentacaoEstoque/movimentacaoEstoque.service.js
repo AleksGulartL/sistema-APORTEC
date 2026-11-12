@@ -2,28 +2,17 @@ const movimentacaoEstoqueRepository = require("./movimentacaoEstoque.repository"
 
 const TIPOS_MOVIMENTACAO = ["Entrada", "Reserva_Producao", "Baixa_Producao", "Baixa_OS", "Ajuste", "Estorno"];
 
-function obterItemId(dados) {
-    return dados.id_item !== undefined ? dados.id_item : dados.item_id;
-}
-
-function obterUsuarioId(dados) {
-    return dados.id_usuario !== undefined ? dados.id_usuario : dados.usuario_id;
-}
-
 function validarMovimentacaoEstoque(dados, isUpdate = false) {
-    const rawItemId = obterItemId(dados);
-    const rawUsuarioId = obterUsuarioId(dados);
-
     if (!isUpdate) {
-        const idItemNum = Number(rawItemId);
-        if (!rawItemId || !Number.isInteger(idItemNum) || idItemNum <= 0) {
+        const idItemNum = Number(dados.id_item);
+        if (!dados.id_item || !Number.isInteger(idItemNum) || idItemNum <= 0) {
             const erro = new Error("O campo 'id_item' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
-        const idUsuarioNum = Number(rawUsuarioId);
-        if (!rawUsuarioId || !Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
+        const idUsuarioNum = Number(dados.id_usuario);
+        if (!dados.id_usuario || !Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
             const erro = new Error("O campo 'id_usuario' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
@@ -44,8 +33,8 @@ function validarMovimentacaoEstoque(dados, isUpdate = false) {
             throw erro;
         }
     } else {
-        if (rawItemId !== undefined) {
-            const idItemNum = Number(rawItemId);
+        if (dados.id_item !== undefined) {
+            const idItemNum = Number(dados.id_item);
             if (!Number.isInteger(idItemNum) || idItemNum <= 0) {
                 const erro = new Error("O campo 'id_item' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -53,8 +42,8 @@ function validarMovimentacaoEstoque(dados, isUpdate = false) {
             }
         }
 
-        if (rawUsuarioId !== undefined) {
-            const idUsuarioNum = Number(rawUsuarioId);
+        if (dados.id_usuario !== undefined) {
+            const idUsuarioNum = Number(dados.id_usuario);
             if (!Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
                 const erro = new Error("O campo 'id_usuario' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -78,9 +67,8 @@ function validarMovimentacaoEstoque(dados, isUpdate = false) {
         }
     }
 
-    const rawOpId = dados.id_op !== undefined ? dados.id_op : dados.pedido_id;
-    if (rawOpId !== undefined && rawOpId !== null) {
-        const idOpNum = Number(rawOpId);
+    if (dados.id_op !== undefined && dados.id_op !== null) {
+        const idOpNum = Number(dados.id_op);
         if (!Number.isInteger(idOpNum) || idOpNum <= 0) {
             const erro = new Error("O campo 'id_op' deve ser um número inteiro válido.");
             erro.status = 400;
@@ -88,9 +76,8 @@ function validarMovimentacaoEstoque(dados, isUpdate = false) {
         }
     }
 
-    const rawOsId = dados.id_ordem_servico !== undefined ? dados.id_ordem_servico : dados.ordem_servico_id;
-    if (rawOsId !== undefined && rawOsId !== null) {
-        const idOsNum = Number(rawOsId);
+    if (dados.id_ordem_servico !== undefined && dados.id_ordem_servico !== null) {
+        const idOsNum = Number(dados.id_ordem_servico);
         if (!Number.isInteger(idOsNum) || idOsNum <= 0) {
             const erro = new Error("O campo 'id_ordem_servico' deve ser um número inteiro válido.");
             erro.status = 400;
@@ -133,8 +120,8 @@ async function criar(dados) {
     validarMovimentacaoEstoque(dados);
     const dadosFormatados = {
         ...dados,
-        id_item: Number(obterItemId(dados)),
-        id_usuario: Number(obterUsuarioId(dados)),
+        id_item: Number(dados.id_item),
+        id_usuario: Number(dados.id_usuario),
         quantidade: Number(dados.quantidade),
     };
 

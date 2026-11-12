@@ -25,7 +25,7 @@ const portaProduto = sequelize.define(
             },
         },
         numero_serie: {
-            type: DataTypes.STRING(100),
+            type: DataTypes.STRING(100), 
             allowNull: false,
             unique: true,
             field: "numero_serie",

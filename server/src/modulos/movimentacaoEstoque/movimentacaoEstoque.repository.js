@@ -46,14 +46,14 @@ function obterIncludes() {
 // RF10 & RF11 - Atualiza atomicamente o saldo de estoque (quantidade_atual e quantidade_reservada) no catálogo
 async function processarImpactoEstoque(dados, transaction) {
     if (!item_catalogo) return null;
-    const itemId = Number(dados.item_id ?? dados.id_item);
+    const itemId = Number(dados.id_item);
     if (!itemId) return null;
 
     const item = await item_catalogo.findByPk(itemId, { transaction });
     if (!item) return null;
 
     const tipo = dados.tipo_movimentacao;
-    const qtd = Number(dados.quantidade ?? dados.quantidade_baixada ?? dados.quantidade_utilizada ?? 0);
+    const qtd = Number(dados.quantidade ?? 0);
     const statusBaixa = dados.status_baixa || "Baixado";
 
     let atual = Number(item.quantidade_atual || 0);
@@ -128,7 +128,7 @@ async function atualizar(id, dados) {
         const item = await item_catalogo.findByPk(registro.item_id);
         if (item) {
             const qtdBaixa = Number(
-                dados.quantidade ?? dados.quantidade_baixada ?? registro.quantidade_planejada ?? registro.quantidade ?? 0
+                dados.quantidade ?? registro.quantidade_planejada ?? registro.quantidade ?? 0
             );
             const novoAtual = Math.max(0, Number((Number(item.quantidade_atual || 0) - qtdBaixa).toFixed(2)));
             const novoReservado = Math.max(

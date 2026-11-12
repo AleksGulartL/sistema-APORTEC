@@ -1,17 +1,6 @@
 const portaProdutoRepository = require("./portaProduto.repository");
 
-function obterObraId(dados) {
-    return dados.id_obra !== undefined ? dados.id_obra : dados.obra_id;
-}
-
-function obterPedidoOrigemId(dados) {
-    return dados.id_pedido_origem !== undefined ? dados.id_pedido_origem : dados.pedido_origem_id;
-}
-
 function validarPortaProduto(dados, isUpdate = false) {
-    const rawObraId = obterObraId(dados);
-    const rawPedidoOrigemId = obterPedidoOrigemId(dados);
-
     if (!isUpdate) {
         if (!dados.numero_serie || typeof dados.numero_serie !== "string" || !dados.numero_serie.trim()) {
             const erro = new Error("O campo 'numero_serie' é obrigatório e deve ser um texto válido.");
@@ -19,8 +8,8 @@ function validarPortaProduto(dados, isUpdate = false) {
             throw erro;
         }
 
-        const idObraNum = Number(rawObraId);
-        if (!rawObraId || !Number.isInteger(idObraNum) || idObraNum <= 0) {
+        const idObraNum = Number(dados.id_obra);
+        if (!dados.id_obra || !Number.isInteger(idObraNum) || idObraNum <= 0) {
             const erro = new Error("O campo 'id_obra' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
@@ -40,8 +29,8 @@ function validarPortaProduto(dados, isUpdate = false) {
             }
         }
 
-        if (rawObraId !== undefined) {
-            const idObraNum = Number(rawObraId);
+        if (dados.id_obra !== undefined) {
+            const idObraNum = Number(dados.id_obra);
             if (!Number.isInteger(idObraNum) || idObraNum <= 0) {
                 const erro = new Error("O campo 'id_obra' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -58,8 +47,8 @@ function validarPortaProduto(dados, isUpdate = false) {
         }
     }
 
-    if (rawPedidoOrigemId !== undefined && rawPedidoOrigemId !== null) {
-        const idPedidoNum = Number(rawPedidoOrigemId);
+    if (dados.id_pedido_origem !== undefined && dados.id_pedido_origem !== null) {
+        const idPedidoNum = Number(dados.id_pedido_origem);
         if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
             const erro = new Error("O campo 'id_pedido_origem' deve ser um número inteiro válido.");
             erro.status = 400;
@@ -189,15 +178,13 @@ async function obterProntuarioPorNumeroSerie(numeroSerie) {
 
 async function criar(dados) {
     validarPortaProduto(dados);
-    const idObra = Number(obterObraId(dados));
     const dadosFormatados = {
         ...dados,
-        id_obra: idObra,
+        id_obra: Number(dados.id_obra),
     };
 
-    const rawPedidoOrigemId = obterPedidoOrigemId(dados);
-    if (rawPedidoOrigemId !== undefined && rawPedidoOrigemId !== null) {
-        dadosFormatados.id_pedido_origem = Number(rawPedidoOrigemId);
+    if (dados.id_pedido_origem !== undefined && dados.id_pedido_origem !== null) {
+        dadosFormatados.id_pedido_origem = Number(dados.id_pedido_origem);
     }
 
     delete dadosFormatados.id_porta;

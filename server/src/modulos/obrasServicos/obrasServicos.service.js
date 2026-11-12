@@ -1,9 +1,8 @@
 const obrasServicosRepository = require("./obrasServicos.repository");
 
 function validarObraServico(dados) {
-    const idClienteRaw = dados.cliente_id !== undefined ? dados.cliente_id : dados.id_cliente;
-    const idClienteNum = Number(idClienteRaw);
-    if (!idClienteRaw || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+    const idClienteNum = Number(dados.id_cliente);
+    if (!dados.id_cliente || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
         const erro = new Error("O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.");
         erro.status = 400;
         throw erro;
@@ -32,7 +31,7 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarObraServico(dados);
-    const clienteId = Number(dados.cliente_id !== undefined ? dados.cliente_id : dados.id_cliente);
+    const clienteId = Number(dados.id_cliente);
     const payload = {
         ...dados,
         cliente_id: clienteId,
@@ -50,7 +49,7 @@ async function atualizar(id, dados) {
     }
 
     validarObraServico(dados);
-    const clienteId = Number(dados.cliente_id !== undefined ? dados.cliente_id : dados.id_cliente);
+    const clienteId = Number(dados.id_cliente);
     const payload = {
         ...dados,
         cliente_id: clienteId,

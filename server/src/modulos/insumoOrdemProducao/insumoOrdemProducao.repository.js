@@ -46,8 +46,8 @@ async function criar(dados) {
 
     return movimentacaoEstoqueRepository.criar({
         ...dados,
-        pedido_id: Number(dados.id_op ?? dados.pedido_id),
-        item_id: Number(dados.id_item ?? dados.item_id),
+        pedido_id: Number(dados.id_op),
+        item_id: Number(dados.id_item),
         tipo_movimentacao: tipoMov,
         status_baixa: statusBaixa,
         quantidade_planejada: Number(dados.quantidade_planejada),

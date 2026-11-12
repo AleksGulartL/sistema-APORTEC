@@ -4,45 +4,34 @@ const TIPOS_VALIDOS = ["Instalacao", "Manutencao Preventiva", "Manutencao Corret
 const STATUS_VALIDOS = ["Pendente", "Aprovado", "Reprovado"];
 
 function validarOrcamento(dados) {
-    // Suporta tanto o contrato legado (id_cliente + id_obra) quanto o normalizado 3FN (obra_id)
-    if (dados.obra_id === undefined) {
-        const idClienteNum = Number(dados.id_cliente);
-        if (!dados.id_cliente || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
-            const erro = new Error("O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.");
-            erro.status = 400;
-            throw erro;
-        }
+    const idClienteNum = Number(dados.id_cliente);
+    if (!dados.id_cliente || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+        const erro = new Error("O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.");
+        erro.status = 400;
+        throw erro;
     }
 
-    const idObraRaw = dados.obra_id !== undefined ? dados.obra_id : dados.id_obra;
-    const idObraNum = Number(idObraRaw);
-    if (!idObraRaw || !Number.isInteger(idObraNum) || idObraNum <= 0) {
+    const idObraNum = Number(dados.id_obra);
+    if (!dados.id_obra || !Number.isInteger(idObraNum) || idObraNum <= 0) {
         const erro = new Error("O campo 'id_obra' é obrigatório e deve ser um número inteiro válido.");
         erro.status = 400;
         throw erro;
     }
 
-    const idUsuario =
-        dados.usuario_criador_id !== undefined
-            ? dados.usuario_criador_id
-            : dados.id_usuario_criador !== undefined
-              ? dados.id_usuario_criador
-              : dados.id_usuario;
-    const idUsuarioNum = Number(idUsuario);
-    if (idUsuario === undefined || idUsuario === null || !Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
+    const idUsuarioNum = Number(dados.id_usuario_criador);
+    if (dados.id_usuario_criador === undefined || dados.id_usuario_criador === null || !Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
         const erro = new Error("O campo 'id_usuario_criador' é obrigatório e deve ser um número inteiro válido.");
         erro.status = 400;
         throw erro;
     }
 
-    const tipo = dados.tipo_orcamento || dados.tipo_pedido || dados.tipo;
-    if (!tipo) {
+    if (!dados.tipo_orcamento) {
         const erro = new Error("O campo 'tipo_orcamento' é obrigatório.");
         erro.status = 400;
         throw erro;
     }
 
-    if (!TIPOS_VALIDOS.includes(tipo)) {
+    if (!TIPOS_VALIDOS.includes(dados.tipo_orcamento)) {
         const erro = new Error("O campo 'tipo_orcamento' deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.");
         erro.status = 400;
         throw erro;
@@ -106,15 +95,9 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarOrcamento(dados);
-    const idObra = Number(dados.obra_id !== undefined ? dados.obra_id : dados.id_obra);
-    const idUsuario = Number(
-        dados.usuario_criador_id !== undefined
-            ? dados.usuario_criador_id
-            : dados.id_usuario_criador !== undefined
-              ? dados.id_usuario_criador
-              : dados.id_usuario
-    );
-    const tipo = dados.tipo_orcamento || dados.tipo_pedido || dados.tipo;
+    const idObra = Number(dados.id_obra);
+    const idUsuario = Number(dados.id_usuario_criador);
+    const tipo = dados.tipo_orcamento;
 
     const dadosFormatados = {
         ...dados,
@@ -143,15 +126,9 @@ async function atualizar(id, dados) {
     }
 
     validarOrcamento(dados);
-    const idObra = Number(dados.obra_id !== undefined ? dados.obra_id : dados.id_obra);
-    const idUsuario = Number(
-        dados.usuario_criador_id !== undefined
-            ? dados.usuario_criador_id
-            : dados.id_usuario_criador !== undefined
-              ? dados.id_usuario_criador
-              : dados.id_usuario
-    );
-    const tipo = dados.tipo_orcamento || dados.tipo_pedido || dados.tipo;
+    const idObra = Number(dados.id_obra);
+    const idUsuario = Number(dados.id_usuario_criador);
+    const tipo = dados.tipo_orcamento;
 
     const dadosFormatados = {
         ...dados,

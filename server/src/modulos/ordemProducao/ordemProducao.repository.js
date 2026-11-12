@@ -62,13 +62,13 @@ async function buscarPedidoComChecklist(pedidoId) {
 
 // Na modelagem unificada, a Ordem de Produção é ativada/liberada diretamente no registro do Pedido
 async function criar(dados) {
-    const pedidoId = Number(dados.id_pedido ?? dados.pedido_id);
+    const pedidoId = Number(dados.id_pedido);
     if (pedidoId) {
         const regPedido = await pedido.findByPk(pedidoId);
         if (regPedido) {
             return regPedido.update({
-                responsavel_producao_id: dados.responsavel_producao_id ?? dados.id_responsavel_tecnico,
-                data_inicio_producao: dados.data_inicio_producao ?? dados.data_inicio ?? new Date(),
+                responsavel_producao_id: dados.id_responsavel_tecnico,
+                data_inicio_producao: dados.data_inicio ?? new Date(),
                 data_previsao_fim: dados.data_previsao_fim ?? regPedido.data_previsao_fim,
                 data_conclusao: dados.data_conclusao ?? regPedido.data_conclusao,
                 status_op: dados.status_op || "Em Fabricacao",

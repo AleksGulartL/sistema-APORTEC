@@ -35,9 +35,8 @@ function validarItemCatalogo(dados) {
         }
     }
 
-    const qtdEstoque = dados.quantidade_estoque !== undefined ? dados.quantidade_estoque : dados.quantidade_atual;
-    if (qtdEstoque !== undefined && qtdEstoque !== null) {
-        if (typeof qtdEstoque !== "number" || qtdEstoque < 0) {
+    if (dados.quantidade_estoque !== undefined && dados.quantidade_estoque !== null) {
+        if (typeof dados.quantidade_estoque !== "number" || dados.quantidade_estoque < 0) {
             const erro = new Error("A 'quantidade_estoque' deve ser um número maior ou igual a zero.");
             erro.status = 400;
             throw erro;
@@ -84,7 +83,7 @@ async function buscarPorId(id) {
 async function criar(dados) {
     validarItemCatalogo(dados);
     const payload = { ...dados };
-    if (payload.quantidade_estoque !== undefined && payload.quantidade_atual === undefined) {
+    if (payload.quantidade_estoque !== undefined) {
         payload.quantidade_atual = payload.quantidade_estoque;
     }
     return itemCatalogoRepository.criar(payload);
@@ -100,7 +99,7 @@ async function atualizar(id, dados) {
 
     validarItemCatalogo(dados);
     const payload = { ...dados };
-    if (payload.quantidade_estoque !== undefined && payload.quantidade_atual === undefined) {
+    if (payload.quantidade_estoque !== undefined) {
         payload.quantidade_atual = payload.quantidade_estoque;
     }
     return itemCatalogoRepository.atualizar(idNum, payload);

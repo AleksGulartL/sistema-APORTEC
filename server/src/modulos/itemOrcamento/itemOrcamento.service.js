@@ -1,34 +1,23 @@
 const itemOrcamentoRepository = require("./itemOrcamento.repository");
 
-function obterPedidoId(dados) {
-    return dados.pedido_id !== undefined ? dados.pedido_id : dados.id_orcamento !== undefined ? dados.id_orcamento : dados.id_pedido;
-}
-
-function obterItemId(dados) {
-    return dados.item_id !== undefined ? dados.item_id : dados.id_item_catalogo !== undefined ? dados.id_item_catalogo : dados.id_item;
-}
-
 function validarItemOrcamento(dados, isUpdate = false) {
-    const rawPedidoId = obterPedidoId(dados);
-    const rawItemId = obterItemId(dados);
-
     if (!isUpdate) {
-        const idOrcamentoNum = Number(rawPedidoId);
-        if (!rawPedidoId || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
+        const idOrcamentoNum = Number(dados.id_orcamento);
+        if (!dados.id_orcamento || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
             const erro = new Error("O campo 'id_orcamento' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
-        const idItemCatalogoNum = Number(rawItemId);
-        if (rawItemId === undefined || rawItemId === null || !Number.isInteger(idItemCatalogoNum) || idItemCatalogoNum <= 0) {
+        const idItemCatalogoNum = Number(dados.id_item_catalogo);
+        if (dados.id_item_catalogo === undefined || dados.id_item_catalogo === null || !Number.isInteger(idItemCatalogoNum) || idItemCatalogoNum <= 0) {
             const erro = new Error("O campo 'id_item_catalogo' é obrigatório e deve ser um número inteiro maior que zero.");
             erro.status = 400;
             throw erro;
         }
     } else {
-        if (rawPedidoId !== undefined) {
-            const idOrcamentoNum = Number(rawPedidoId);
+        if (dados.id_orcamento !== undefined) {
+            const idOrcamentoNum = Number(dados.id_orcamento);
             if (!Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
                 const erro = new Error("O campo 'id_orcamento' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -36,8 +25,8 @@ function validarItemOrcamento(dados, isUpdate = false) {
             }
         }
 
-        if (rawItemId !== undefined) {
-            const idItemCatalogoNum = Number(rawItemId);
+        if (dados.id_item_catalogo !== undefined) {
+            const idItemCatalogoNum = Number(dados.id_item_catalogo);
             if (!Number.isInteger(idItemCatalogoNum) || idItemCatalogoNum <= 0) {
                 const erro = new Error("O campo 'id_item_catalogo' deve ser um número inteiro maior que zero.");
                 erro.status = 400;
@@ -90,8 +79,8 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarItemOrcamento(dados);
-    const pedidoId = Number(obterPedidoId(dados));
-    const itemId = Number(obterItemId(dados));
+    const pedidoId = Number(dados.id_orcamento);
+    const itemId = Number(dados.id_item_catalogo);
     const quantidade = dados.quantidade !== undefined ? Number(dados.quantidade) : 1;
 
     let valorUnitario = dados.valor_unitario !== undefined ? Number(dados.valor_unitario) : undefined;
@@ -136,16 +125,14 @@ async function atualizar(id, dados) {
     validarItemOrcamento(dados, true);
     const dadosFormatados = { ...dados };
 
-    const rawPedidoId = obterPedidoId(dados);
-    if (rawPedidoId !== undefined) {
-        dadosFormatados.pedido_id = Number(rawPedidoId);
-        dadosFormatados.id_orcamento = Number(rawPedidoId);
+    if (dados.id_orcamento !== undefined) {
+        dadosFormatados.pedido_id = Number(dados.id_orcamento);
+        dadosFormatados.id_orcamento = Number(dados.id_orcamento);
     }
 
-    const rawItemId = obterItemId(dados);
-    if (rawItemId !== undefined) {
-        dadosFormatados.item_id = Number(rawItemId);
-        dadosFormatados.id_item_catalogo = Number(rawItemId);
+    if (dados.id_item_catalogo !== undefined) {
+        dadosFormatados.item_id = Number(dados.id_item_catalogo);
+        dadosFormatados.id_item_catalogo = Number(dados.id_item_catalogo);
     }
 
     if (dadosFormatados.quantidade !== undefined) {

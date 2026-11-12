@@ -16,18 +16,17 @@ const STATUS_FLUXO_VALIDOS = [
 const ETAPAS_FABRICACAO = ["Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao", "Concluido"];
 
 function validarPedido(dados, isUpdate = false) {
-    const temObra = dados.obra_id !== undefined || dados.id_obra !== undefined;
-    const idOrcamentoRaw = dados.id_orcamento !== undefined ? dados.id_orcamento : dados.pedido_id;
+    const temObra = dados.id_obra !== undefined;
 
     if (!isUpdate && !temObra) {
-        const idOrcamentoNum = Number(idOrcamentoRaw);
-        if (!idOrcamentoRaw || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
+        const idOrcamentoNum = Number(dados.id_orcamento);
+        if (!dados.id_orcamento || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
             const erro = new Error("O campo 'id_orcamento' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
-    } else if (idOrcamentoRaw !== undefined) {
-        const idOrcamentoNum = Number(idOrcamentoRaw);
+    } else if (dados.id_orcamento !== undefined) {
+        const idOrcamentoNum = Number(dados.id_orcamento);
         if (!Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
             const erro = new Error("O campo 'id_orcamento' deve ser um número inteiro válido.");
             erro.status = 400;
@@ -52,9 +51,8 @@ function validarPedido(dados, isUpdate = false) {
         }
     }
 
-    const statusFluxo = dados.status_fluxo !== undefined ? dados.status_fluxo : dados.status;
-    if (statusFluxo !== undefined && statusFluxo !== null) {
-        if (!STATUS_FLUXO_VALIDOS.includes(statusFluxo)) {
+    if (dados.status_fluxo !== undefined && dados.status_fluxo !== null) {
+        if (!STATUS_FLUXO_VALIDOS.includes(dados.status_fluxo)) {
             const erro = new Error(
                 "O campo 'status_fluxo' deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
             );
@@ -101,13 +99,13 @@ async function criar(dados) {
     if (dados.id_orcamento !== undefined) {
         dadosFormatados.id_orcamento = Number(dados.id_orcamento);
     }
-    if (dados.obra_id !== undefined || dados.id_obra !== undefined) {
-        dadosFormatados.obra_id = Number(dados.obra_id ?? dados.id_obra);
+    if (dados.id_obra !== undefined) {
+        dadosFormatados.obra_id = Number(dados.id_obra);
     }
-    if (dados.usuario_criador_id !== undefined || dados.id_usuario_criador !== undefined) {
-        dadosFormatados.usuario_criador_id = Number(dados.usuario_criador_id ?? dados.id_usuario_criador);
+    if (dados.id_usuario_criador !== undefined) {
+        dadosFormatados.usuario_criador_id = Number(dados.id_usuario_criador);
     }
-    if (dados.status_fluxo && !dadosFormatados.status) {
+    if (dados.status_fluxo) {
         dadosFormatados.status = dados.status_fluxo;
     }
 
@@ -130,7 +128,7 @@ async function atualizar(id, dados) {
     if (dadosFormatados.id_orcamento !== undefined) {
         dadosFormatados.id_orcamento = Number(dadosFormatados.id_orcamento);
     }
-    if (dadosFormatados.status_fluxo && !dadosFormatados.status) {
+    if (dadosFormatados.status_fluxo) {
         dadosFormatados.status = dadosFormatados.status_fluxo;
     }
 
@@ -148,7 +146,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
         throw erro;
     }
 
-    const novoStatus = dados.status || dados.status_fluxo;
+    const novoStatus = dados.status_fluxo;
     if (!novoStatus || !STATUS_FLUXO_VALIDOS.includes(novoStatus)) {
         const erro = new Error(
             "O campo 'status' é obrigatório e deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
@@ -201,7 +199,7 @@ async function coletarAssinaturaAceite(id, dados = {}) {
         throw erro;
     }
 
-    const assinatura = dados.assinatura_cliente_instalacao || dados.assinatura_cliente_digital || dados.assinatura;
+    const assinatura = dados.assinatura_cliente_instalacao;
     if (!assinatura || typeof assinatura !== "string" || !assinatura.trim()) {
         const erro = new Error("A assinatura digital do cliente é obrigatória para formalizar o aceite da instalação.");
         erro.status = 400;

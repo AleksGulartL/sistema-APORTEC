@@ -33,44 +33,31 @@ function validarPerfilCriacaoOP(usuarioContexto) {
     }
 }
 
-function obterDataPrevisao(dados) {
-    return dados.data_previsao_fim !== undefined
-        ? dados.data_previsao_fim
-        : dados.data_previsao_termino;
-}
-
 function validarOrdemProducao(dados, isUpdate = false) {
-    const rawPedidoId = dados.id_pedido !== undefined ? dados.id_pedido : dados.pedido_id;
-    const rawResponsavelId =
-        dados.id_responsavel_tecnico !== undefined
-            ? dados.id_responsavel_tecnico
-            : dados.responsavel_producao_id;
-    const dataPrevisao = obterDataPrevisao(dados);
-
     if (!isUpdate) {
-        const idPedidoNum = Number(rawPedidoId);
-        if (!rawPedidoId || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
+        const idPedidoNum = Number(dados.id_pedido);
+        if (!dados.id_pedido || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
             const erro = new Error("O campo 'id_pedido' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
-        // CT01 Cenário 4 - Valida se data_previsao_fim / data_previsao_termino foi deixada em branco quando informada vazia
-        if (dataPrevisao === "" || dataPrevisao === null) {
+        // CT01 Cenário 4 - Valida se data_previsao_fim foi deixada em branco quando informada vazia
+        if (dados.data_previsao_fim === "" || dados.data_previsao_fim === null) {
             const erro = new Error("Os campos 'id_responsavel_tecnico' e 'data_previsao_fim' são obrigatórios.");
             erro.status = 400;
             throw erro;
         }
 
-        const idResponsavelTecnicoNum = Number(rawResponsavelId);
-        if (!rawResponsavelId || !Number.isInteger(idResponsavelTecnicoNum) || idResponsavelTecnicoNum <= 0) {
+        const idResponsavelTecnicoNum = Number(dados.id_responsavel_tecnico);
+        if (!dados.id_responsavel_tecnico || !Number.isInteger(idResponsavelTecnicoNum) || idResponsavelTecnicoNum <= 0) {
             const erro = new Error("O campo 'id_responsavel_tecnico' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
     } else {
-        if (rawPedidoId !== undefined) {
-            const idPedidoNum = Number(rawPedidoId);
+        if (dados.id_pedido !== undefined) {
+            const idPedidoNum = Number(dados.id_pedido);
             if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
                 const erro = new Error("O campo 'id_pedido' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -78,8 +65,8 @@ function validarOrdemProducao(dados, isUpdate = false) {
             }
         }
 
-        if (rawResponsavelId !== undefined) {
-            const idResponsavelTecnicoNum = Number(rawResponsavelId);
+        if (dados.id_responsavel_tecnico !== undefined) {
+            const idResponsavelTecnicoNum = Number(dados.id_responsavel_tecnico);
             if (!Number.isInteger(idResponsavelTecnicoNum) || idResponsavelTecnicoNum <= 0) {
                 const erro = new Error("O campo 'id_responsavel_tecnico' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -96,14 +83,14 @@ function validarOrdemProducao(dados, isUpdate = false) {
         }
     }
 
-    if (dataPrevisao !== undefined && dataPrevisao !== null) {
-        if (isNaN(new Date(dataPrevisao).getTime())) {
+    if (dados.data_previsao_fim !== undefined && dados.data_previsao_fim !== null) {
+        if (isNaN(new Date(dados.data_previsao_fim).getTime())) {
             const erro = new Error("A 'data_previsao_fim' deve ser uma data válida.");
             erro.status = 400;
             throw erro;
         }
         // CT01 Cenário 5 - Data de previsão de entrega não pode estar no passado
-        if (!isUpdate && dataEhNoPassado(dataPrevisao)) {
+        if (!isUpdate && dataEhNoPassado(dados.data_previsao_fim)) {
             const erro = new Error("A data de previsão de entrega não pode ser anterior à data atual.");
             erro.status = 400;
             throw erro;
@@ -143,7 +130,7 @@ async function verificarBloqueiosFabricacao(idPedido, dados) {
 
     const checklist = dados.checklist_medicao ?? regPedido?.checklist_medicao;
     if (checklist) {
-        const statusChecklist = checklist.status_aprovacao ?? checklist.status_medicao;
+        const statusChecklist = checklist.status_aprovacao;
         const pendenciaInfra =
             checklist.viga_ok === false ||
             checklist.piso_ok === false ||
@@ -184,12 +171,8 @@ async function criar(dados, usuarioLogado = null) {
 
     validarOrdemProducao(dados);
 
-    const idPedido = Number(dados.id_pedido !== undefined ? dados.id_pedido : dados.pedido_id);
-    const idResponsavel = Number(
-        dados.id_responsavel_tecnico !== undefined
-            ? dados.id_responsavel_tecnico
-            : dados.responsavel_producao_id
-    );
+    const idPedido = Number(dados.id_pedido);
+    const idResponsavel = Number(dados.id_responsavel_tecnico);
 
     // RF08 & CT01 Cenários 2 e 3 - Cruzamento de aprovação do orçamento e checklist de medição
     await verificarBloqueiosFabricacao(idPedido, dados);
