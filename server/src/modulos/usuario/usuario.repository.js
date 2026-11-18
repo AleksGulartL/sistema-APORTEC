@@ -1,11 +1,18 @@
 const { usuario } = require("../../database/models");
 
+const ATRIBUTOS_SEGUROS = { exclude: ["senha_hash"] };
+
 async function listar() {
-    return usuario.findAll({ order: [["id", "ASC"]] });
+    return usuario.findAll({
+        attributes: ATRIBUTOS_SEGUROS,
+        order: [["id", "ASC"]],
+    });
 }
 
 async function buscarPorId(id) {
-    return usuario.findByPk(id);
+    return usuario.findByPk(id, {
+        attributes: ATRIBUTOS_SEGUROS,
+    });
 }
 
 async function buscarPorEmail(email) {
@@ -13,13 +20,15 @@ async function buscarPorEmail(email) {
 }
 
 async function criar(dados) {
-    return usuario.create(dados);
+    const criado = await usuario.create(dados);
+    return buscarPorId(criado.id);
 }
 
 async function atualizar(id, dados) {
     const registro = await usuario.findByPk(id);
     if (!registro) return null;
-    return registro.update(dados);
+    await registro.update(dados);
+    return buscarPorId(id);
 }
 
 async function deletar(id) {

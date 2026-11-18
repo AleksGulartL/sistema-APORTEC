@@ -8,14 +8,37 @@ const HASH_FICTICIO = "$2b$10$wT0vB5pDcfZ2v4VzG0WlzeQk6F.Vb4v9mYgZzM/3vO4JbKgX6f
 
 const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
 
-function normalizarPerfil(cargo) {
-    if (!cargo) return new Error("Perfil é obrigatório.");
-    const upper = String(cargo).trim().toUpperCase();
+function limparAcentosUpper(texto) {
+    return String(texto)
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+function normalizarPerfil(cargo, estrito = false) {
+    if (!cargo) {
+        if (estrito) {
+            const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
+            erro.status = 400;
+            throw erro;
+        }
+        return "TECNICO";
+    }
+    const upper = limparAcentosUpper(cargo);
     if (PERFIS_VALIDOS.includes(upper)) return upper;
-    if (upper.includes("ADM") || upper.includes("ADMIN") || upper.includes("ADMINISTRADOR")) return "ADM";
-    if (upper.includes("TECNICO")) return "TECNICO";
-    if (upper.includes("CLIENTE")) return "CLIENTE";
-    return null;
+    if (upper.includes("ADM") || upper.includes("ADMIN") || upper.includes("ADMINISTRADOR") || upper.includes("GERENTE")) {
+        return "ADM";
+    }
+    if (upper.includes("TECNIC")) return "TECNICO";
+    if (upper.includes("CLIENT")) return "CLIENTE";
+
+    if (estrito) {
+        const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
+        erro.status = 400;
+        throw erro;
+    }
+    return "TECNICO";
 }
 
 function getJwtSecret() {
@@ -103,7 +126,9 @@ async function criarNovoUsuario(dados, solicitante = null) {
     const email = (dados.email || dados.username || "").trim();
     const senha = dados.senha || dados.password || dados.senha_hash || "";
     const cargo_funcao = dados.cargo_funcao || dados.perfil || dados.role || "usuario";
-    const perfil = normalizarPerfil(dados.perfil || cargo_funcao);
+    const perfil = dados.perfil
+        ? normalizarPerfil(dados.perfil, true)
+        : normalizarPerfil(cargo_funcao, false);
 
     if (!nome) {
         const erro = new Error("O campo 'nome_completo' é obrigatório.");

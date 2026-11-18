@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { ThemeProvider, createTheme, CssBaseline, Container, Box } from "@mui/material";
 import Login from "./components/Login";
 import Navbar from "./components/Navbar";
+import Dashboard from "./components/Dashboard";
 import Clientes from "./components/Clientes";
+import Usuarios from "./components/Usuarios";
 import Perfil from "./components/Perfil";
+import { usuarioEhAdm } from "./utils/permissoes";
 
 // Tema Material UI customizado para o APORTEC
 const theme = createTheme({
@@ -50,13 +53,14 @@ export default function App() {
         return salvo ? JSON.parse(salvo) : null;
     });
 
-    const [tabIndex, setTabIndex] = useState(0); // 0: Clientes, 1: Perfil
+    const [abaAtiva, setAbaAtiva] = useState("dashboard");
 
     // Event listener para expiração de token tratada pelo interceptor do Axios
     useEffect(() => {
         function onTokenExpired() {
             setIsLoggedIn(false);
             setUsuario(null);
+            setAbaAtiva("dashboard");
         }
         window.addEventListener("auth:expired", onTokenExpired);
         return () => window.removeEventListener("auth:expired", onTokenExpired);
@@ -64,6 +68,7 @@ export default function App() {
 
     function handleLogin(novoUsuario) {
         setIsLoggedIn(true);
+        setAbaAtiva("dashboard");
         if (novoUsuario) {
             setUsuario(novoUsuario);
         } else {
@@ -77,7 +82,11 @@ export default function App() {
         localStorage.removeItem("usuario");
         setIsLoggedIn(false);
         setUsuario(null);
+        setAbaAtiva("dashboard");
     }
+
+    const ehAdm = usuarioEhAdm(usuario);
+    const abaSegura = abaAtiva === "usuarios" && !ehAdm ? "dashboard" : abaAtiva;
 
     return (
         <ThemeProvider theme={theme}>
@@ -88,14 +97,16 @@ export default function App() {
                 <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
                     <Navbar
                         usuario={usuario}
-                        tabIndex={tabIndex}
-                        onTabChange={setTabIndex}
+                        abaAtiva={abaSegura}
+                        onMudarAba={setAbaAtiva}
                         onLogout={handleLogout}
                     />
 
                     <Container maxWidth="lg" sx={{ mt: 2, pb: 6 }}>
-                        {tabIndex === 0 && <Clientes />}
-                        {tabIndex === 1 && <Perfil />}
+                        {abaSegura === "dashboard" && <Dashboard usuario={usuario} />}
+                        {abaSegura === "clientes" && <Clientes usuario={usuario} />}
+                        {abaSegura === "usuarios" && ehAdm && <Usuarios usuario={usuario} />}
+                        {abaSegura === "perfil" && <Perfil />}
                     </Container>
                 </Box>
             )}

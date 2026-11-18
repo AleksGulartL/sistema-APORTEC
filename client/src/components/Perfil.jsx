@@ -78,7 +78,7 @@ export default function Perfil() {
 
                     <Chip
                         icon={<AdminPanelSettingsIcon />}
-                        label={`Cargo: ${perfil?.cargo_funcao || perfil?.role || "Operador"}`}
+                        label={`Perfil: ${perfil?.perfil || perfil?.cargo_funcao || perfil?.role || "Operador"}`}
                         color="primary"
                         variant="outlined"
                         sx={{ mb: 3 }}

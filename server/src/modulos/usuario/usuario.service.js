@@ -1,41 +1,65 @@
+const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
 
 const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
+const SALT_ROUNDS = 10;
 
 function normalizarPerfil(cargoOuPerfil) {
     if (!cargoOuPerfil) return "CLIENTE";
-    const upper = String(cargoOuPerfil).trim().toUpperCase();
+    const upper = String(cargoOuPerfil)
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
     if (PERFIS_VALIDOS.includes(upper)) return upper;
     if (upper.includes("ADM") || upper.includes("GERENTE")) return "ADM";
-    if (upper.includes("TECNICO")) return "TECNICO";
+    if (upper.includes("TECNIC")) return "TECNICO";
     return "CLIENTE";
 }
 
-function validarUsuario(dados) {
-    if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
-        const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
-        erro.status = 400;
-        throw erro;
+function validarUsuario(dados, isUpdate = false) {
+    if (!isUpdate || dados.nome_completo !== undefined) {
+        if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
+            const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
+            erro.status = 400;
+            throw erro;
+        }
     }
 
-    if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
-        const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
-        erro.status = 400;
-        throw erro;
+    if (!isUpdate || dados.email !== undefined) {
+        if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
+            const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
+            erro.status = 400;
+            throw erro;
+        }
     }
 
-    if (!dados.senha_hash || typeof dados.senha_hash !== "string" || !dados.senha_hash.trim()) {
-        const erro = new Error("O campo 'senha_hash' é obrigatório.");
-        erro.status = 400;
-        throw erro;
+    if (!isUpdate) {
+        if (!dados.senha_hash || typeof dados.senha_hash !== "string" || !dados.senha_hash.trim()) {
+            const erro = new Error("O campo 'senha_hash' é obrigatório.");
+            erro.status = 400;
+            throw erro;
+        }
+    } else if (dados.senha !== undefined && dados.senha !== "") {
+        if (typeof dados.senha !== "string" || !dados.senha.trim()) {
+            const erro = new Error("A 'senha' informada deve ser um texto válido.");
+            erro.status = 400;
+            throw erro;
+        }
     }
 
     if (dados.perfil !== undefined && dados.perfil !== null) {
-        if (!PERFIS_VALIDOS.includes(String(dados.perfil).toUpperCase())) {
+        if (!PERFIS_VALIDOS.includes(String(dados.perfil).trim().toUpperCase())) {
             const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
             erro.status = 400;
             throw erro;
         }
+    }
+
+    if (dados.ativo !== undefined && typeof dados.ativo !== "boolean") {
+        const erro = new Error("O campo 'ativo' deve ser um booleano.");
+        erro.status = 400;
+        throw erro;
     }
 }
 
@@ -54,10 +78,10 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    validarUsuario(dados);
+    validarUsuario(dados, false);
     const payload = { ...dados };
     if (payload.perfil) {
-        payload.perfil = String(payload.perfil).toUpperCase();
+        payload.perfil = String(payload.perfil).trim().toUpperCase();
     } else if (payload.cargo_funcao) {
         payload.perfil = normalizarPerfil(payload.cargo_funcao);
     }
@@ -72,11 +96,19 @@ async function atualizar(id, dados) {
         throw erro;
     }
 
-    validarUsuario(dados);
+    validarUsuario(dados, true);
     const payload = { ...dados };
+
     if (payload.perfil) {
-        payload.perfil = String(payload.perfil).toUpperCase();
+        payload.perfil = String(payload.perfil).trim().toUpperCase();
     }
+    if (payload.senha && String(payload.senha).trim()) {
+        payload.senha_hash = await bcrypt.hash(String(payload.senha), SALT_ROUNDS);
+    }
+    delete payload.senha;
+    delete payload.id;
+    delete payload.id_usuario;
+
     return usuarioRepository.atualizar(idNum, payload);
 }
 

@@ -71,4 +71,37 @@ describe("UsuarioService - Testes Unitários", () => {
         // VALIDAÇÃO: Garante retorno com a propriedade id_usuario
         expect(resultado).toHaveProperty("id_usuario", 1);
     });
+
+    test("Deve atualizar perfil e status ativo sem exigir senha_hash", async () => {
+        usuarioRepository.atualizar.mockResolvedValue({
+            id_usuario: 2,
+            nome_completo: "Maria Técnica",
+            perfil: "TECNICO",
+            ativo: true,
+        });
+
+        const resultado = await usuarioService.atualizar(2, {
+            nome_completo: "Maria Técnica",
+            perfil: "TECNICO",
+            ativo: true,
+        });
+
+        expect(usuarioRepository.atualizar).toHaveBeenCalledWith(2, {
+            nome_completo: "Maria Técnica",
+            perfil: "TECNICO",
+            ativo: true,
+        });
+        expect(resultado.perfil).toBe("TECNICO");
+    });
+
+    test("Deve gerar senha_hash com bcrypt se 'senha' em texto plano for informada na atualização", async () => {
+        usuarioRepository.atualizar.mockResolvedValue({ id_usuario: 2, nome_completo: "Maria" });
+
+        await usuarioService.atualizar(2, { nome_completo: "Maria", senha: "novaSenha123" });
+
+        const [, payload] = usuarioRepository.atualizar.mock.calls[0];
+        expect(payload.senha).toBeUndefined();
+        expect(payload.senha_hash).toBeDefined();
+        expect(payload.senha_hash.startsWith("$2b$")).toBe(true);
+    });
 });

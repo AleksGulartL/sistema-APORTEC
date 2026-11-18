@@ -226,6 +226,25 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
 
             expect(authRepository.criar.mock.calls[0][0].perfil).toBe("TECNICO");
         });
+
+        test("Deve rejeitar com erro 400 se o perfil informado explicitamente for inválido", async () => {
+            authRepository.buscarPorEmail.mockResolvedValue(null);
+
+            await expect(
+                authService.criarNovoUsuario(
+                    {
+                        nome_completo: "Invalido",
+                        email: "inv@aportec.com",
+                        senha: "123",
+                        perfil: "SUPER_ROOT",
+                    },
+                    solicitanteAdm
+                )
+            ).rejects.toMatchObject({
+                message: "O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.",
+                status: 400,
+            });
+        });
     });
 
     describe("gerarToken e verificarToken", () => {

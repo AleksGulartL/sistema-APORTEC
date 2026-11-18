@@ -28,8 +28,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import BusinessIcon from "@mui/icons-material/Business";
 import Tabela from "./Tabela";
 import api from "../services/api";
+import { usuarioEhAdm, usuarioEhFuncionario } from "../utils/permissoes";
 
-export default function Clientes() {
+export default function Clientes({ usuario }) {
+    const ehAdm = usuarioEhAdm(usuario);
+    const ehFuncionario = usuarioEhFuncionario(usuario);
     const [cliente, setCliente] = useState(null);
     const [clientes, setClientes] = useState([]);
     const [idCliente, setIdCliente] = useState("");
@@ -64,8 +67,10 @@ export default function Clientes() {
     }
 
     useEffect(() => {
-        buscarTodosClientes();
-    }, []);
+        if (ehFuncionario) {
+            buscarTodosClientes();
+        }
+    }, [ehFuncionario]);
 
     async function buscarCliente() {
         if (!idCliente || !idCliente.trim()) {
@@ -129,6 +134,16 @@ export default function Clientes() {
         }
     }
 
+    if (!ehFuncionario) {
+        return (
+            <Box sx={{ py: 4 }}>
+                <Alert severity="info">
+                    Acesso restrito a colaboradores (ADM ou TECNICO).
+                </Alert>
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ py: 3 }}>
             {/* Cabeçalho da página */}
@@ -152,17 +167,19 @@ export default function Clientes() {
                         variant="outlined"
                         startIcon={<RefreshIcon />}
                         onClick={buscarTodosClientes}
-                        disabled={carregando}
+                        disabled={carregando || !ehFuncionario}
                     >
                         Atualizar
                     </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => setOpenDialog(true)}
-                    >
-                        Novo Cliente
-                    </Button>
+                    {ehAdm && (
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => setOpenDialog(true)}
+                        >
+                            Novo Cliente
+                        </Button>
+                    )}
                 </Stack>
             </Stack>
 
