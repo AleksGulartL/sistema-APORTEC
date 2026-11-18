@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const { cliente, usuario, sequelize } = require("../../database/models");
 
@@ -11,6 +12,10 @@ function obterIncludes() {
         });
     }
     return includes;
+}
+
+function gerarSenhaTemporaria() {
+    return `Aportec@${crypto.randomBytes(3).toString("hex")}`;
 }
 
 async function listar() {
@@ -32,8 +37,11 @@ async function criar(dados) {
         let usuarioId = dados.usuario_id || dados.id_usuario;
 
         if (!usuarioId && usuario) {
-            const senhaPlana = dados.senha || dados.senha_hash || "aportec123";
-            const senhaHash = senhaPlana.startsWith("$2b$") ? senhaPlana : await bcrypt.hash(senhaPlana, 10);
+            const senhaDefinida = dados.senha && String(dados.senha).trim() ? String(dados.senha).trim() : null;
+            const senhaPlana = senhaDefinida || dados.senha_hash || gerarSenhaTemporaria();
+            const senhaHash = String(senhaPlana).startsWith("$2b$")
+                ? senhaPlana
+                : await bcrypt.hash(String(senhaPlana), 10);
 
             const novoUsuario = await usuario.create(
                 {
@@ -75,12 +83,16 @@ async function atualizar(id, dados) {
 
     const transaction = sequelize?.transaction ? await sequelize.transaction() : null;
     try {
-        if (registro.usuario && (dados.nome_completo !== undefined || dados.email !== undefined)) {
+        const atualizacaoUsuario = {};
+        if (dados.nome_completo !== undefined) atualizacaoUsuario.nome_completo = dados.nome_completo;
+        if (dados.email !== undefined) atualizacaoUsuario.email = dados.email;
+        if (dados.senha && String(dados.senha).trim()) {
+            atualizacaoUsuario.senha_hash = await bcrypt.hash(String(dados.senha).trim(), 10);
+        }
+
+        if (registro.usuario && Object.keys(atualizacaoUsuario).length > 0) {
             await registro.usuario.update(
-                {
-                    ...(dados.nome_completo !== undefined ? { nome_completo: dados.nome_completo } : {}),
-                    ...(dados.email !== undefined ? { email: dados.email } : {}),
-                },
+                atualizacaoUsuario,
                 transaction ? { transaction } : undefined
             );
         }

@@ -60,7 +60,7 @@ const ordemServico = sequelize.define(
         },
         tecnico_responsavel_id: {
             type: DataTypes.BIGINT,
-            allowNull: false,
+            allowNull: true,
             field: "tecnico_responsavel_id",
             get() {
                 return toNumberOrNull(this.getDataValue("tecnico_responsavel_id"));

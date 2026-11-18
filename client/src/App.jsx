@@ -9,8 +9,9 @@ import OrdensServico from "./components/OrdensServico";
 import ProntuarioPorta from "./components/ProntuarioPorta";
 import Clientes from "./components/Clientes";
 import Usuarios from "./components/Usuarios";
+import PortalCliente from "./components/PortalCliente";
 import Perfil from "./components/Perfil";
-import { usuarioEhAdm } from "./utils/permissoes";
+import { usuarioEhAdm, usuarioEhCliente } from "./utils/permissoes";
 
 // Tema Material UI customizado para o APORTEC
 const theme = createTheme({
@@ -47,6 +48,12 @@ const theme = createTheme({
     },
 });
 
+const ABAS_CLIENTE = ["cliente_inicio", "cliente_pedidos", "cliente_portas", "cliente_os", "perfil"];
+
+function abaInicialPara(usuario) {
+    return usuarioEhCliente(usuario) ? "cliente_inicio" : "dashboard";
+}
+
 export default function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(() => {
         return Boolean(localStorage.getItem("token"));
@@ -57,7 +64,11 @@ export default function App() {
         return salvo ? JSON.parse(salvo) : null;
     });
 
-    const [abaAtiva, setAbaAtiva] = useState("dashboard");
+    const [abaAtiva, setAbaAtiva] = useState(() => {
+        const salvo = localStorage.getItem("usuario");
+        const parsed = salvo ? JSON.parse(salvo) : null;
+        return abaInicialPara(parsed);
+    });
     const [pedidoContextoId, setPedidoContextoId] = useState(null);
     const [prontuarioBuscaInicial, setProntuarioBuscaInicial] = useState("");
     const [pedidoParaNovaOs, setPedidoParaNovaOs] = useState(null);
@@ -77,14 +88,14 @@ export default function App() {
     }, []);
 
     function handleLogin(novoUsuario) {
-        setIsLoggedIn(true);
-        setAbaAtiva("dashboard");
-        if (novoUsuario) {
-            setUsuario(novoUsuario);
-        } else {
+        let userFinal = novoUsuario;
+        if (!userFinal) {
             const salvo = localStorage.getItem("usuario");
-            setUsuario(salvo ? JSON.parse(salvo) : null);
+            userFinal = salvo ? JSON.parse(salvo) : null;
         }
+        setIsLoggedIn(true);
+        setUsuario(userFinal);
+        setAbaAtiva(abaInicialPara(userFinal));
     }
 
     function handleLogout() {
@@ -114,7 +125,21 @@ export default function App() {
     }
 
     const ehAdm = usuarioEhAdm(usuario);
-    const abaSegura = abaAtiva === "usuarios" && !ehAdm ? "dashboard" : abaAtiva;
+    const ehCliente = usuarioEhCliente(usuario);
+
+    let abaSegura = abaAtiva;
+    if (ehCliente) {
+        if (!ABAS_CLIENTE.includes(abaSegura)) {
+            abaSegura = "cliente_inicio";
+        }
+    } else {
+        if (abaSegura.startsWith("cliente_")) {
+            abaSegura = "dashboard";
+        }
+        if (abaSegura === "usuarios" && !ehAdm) {
+            abaSegura = "dashboard";
+        }
+    }
 
     return (
         <ThemeProvider theme={theme}>
@@ -135,38 +160,54 @@ export default function App() {
                     />
 
                     <Container maxWidth="xl" sx={{ mt: 2, pb: 6 }}>
-                        {abaSegura === "dashboard" && (
-                            <Dashboard usuario={usuario} onAbrirPedido={abrirPedido} />
+                        {ehCliente ? (
+                            <>
+                                {abaSegura !== "perfil" ? (
+                                    <PortalCliente
+                                        usuario={usuario}
+                                        secao={abaSegura}
+                                        onMudarSecao={setAbaAtiva}
+                                    />
+                                ) : (
+                                    <Perfil />
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {abaSegura === "dashboard" && (
+                                    <Dashboard usuario={usuario} onAbrirPedido={abrirPedido} />
+                                )}
+                                {abaSegura === "pedidos" && (
+                                    <Pedidos
+                                        usuario={usuario}
+                                        pedidoInicialId={pedidoContextoId}
+                                        onLimparContexto={() => setPedidoContextoId(null)}
+                                        onAbrirProntuario={abrirProntuario}
+                                        onAbrirOs={abrirNovaOsParaPedido}
+                                    />
+                                )}
+                                {abaSegura === "catalogo" && <CatalogoEstoque usuario={usuario} />}
+                                {abaSegura === "ordens_servico" && (
+                                    <OrdensServico
+                                        usuario={usuario}
+                                        pedidoParaNovaOs={pedidoParaNovaOs}
+                                        onLimparContexto={() => setPedidoParaNovaOs(null)}
+                                    />
+                                )}
+                                {abaSegura === "prontuario" && (
+                                    <ProntuarioPorta
+                                        usuario={usuario}
+                                        buscaInicial={prontuarioBuscaInicial}
+                                        onLimparContexto={() => setProntuarioBuscaInicial("")}
+                                        onAbrirPedido={abrirPedido}
+                                        onAbrirOs={abrirNovaOsParaPedido}
+                                    />
+                                )}
+                                {abaSegura === "clientes" && <Clientes usuario={usuario} />}
+                                {abaSegura === "usuarios" && ehAdm && <Usuarios usuario={usuario} />}
+                                {abaSegura === "perfil" && <Perfil />}
+                            </>
                         )}
-                        {abaSegura === "pedidos" && (
-                            <Pedidos
-                                usuario={usuario}
-                                pedidoInicialId={pedidoContextoId}
-                                onLimparContexto={() => setPedidoContextoId(null)}
-                                onAbrirProntuario={abrirProntuario}
-                                onAbrirOs={abrirNovaOsParaPedido}
-                            />
-                        )}
-                        {abaSegura === "catalogo" && <CatalogoEstoque usuario={usuario} />}
-                        {abaSegura === "ordens_servico" && (
-                            <OrdensServico
-                                usuario={usuario}
-                                pedidoParaNovaOs={pedidoParaNovaOs}
-                                onLimparContexto={() => setPedidoParaNovaOs(null)}
-                            />
-                        )}
-                        {abaSegura === "prontuario" && (
-                            <ProntuarioPorta
-                                usuario={usuario}
-                                buscaInicial={prontuarioBuscaInicial}
-                                onLimparContexto={() => setProntuarioBuscaInicial("")}
-                                onAbrirPedido={abrirPedido}
-                                onAbrirOs={abrirNovaOsParaPedido}
-                            />
-                        )}
-                        {abaSegura === "clientes" && <Clientes usuario={usuario} />}
-                        {abaSegura === "usuarios" && ehAdm && <Usuarios usuario={usuario} />}
-                        {abaSegura === "perfil" && <Perfil />}
                     </Container>
                 </Box>
             )}

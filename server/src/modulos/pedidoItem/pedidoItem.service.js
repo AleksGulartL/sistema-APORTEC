@@ -1,34 +1,45 @@
-const itemOrcamentoRepository = require("./itemOrcamento.repository");
+const pedidoItemRepository = require("./pedidoItem.repository");
 
-function validarItemOrcamento(dados, isUpdate = false) {
+function extrairPedidoId(dados) {
+    return dados.pedido_id ?? dados.id_pedido ?? dados.id_orcamento;
+}
+
+function extrairItemId(dados) {
+    return dados.item_id ?? dados.id_item_catalogo ?? dados.id_item;
+}
+
+function validarPedidoItem(dados, isUpdate = false) {
+    const pedidoIdRaw = extrairPedidoId(dados);
+    const itemIdRaw = extrairItemId(dados);
+
     if (!isUpdate) {
-        const idOrcamentoNum = Number(dados.id_orcamento);
-        if (!dados.id_orcamento || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
-            const erro = new Error("O campo 'id_orcamento' é obrigatório e deve ser um número inteiro válido.");
+        const pedidoIdNum = Number(pedidoIdRaw);
+        if (!pedidoIdRaw || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
+            const erro = new Error("O campo 'pedido_id' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
-        const idItemCatalogoNum = Number(dados.id_item_catalogo);
-        if (dados.id_item_catalogo === undefined || dados.id_item_catalogo === null || !Number.isInteger(idItemCatalogoNum) || idItemCatalogoNum <= 0) {
-            const erro = new Error("O campo 'id_item_catalogo' é obrigatório e deve ser um número inteiro maior que zero.");
+        const itemIdNum = Number(itemIdRaw);
+        if (!itemIdRaw || !Number.isInteger(itemIdNum) || itemIdNum <= 0) {
+            const erro = new Error("O campo 'item_id' é obrigatório e deve ser um número inteiro maior que zero.");
             erro.status = 400;
             throw erro;
         }
     } else {
-        if (dados.id_orcamento !== undefined) {
-            const idOrcamentoNum = Number(dados.id_orcamento);
-            if (!Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
-                const erro = new Error("O campo 'id_orcamento' deve ser um número inteiro válido.");
+        if (pedidoIdRaw !== undefined) {
+            const pedidoIdNum = Number(pedidoIdRaw);
+            if (!Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
+                const erro = new Error("O campo 'pedido_id' deve ser um número inteiro válido.");
                 erro.status = 400;
                 throw erro;
             }
         }
 
-        if (dados.id_item_catalogo !== undefined) {
-            const idItemCatalogoNum = Number(dados.id_item_catalogo);
-            if (!Number.isInteger(idItemCatalogoNum) || idItemCatalogoNum <= 0) {
-                const erro = new Error("O campo 'id_item_catalogo' deve ser um número inteiro maior que zero.");
+        if (itemIdRaw !== undefined) {
+            const itemIdNum = Number(itemIdRaw);
+            if (!Number.isInteger(itemIdNum) || itemIdNum <= 0) {
+                const erro = new Error("O campo 'item_id' deve ser um número inteiro maior que zero.");
                 erro.status = 400;
                 throw erro;
             }
@@ -64,7 +75,7 @@ function validarItemOrcamento(dados, isUpdate = false) {
 }
 
 async function listar() {
-    return itemOrcamentoRepository.listar();
+    return pedidoItemRepository.listar();
 }
 
 async function buscarPorId(id) {
@@ -74,18 +85,18 @@ async function buscarPorId(id) {
         erro.status = 400;
         throw erro;
     }
-    return itemOrcamentoRepository.buscarPorId(idNum);
+    return pedidoItemRepository.buscarPorId(idNum);
 }
 
 async function criar(dados) {
-    validarItemOrcamento(dados);
-    const pedidoId = Number(dados.id_orcamento);
-    const itemId = Number(dados.id_item_catalogo);
+    validarPedidoItem(dados);
+    const pedidoId = Number(extrairPedidoId(dados));
+    const itemId = Number(extrairItemId(dados));
     const quantidade = dados.quantidade !== undefined ? Number(dados.quantidade) : 1;
 
     let valorUnitario = dados.valor_unitario !== undefined ? Number(dados.valor_unitario) : undefined;
-    if (valorUnitario === undefined && typeof itemOrcamentoRepository.buscarItemCatalogo === "function") {
-        const itemCat = await itemOrcamentoRepository.buscarItemCatalogo(itemId);
+    if (valorUnitario === undefined && typeof pedidoItemRepository.buscarItemCatalogo === "function") {
+        const itemCat = await pedidoItemRepository.buscarItemCatalogo(itemId);
         if (itemCat && itemCat.valor_unitario_padrao !== undefined) {
             valorUnitario = Number(itemCat.valor_unitario_padrao);
         }
@@ -99,19 +110,14 @@ async function criar(dados) {
     }
 
     const dadosFormatados = {
-        ...dados,
         pedido_id: pedidoId,
-        id_orcamento: pedidoId,
         item_id: itemId,
-        id_item_catalogo: itemId,
         quantidade,
         valor_unitario: valorUnitario ?? 0,
         valor_total: valorTotal ?? 0,
     };
 
-    delete dadosFormatados.id_item_orcamento;
-    delete dadosFormatados.id;
-    return itemOrcamentoRepository.criar(dadosFormatados);
+    return pedidoItemRepository.criar(dadosFormatados);
 }
 
 async function atualizar(id, dados) {
@@ -122,32 +128,30 @@ async function atualizar(id, dados) {
         throw erro;
     }
 
-    validarItemOrcamento(dados, true);
-    const dadosFormatados = { ...dados };
+    validarPedidoItem(dados, true);
+    const dadosFormatados = {};
 
-    if (dados.id_orcamento !== undefined) {
-        dadosFormatados.pedido_id = Number(dados.id_orcamento);
-        dadosFormatados.id_orcamento = Number(dados.id_orcamento);
-    }
-
-    if (dados.id_item_catalogo !== undefined) {
-        dadosFormatados.item_id = Number(dados.id_item_catalogo);
-        dadosFormatados.id_item_catalogo = Number(dados.id_item_catalogo);
+    const pedidoIdRaw = extrairPedidoId(dados);
+    if (pedidoIdRaw !== undefined) {
+        dadosFormatados.pedido_id = Number(pedidoIdRaw);
     }
 
-    if (dadosFormatados.quantidade !== undefined) {
-        dadosFormatados.quantidade = Number(dadosFormatados.quantidade);
-    }
-    if (dadosFormatados.valor_unitario !== undefined) {
-        dadosFormatados.valor_unitario = Number(dadosFormatados.valor_unitario);
-    }
-    if (dadosFormatados.valor_total !== undefined) {
-        dadosFormatados.valor_total = Number(dadosFormatados.valor_total);
+    const itemIdRaw = extrairItemId(dados);
+    if (itemIdRaw !== undefined) {
+        dadosFormatados.item_id = Number(itemIdRaw);
     }
 
-    delete dadosFormatados.id_item_orcamento;
-    delete dadosFormatados.id;
-    return itemOrcamentoRepository.atualizar(idNum, dadosFormatados);
+    if (dados.quantidade !== undefined) {
+        dadosFormatados.quantidade = Number(dados.quantidade);
+    }
+    if (dados.valor_unitario !== undefined) {
+        dadosFormatados.valor_unitario = Number(dados.valor_unitario);
+    }
+    if (dados.valor_total !== undefined) {
+        dadosFormatados.valor_total = Number(dados.valor_total);
+    }
+
+    return pedidoItemRepository.atualizar(idNum, dadosFormatados);
 }
 
 async function deletar(id) {
@@ -157,7 +161,7 @@ async function deletar(id) {
         erro.status = 400;
         throw erro;
     }
-    return itemOrcamentoRepository.deletar(idNum);
+    return pedidoItemRepository.deletar(idNum);
 }
 
 module.exports = {

@@ -20,9 +20,6 @@ Object.keys(db).forEach((modelName) => {
     }
 });
 
-// Alias de compatibilidade para o módulo itemOrcamento -> pedido_item
-db.item_orcamento = db.pedido_item;
-
 db.sequelize = sequelize;
 db.Sequelize = require("sequelize").Sequelize;
 

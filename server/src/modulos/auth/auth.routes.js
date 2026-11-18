@@ -17,8 +17,9 @@ router.post("/login", authController.login);
 router.post("/novoUsuario", autenticar.rotasPublicas, authController.registrar);
 router.post("/logout", authController.logout);
 
-// Rota protegida - retorna informações do usuário autenticado no token
+// Rota protegida - retorna informações do usuário autenticado no token e alteração da própria senha
 router.get("/auth/perfil", autenticar, authController.perfil);
 router.get("/auth/me", autenticar, authController.perfil);
+router.patch("/auth/alterar-senha", autenticar, authController.alterarSenha);
 
 module.exports = router;

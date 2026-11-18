@@ -5,7 +5,7 @@
 const PERFIS = Object.freeze({
     ADM: "ADM",
     TECNICO: "TECNICO",
-    CLIENTE: "CLIENTE"
+    CLIENTE: "CLIENTE",
 });
 
 const { ADM, TECNICO, CLIENTE } = PERFIS;
@@ -22,19 +22,19 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF02 - Clientes: cadastro pel; consulta pelas equipes que atendem o cliente
+    // RF02 - Clientes: cadastro pelo ADM; consulta pelos colaboradores internos
     cliente: {
-        listar: [ADM, TECNICO],
-        buscarPorId: [ADM, TECNICO],
+        listar: FUNCIONARIOS,
+        buscarPorId: FUNCIONARIOS,
         criar: [ADM],
         atualizar: [ADM],
         deletar: [ADM],
     },
 
-    // RF10 - Catálogo/Estoque: mantido pel; consulta liberada aos funcionários
+    // RF10 - Catálogo/Estoque: mantido pelo ADM; consulta liberada aos colaboradores
     itemCatalogo: {
-        listar: [ADM, TECNICO],
-        buscarPorId: [ADM, TECNICO],
+        listar: FUNCIONARIOS,
+        buscarPorId: FUNCIONARIOS,
         listarAlertasEstoqueMinimo: [ADM],
         criar: [ADM],
         atualizar: [ADM],
@@ -43,40 +43,47 @@ const PERMISSOES = Object.freeze({
 
     // RF04/RF05/RF06/RF12/RF13 - Pedido (ciclo unificado Orçamento -> Pedido)
     pedido: {
-        listar: [ADM, TECNICO],
-        buscarPorId: [ADM, TECNICO],
+        listar: FUNCIONARIOS,
+        buscarPorId: FUNCIONARIOS,
         criar: [ADM],
         atualizar: [ADM],
-        atualizarStatusEtapa: [ADM, TECNICO], // RF12
-        coletarAssinaturaAceite: [ADM, TECNICO], // RF13
+        atualizarStatusEtapa: FUNCIONARIOS, // RF12
+        coletarAssinaturaAceite: FUNCIONARIOS, // RF13
         deletar: [ADM],
     },
 
-    // RF04 - Itens do orçamento/pedido
-    itemOrcamento: {
-        listar: [ADM, TECNICO],
-        buscarPorId: [ADM, TECNICO],
+    // RF04/RF06 - Itens do pedido
+    pedidoItem: {
+        listar: FUNCIONARIOS,
+        buscarPorId: FUNCIONARIOS,
         criar: [ADM],
         atualizar: [ADM],
         deletar: [ADM],
     },
 
-    // RF07/RF08 - Checklist técnico de medição (preenchido pela equipe de medição)
+    // RF07/RF08 - Checklist técnico de medição (preenchido pela equipe técnica/ADM)
     checklistMedicao: {
-        listar: [ADM, TECNICO],
-        buscarPorId: [ADM, TECNICO],
-        criar: [ADM, TECNICO],
-        atualizar: [ADM, TECNICO],
+        listar: FUNCIONARIOS,
+        buscarPorId: FUNCIONARIOS,
+        criar: FUNCIONARIOS,
+        atualizar: FUNCIONARIOS,
         deletar: [ADM],
     },
 
     // RF14 - Ordens de serviço (instalação / assistência técnica)
     ordemServico: {
-        listar: [ADM, TECNICO],
-        buscarPorId: [ADM, TECNICO],
-        criar: [ADM, TECNICO],
-        atualizar: [ADM, TECNICO],
+        listar: FUNCIONARIOS,
+        buscarPorId: FUNCIONARIOS,
+        criar: FUNCIONARIOS,
+        atualizar: FUNCIONARIOS,
         deletar: [ADM],
+    },
+
+    // Portal do Cliente (escopo isolado aos registros do próprio cliente autenticado)
+    portalCliente: {
+        obterResumo: [CLIENTE],
+        responderAprovacao: [CLIENTE],
+        abrirSolicitacao: [CLIENTE],
     },
 });
 

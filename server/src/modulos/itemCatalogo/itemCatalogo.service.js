@@ -1,6 +1,6 @@
 const itemCatalogoRepository = require("./itemCatalogo.repository");
 
-const TIPOS_VALIDOS = ["Insumo", "Porta", "Peca", "Material", "Servico", "MATERIAL", "SERVICO"];
+const TIPOS_VALIDOS = ["Insumo", "Porta", "Peca"];
 
 function validarItemCatalogo(dados) {
     if (!dados.tipo) {

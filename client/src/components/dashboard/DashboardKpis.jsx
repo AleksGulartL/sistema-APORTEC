@@ -2,9 +2,7 @@ import { Card, CardContent, Grid, Stack, Typography, Box } from "@mui/material";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import BuildIcon from "@mui/icons-material/Build";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
-import { formatarMoedaBr } from "../../utils/permissoes";
 
 function CardKpi({ titulo, valor, subtitulo, subtituloCor = "text.secondary", icone, corValor = "text.primary" }) {
     return (
@@ -41,14 +39,12 @@ function CardKpi({ titulo, valor, subtitulo, subtituloCor = "text.secondary", ic
 }
 
 export default function DashboardKpis({
-    ehAdm,
     totalPedidosAndamento,
     totalBloqueados,
     totalAlertasEstoque,
     totalItensCatalogo,
     totalOsAbertas,
     totalOsTotal,
-    valorCarteiraAprovada,
     totalClientes,
 }) {
     return (
@@ -88,22 +84,12 @@ export default function DashboardKpis({
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-                {ehAdm ? (
-                    <CardKpi
-                        titulo="Carteira Aprovada"
-                        valor={formatarMoedaBr(valorCarteiraAprovada)}
-                        corValor="success.main"
-                        subtitulo={`${totalClientes} clientes cadastrados`}
-                        icone={<AttachMoneyIcon color="success" />}
-                    />
-                ) : (
-                    <CardKpi
-                        titulo="Clientes Cadastrados"
-                        valor={totalClientes}
-                        subtitulo="Base de clientes para atendimento"
-                        icone={<PeopleAltIcon color="primary" />}
-                    />
-                )}
+                <CardKpi
+                    titulo="Clientes Cadastrados"
+                    valor={totalClientes}
+                    subtitulo="Base de clientes para atendimento"
+                    icone={<PeopleAltIcon color="primary" />}
+                />
             </Grid>
         </Grid>
     );

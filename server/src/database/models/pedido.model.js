@@ -216,10 +216,6 @@ pedido.associate = (models) => {
             foreignKey: "pedido_id",
             as: "itens",
         });
-        pedido.hasMany(models.pedido_item, {
-            foreignKey: "pedido_id",
-            as: "item_orcamento",
-        });
     }
 
     if (models.checklist_medicao) {

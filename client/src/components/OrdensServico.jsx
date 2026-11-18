@@ -518,7 +518,10 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                             {ordensFiltradas.map((os) => {
                                 const nomeCli = os.cliente?.usuario?.nome_completo || `Cliente #${os.cliente_id}`;
                                 const nomeTec =
-                                    os.tecnico_responsavel?.nome_completo || `Técnico #${os.tecnico_responsavel_id}`;
+                                    os.tecnico_responsavel?.nome_completo ||
+                                    (os.tecnico_responsavel_id
+                                        ? `Técnico #${os.tecnico_responsavel_id}`
+                                        : "Aguardando atribuição");
                                 return (
                                     <TableRow
                                         key={os.id}
@@ -556,7 +559,13 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                                 />
                                             )}
                                         </TableCell>
-                                        <TableCell>{nomeTec}</TableCell>
+                                        <TableCell>
+                                            {os.tecnico_responsavel_id ? (
+                                                nomeTec
+                                            ) : (
+                                                <Chip size="small" variant="outlined" color="warning" label={nomeTec} />
+                                            )}
+                                        </TableCell>
                                         <TableCell>{formatarDataHoraBr(os.data_agendamento)}</TableCell>
                                         <TableCell>
                                             <Chip
@@ -800,7 +809,9 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                 <Typography variant="caption" color="text.secondary" display="block">
                                     Cobertura: {osAtender?.origem_cobertura || "-"} • Técnico:{" "}
                                     {osAtender?.tecnico_responsavel?.nome_completo ||
-                                        `#${osAtender?.tecnico_responsavel_id}`}
+                                        (osAtender?.tecnico_responsavel_id
+                                            ? `#${osAtender.tecnico_responsavel_id}`
+                                            : "Aguardando atribuição")}
                                 </Typography>
                                 {osAtender?.descricao_problema && (
                                     <Typography variant="body2" sx={{ mt: 0.75 }}>

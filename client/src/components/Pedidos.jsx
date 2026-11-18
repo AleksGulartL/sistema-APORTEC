@@ -11,7 +11,6 @@ import {
     DialogContent,
     DialogTitle,
     FormControl,
-    FormControlLabel,
     Grid,
     IconButton,
     InputAdornment,
@@ -20,7 +19,6 @@ import {
     Paper,
     Select,
     Stack,
-    Switch,
     Table,
     TableBody,
     TableCell,
@@ -28,8 +26,6 @@ import {
     TableHead,
     TableRow,
     TextField,
-    ToggleButton,
-    ToggleButtonGroup,
     Tooltip,
     Typography,
 } from "@mui/material";
@@ -40,8 +36,6 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
-import ViewKanbanIcon from "@mui/icons-material/ViewKanban";
-import ViewListIcon from "@mui/icons-material/ViewList";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import api from "../services/api";
 import {
@@ -51,7 +45,6 @@ import {
     usuarioEhAdm,
     usuarioEhFuncionario,
 } from "../utils/permissoes";
-import PedidoKanban from "./pedidos/PedidoKanban";
 import PedidoDetalhe from "./pedidos/PedidoDetalhe";
 
 const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva", "Misto"];
@@ -87,11 +80,9 @@ export default function Pedidos({
     const [erro, setErro] = useState("");
     const [sucessoMsg, setSucessoMsg] = useState("");
 
-    const [visualizacao, setVisualizacao] = useState("kanban");
     const [busca, setBusca] = useState("");
     const [filtroTipo, setFiltroTipo] = useState("TODOS");
     const [somenteBloqueados, setSomenteBloqueados] = useState(false);
-    const [incluirCancelados, setIncluirCancelados] = useState(false);
 
     const [pedidoSelecionadoId, setPedidoSelecionadoId] = useState(pedidoInicialId);
 
@@ -259,25 +250,6 @@ export default function Pedidos({
         }
     }
 
-    async function mudarEtapaViaKanban(pedido, novoStatus) {
-        setErro("");
-        setSucessoMsg("");
-        try {
-            const res = await api.patch(`/pedido/${pedido.id}/status`, { status: novoStatus });
-            if (res.data?.checklist_pre_saida) {
-                setSucessoMsg(
-                    `Pedido #${pedido.codigo_proposta || pedido.id} avançado para '${novoStatus}' com Checklist de Pré-Saída gerado! Abra os detalhes para conferir os itens.`
-                );
-            } else {
-                setSucessoMsg(`Pedido #${pedido.codigo_proposta || pedido.id} movido para '${novoStatus}'.`);
-            }
-            await atualizarPedidoIndividual(pedido.id);
-        } catch (err) {
-            console.error("Erro ao mover etapa no Kanban:", err);
-            setErro(err.response?.data?.erro || "Não foi possível alterar a etapa do pedido.");
-        }
-    }
-
     async function confirmarExclusao() {
         if (!pedidoExcluir) return;
         setExcluindo(true);
@@ -348,24 +320,6 @@ export default function Pedidos({
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <ToggleButtonGroup
-                        size="small"
-                        exclusive
-                        value={visualizacao}
-                        onChange={(_, val) => {
-                            if (val) setVisualizacao(val);
-                        }}
-                    >
-                        <ToggleButton value="kanban">
-                            <ViewKanbanIcon fontSize="small" sx={{ mr: 0.5 }} />
-                            Kanban
-                        </ToggleButton>
-                        <ToggleButton value="lista">
-                            <ViewListIcon fontSize="small" sx={{ mr: 0.5 }} />
-                            Lista
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-
                     <Button
                         variant="outlined"
                         startIcon={<RefreshIcon />}
@@ -453,19 +407,6 @@ export default function Pedidos({
                             variant={somenteBloqueados ? "filled" : "outlined"}
                             onClick={() => setSomenteBloqueados((prev) => !prev)}
                         />
-                        {visualizacao === "kanban" && (
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        size="small"
-                                        checked={incluirCancelados}
-                                        onChange={(e) => setIncluirCancelados(e.target.checked)}
-                                    />
-                                }
-                                label={<Typography variant="caption">Mostrar Cancelados</Typography>}
-                                sx={{ ml: 0.5 }}
-                            />
-                        )}
                     </Stack>
                 </Stack>
             </Card>
@@ -475,13 +416,6 @@ export default function Pedidos({
                 <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
                     <CircularProgress />
                 </Box>
-            ) : visualizacao === "kanban" ? (
-                <PedidoKanban
-                    pedidos={pedidosFiltrados}
-                    onSelecionarPedido={(p) => setPedidoSelecionadoId(p.id)}
-                    onMudarEtapa={mudarEtapaViaKanban}
-                    incluirCancelados={incluirCancelados}
-                />
             ) : pedidosFiltrados.length === 0 ? (
                 <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
                     <Typography variant="body1" color="text.secondary">

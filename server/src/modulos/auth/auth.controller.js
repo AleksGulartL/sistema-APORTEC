@@ -71,9 +71,25 @@ async function perfil(req, res) {
     }
 }
 
+async function alterarSenha(req, res) {
+    try {
+        const usuario = req.usuario || req.user;
+        if (!usuario) {
+            return res.status(401).json({ erro: "Usuário não autenticado." });
+        }
+        const idUsuario = usuario.id_usuario ?? usuario.id;
+        const resultado = await authService.alterarSenhaUsuario(idUsuario, req.body || {});
+        return res.status(200).json(resultado);
+    } catch (erro) {
+        console.error("Erro ao alterar senha:", erro);
+        return res.status(erro.status || 400).json({ erro: erro.message });
+    }
+}
+
 module.exports = {
     login,
     registrar,
     logout,
     perfil,
+    alterarSenha,
 };

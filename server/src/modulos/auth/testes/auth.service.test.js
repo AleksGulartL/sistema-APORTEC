@@ -109,7 +109,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             await expect(
                 authService.criarNovoUsuario({
                     nome_completo: "Teste",
-                    email: "teste@aportec.com",
+                    email: "teste@gmail.com",
                     senha: "123",
                 })
             ).rejects.toMatchObject({
@@ -123,7 +123,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                 authService.criarNovoUsuario(
                     {
                         nome_completo: "Teste",
-                        email: "teste@aportec.com",
+                        email: "teste@gmail.com",
                         senha: "123",
                     },
                     { id_usuario: 2, perfil: "TECNICO" }
@@ -136,7 +136,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
 
         test("Deve lançar erro 400 se nome_completo for omitido", async () => {
             await expect(
-                authService.criarNovoUsuario({ email: "teste@aportec.com", senha: "123" }, solicitanteAdm)
+                authService.criarNovoUsuario({ email: "teste@gmail.com", senha: "123" }, solicitanteAdm)
             ).rejects.toMatchObject({
                 message: "O campo 'nome_completo' é obrigatório.",
                 status: 400,
@@ -152,9 +152,23 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             });
         });
 
+        test("Deve lançar erro 400 se o e-mail não terminar com @gmail.com", async () => {
+            for (const emailInvalido of ["teste@gmail", "teste@aportec.com", "teste@hotmail.com", "usuario"]) {
+                await expect(
+                    authService.criarNovoUsuario(
+                        { nome_completo: "Teste", email: emailInvalido, senha: "123" },
+                        solicitanteAdm
+                    )
+                ).rejects.toMatchObject({
+                    status: 400,
+                    message: expect.stringContaining("@gmail.com"),
+                });
+            }
+        });
+
         test("Deve lançar erro 400 se senha for omitida", async () => {
             await expect(
-                authService.criarNovoUsuario({ nome_completo: "Teste", email: "teste@aportec.com" }, solicitanteAdm)
+                authService.criarNovoUsuario({ nome_completo: "Teste", email: "teste@gmail.com" }, solicitanteAdm)
             ).rejects.toMatchObject({
                 message: "O campo 'senha' é obrigatório.",
                 status: 400,
@@ -168,7 +182,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                 authService.criarNovoUsuario(
                     {
                         nome_completo: "Teste",
-                        email: "existente@aportec.com",
+                        email: "existente@gmail.com",
                         senha: "123",
                     },
                     solicitanteAdm
@@ -189,7 +203,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             const resultado = await authService.criarNovoUsuario(
                 {
                     nome_completo: "Ana Paula",
-                    email: "ana@aportec.com",
+                    email: "  Ana@Gmail.COM ",
                     senha: "senhaSegura123",
                     cargo_funcao: "Engenheira",
                 },
@@ -199,13 +213,13 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             expect(resultado).toEqual({
                 id_usuario: 5,
                 nome_completo: "Ana Paula",
-                email: "ana@aportec.com",
+                email: "ana@gmail.com",
                 cargo_funcao: "Engenheira",
             });
 
             expect(authRepository.criar).toHaveBeenCalledTimes(1);
             const dadosEnviados = authRepository.criar.mock.calls[0][0];
-            expect(dadosEnviados.email).toBe("ana@aportec.com");
+            expect(dadosEnviados.email).toBe("ana@gmail.com");
             expect(dadosEnviados.senha_hash.startsWith("$2b$")).toBe(true);
             expect(dadosEnviados.senha_hash).not.toBe("senhaSegura123");
         });
@@ -217,7 +231,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             await authService.criarNovoUsuario(
                 {
                     nome_completo: "Técnico Novo",
-                    email: "tecnico.novo@aportec.com",
+                    email: "tecnico.novo@gmail.com",
                     senha: "123456",
                     perfil: "TECNICO",
                 },
@@ -234,7 +248,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                 authService.criarNovoUsuario(
                     {
                         nome_completo: "Invalido",
-                        email: "inv@aportec.com",
+                        email: "inv@gmail.com",
                         senha: "123",
                         perfil: "SUPER_ROOT",
                     },

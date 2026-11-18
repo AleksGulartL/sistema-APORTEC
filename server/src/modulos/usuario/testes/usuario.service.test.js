@@ -37,7 +37,7 @@ describe("UsuarioService - Testes Unitários", () => {
 
     test("Deve lançar erro 400 se 'nome_completo' for omitido", async () => {
         // DADOS: Payload sem o campo obrigatorio nome_completo
-        const dadosInvalidos = { email: "a@a.com", senha_hash: "123" };
+        const dadosInvalidos = { email: "a@gmail.com", senha_hash: "123" };
 
         // AÇÃO & VALIDAÇÃO: Verifica validação do Service
         await expect(usuarioService.criar(dadosInvalidos))
@@ -53,22 +53,37 @@ describe("UsuarioService - Testes Unitários", () => {
             .toMatchObject({ message: "O campo 'email' é obrigatório e deve ser um texto válido.", status: 400 });
     });
 
-    test("Deve criar usuário com sucesso quando dados forem válidos", async () => {
+    test("Deve lançar erro 400 se o e-mail não terminar com @gmail.com na criação ou atualização", async () => {
+        await expect(
+            usuarioService.criar({ nome_completo: "João Silva", email: "joao@gmail", senha_hash: "123" })
+        )
+            .rejects
+            .toMatchObject({ status: 400, message: expect.stringContaining("@gmail.com") });
+
+        await expect(usuarioService.atualizar(2, { email: "joao@outlook.com" }))
+            .rejects
+            .toMatchObject({ status: 400, message: expect.stringContaining("@gmail.com") });
+    });
+
+    test("Deve criar usuário com sucesso quando dados forem válidos e normalizar @gmail.com", async () => {
         // DADOS: Payload do usuário completo
         const dadosValidos = { 
             nome_completo: "João Silva", 
-            email: "joao@email.com", 
+            email: "  Joao.Silva@Gmail.COM ", 
             senha_hash: "hash123", 
             cargo_funcao: "Operador" 
         };
         
         // MOCK: Retorna o usuário cadastrado com a chave primária criada
-        usuarioRepository.criar.mockResolvedValue({ id_usuario: 1, ...dadosValidos });
+        usuarioRepository.criar.mockResolvedValue({ id_usuario: 1, ...dadosValidos, email: "joao.silva@gmail.com" });
 
         // AÇÃO: Executa a criação no Service
         const resultado = await usuarioService.criar(dadosValidos);
 
-        // VALIDAÇÃO: Garante retorno com a propriedade id_usuario
+        // VALIDAÇÃO: Garante normalização e retorno com a propriedade id_usuario
+        expect(usuarioRepository.criar).toHaveBeenCalledWith(
+            expect.objectContaining({ email: "joao.silva@gmail.com" })
+        );
         expect(resultado).toHaveProperty("id_usuario", 1);
     });
 

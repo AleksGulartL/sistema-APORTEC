@@ -8,6 +8,7 @@ import {
     Tabs,
     Tab,
     Container,
+    Tooltip,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
@@ -19,16 +20,40 @@ import Inventory2Icon from "@mui/icons-material/Inventory2";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import BuildIcon from "@mui/icons-material/Build";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
-import { obterPerfilUsuario, usuarioEhAdm } from "../utils/permissoes";
+import HomeIcon from "@mui/icons-material/Home";
+import SensorDoorIcon from "@mui/icons-material/SensorDoor";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import { obterPerfilUsuario, usuarioEhAdm, usuarioEhCliente } from "../utils/permissoes";
 
 export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
     const nome = usuario?.nome_completo || usuario?.nome || usuario?.email || "Usuário";
+    const primeiroNome = String(nome).split(" ")[0];
     const cargo = obterPerfilUsuario(usuario) || usuario?.cargo_funcao || "Operador";
     const ehAdm = usuarioEhAdm(usuario);
+    const ehCliente = usuarioEhCliente(usuario);
+
+    const itensMenu = ehCliente
+        ? [
+              { valor: "cliente_inicio", label: "Início", icone: <HomeIcon /> },
+              { valor: "cliente_pedidos", label: "Meus Pedidos", icone: <AssignmentIcon /> },
+              { valor: "cliente_portas", label: "Minhas Portas", icone: <SensorDoorIcon /> },
+              { valor: "cliente_os", label: "Assistência", icone: <SupportAgentIcon /> },
+          ]
+        : [
+              { valor: "dashboard", label: "Dashboard", icone: <DashboardIcon /> },
+              { valor: "pedidos", label: "Pedidos", icone: <AssignmentIcon /> },
+              { valor: "catalogo", label: "Estoque", icone: <Inventory2Icon /> },
+              { valor: "ordens_servico", label: "OS", icone: <BuildIcon /> },
+              { valor: "prontuario", label: "Prontuário", icone: <QrCode2Icon /> },
+              { valor: "clientes", label: "Clientes", icone: <PeopleAltIcon /> },
+              ...(ehAdm ? [{ valor: "usuarios", label: "Usuários", icone: <ManageAccountsIcon /> }] : []),
+          ];
+
+    const tabValue = itensMenu.some((item) => item.valor === abaAtiva) ? abaAtiva : false;
 
     const abas = (
         <Tabs
-            value={abaAtiva}
+            value={tabValue}
             onChange={(_, val) => onMudarAba(val)}
             textColor="inherit"
             indicatorColor="secondary"
@@ -43,24 +68,28 @@ export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
                 },
             }}
         >
-            <Tab value="dashboard" icon={<DashboardIcon />} iconPosition="start" label="Dashboard" />
-            <Tab value="pedidos" icon={<AssignmentIcon />} iconPosition="start" label="Pedidos" />
-            <Tab value="catalogo" icon={<Inventory2Icon />} iconPosition="start" label="Estoque" />
-            <Tab value="ordens_servico" icon={<BuildIcon />} iconPosition="start" label="OS" />
-            <Tab value="prontuario" icon={<QrCode2Icon />} iconPosition="start" label="Prontuário" />
-            <Tab value="clientes" icon={<PeopleAltIcon />} iconPosition="start" label="Clientes" />
-            {ehAdm && (
-                <Tab value="usuarios" icon={<ManageAccountsIcon />} iconPosition="start" label="Usuários" />
-            )}
-            <Tab value="perfil" icon={<PersonIcon />} iconPosition="start" label="Perfil" />
+            {itensMenu.map((item) => (
+                <Tab
+                    key={item.valor}
+                    value={item.valor}
+                    icon={item.icone}
+                    iconPosition="start"
+                    label={item.label}
+                />
+            ))}
         </Tabs>
     );
+
+    const perfilAtivo = abaAtiva === "perfil";
 
     return (
         <AppBar position="sticky" elevation={2} sx={{ bgcolor: "#0f3460" }}>
             <Container maxWidth="xl">
                 <Toolbar disableGutters sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+                    <Box
+                        onClick={() => onMudarAba(ehCliente ? "cliente_inicio" : "dashboard")}
+                        sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, cursor: "pointer" }}
+                    >
                         <PrecisionManufacturingIcon sx={{ fontSize: 32, color: "#ff9800" }} />
                         <Typography
                             variant="h6"
@@ -80,16 +109,33 @@ export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
                         {abas}
                     </Box>
 
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                        <Chip
-                            avatar={<PersonIcon sx={{ color: "white !important" }} />}
-                            label={`${nome} (${cargo})`}
-                            sx={{
-                                bgcolor: "rgba(255, 255, 255, 0.15)",
-                                color: "white",
-                                display: { xs: "none", md: "flex" },
-                            }}
-                        />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexShrink: 0 }}>
+                        <Tooltip title="Abrir Meu Perfil e Alterar Senha">
+                            <Chip
+                                clickable
+                                onClick={() => onMudarAba("perfil")}
+                                avatar={<PersonIcon sx={{ color: "white !important" }} />}
+                                label={
+                                    <>
+                                        <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                                            {nome} ({cargo})
+                                        </Box>
+                                        <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+                                            {primeiroNome}
+                                        </Box>
+                                    </>
+                                }
+                                sx={{
+                                    bgcolor: perfilAtivo ? "secondary.main" : "rgba(255, 255, 255, 0.16)",
+                                    color: "white",
+                                    fontWeight: perfilAtivo ? "bold" : "medium",
+                                    border: perfilAtivo ? "1px solid #fff" : "1px solid rgba(255,255,255,0.25)",
+                                    "&:hover": {
+                                        bgcolor: perfilAtivo ? "secondary.dark" : "rgba(255, 255, 255, 0.28)",
+                                    },
+                                }}
+                            />
+                        </Tooltip>
 
                         <Button
                             color="inherit"

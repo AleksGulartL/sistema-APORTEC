@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const authRepository = require("./auth.repository");
+const { validarGmail } = require("../../utils/validacaoEmail");
 
 const SALT_ROUNDS = 10;
 // Hash bcrypt fictício para garantir tempo de resposta constante e evitar enumeração de usuários
@@ -123,7 +124,7 @@ async function criarNovoUsuario(dados, solicitante = null) {
     }
 
     const nome = (dados.nome_completo || dados.nome || "").trim();
-    const email = (dados.email || dados.username || "").trim();
+    const emailBruto = dados.email || dados.username || "";
     const senha = dados.senha || dados.password || dados.senha_hash || "";
     const cargo_funcao = dados.cargo_funcao || dados.perfil || dados.role || "usuario";
     const perfil = dados.perfil
@@ -136,11 +137,7 @@ async function criarNovoUsuario(dados, solicitante = null) {
         throw erro;
     }
 
-    if (!email) {
-        const erro = new Error("O campo 'email' é obrigatório.");
-        erro.status = 400;
-        throw erro;
-    }
+    const email = validarGmail(emailBruto, "O campo 'email' é obrigatório.");
 
     if (!senha) {
         const erro = new Error("O campo 'senha' é obrigatório.");
@@ -202,6 +199,35 @@ function verificarToken(token) {
     return jwt.verify(token, getJwtSecret());
 }
 
+async function alterarSenhaUsuario(usuarioId, dados = {}) {
+    const senhaAtual = dados.senha_atual || "";
+    const novaSenha = dados.nova_senha || "";
+
+    if (!senhaAtual || !novaSenha || String(novaSenha).trim().length < 4) {
+        const erro = new Error("Informe a senha atual e uma nova senha com pelo menos 4 caracteres.");
+        erro.status = 400;
+        throw erro;
+    }
+
+    const reg = await authRepository.buscarPorId(usuarioId);
+    if (!reg) {
+        const erro = new Error("Usuário não encontrado.");
+        erro.status = 404;
+        throw erro;
+    }
+
+    const valida = await verificarSenha(senhaAtual, reg.senha_hash);
+    if (!valida) {
+        const erro = new Error("Senha atual incorreta.");
+        erro.status = 400;
+        throw erro;
+    }
+
+    const novoHash = await hashearSenha(String(novaSenha).trim());
+    await authRepository.atualizarSenha(reg.id, novoHash);
+    return { mensagem: "Senha atualizada com sucesso." };
+}
+
 module.exports = {
     hashearSenha,
     verificarSenha,
@@ -210,4 +236,5 @@ module.exports = {
     gerarToken,
     verificarToken,
     normalizarPerfil,
+    alterarSenhaUsuario,
 };

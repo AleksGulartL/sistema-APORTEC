@@ -113,7 +113,9 @@ export default function DetalheEventoDialog({ selecionado, onClose, onAbrirPedid
                             label="Técnico Responsável"
                             valor={
                                 registro.tecnico_responsavel?.nome_completo ||
-                                `Técnico #${registro.tecnico_responsavel_id}`
+                                (registro.tecnico_responsavel_id
+                                    ? `Técnico #${registro.tecnico_responsavel_id}`
+                                    : "Aguardando atribuição")
                             }
                         />
                         <CampoInfo label="Tipo de Serviço" valor={registro.tipo_servico} />

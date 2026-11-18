@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
+const { validarGmail } = require("../../utils/validacaoEmail");
 
 const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
 const SALT_ROUNDS = 10;
@@ -27,11 +28,7 @@ function validarUsuario(dados, isUpdate = false) {
     }
 
     if (!isUpdate || dados.email !== undefined) {
-        if (!dados.email || typeof dados.email !== "string" || !dados.email.trim()) {
-            const erro = new Error("O campo 'email' é obrigatório e deve ser um texto válido.");
-            erro.status = 400;
-            throw erro;
-        }
+        validarGmail(dados.email);
     }
 
     if (!isUpdate) {
@@ -79,7 +76,10 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarUsuario(dados, false);
-    const payload = { ...dados };
+    const payload = {
+        ...dados,
+        email: validarGmail(dados.email),
+    };
     if (payload.perfil) {
         payload.perfil = String(payload.perfil).trim().toUpperCase();
     } else if (payload.cargo_funcao) {
@@ -99,6 +99,9 @@ async function atualizar(id, dados) {
     validarUsuario(dados, true);
     const payload = { ...dados };
 
+    if (payload.email !== undefined) {
+        payload.email = validarGmail(payload.email);
+    }
     if (payload.perfil) {
         payload.perfil = String(payload.perfil).trim().toUpperCase();
     }

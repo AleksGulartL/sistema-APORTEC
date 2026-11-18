@@ -59,7 +59,7 @@ const usuario = sequelize.define(
             },
         },
         perfil: {
-            type: DataTypes.ENUM("ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO", "CLIENTE"),
+            type: DataTypes.ENUM("ADM", "TECNICO", "CLIENTE"),
             allowNull: false,
             defaultValue: "TECNICO",
             field: "perfil",

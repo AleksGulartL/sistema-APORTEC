@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
+    Autocomplete,
     Box,
     Button,
     Card,
@@ -11,6 +12,7 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
+    Divider,
     FormControl,
     Grid,
     IconButton,
@@ -46,9 +48,15 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import api from "../services/api";
 import { formatarMoedaBr, obterPerfilUsuario, usuarioEhAdm, usuarioEhFuncionario } from "../utils/permissoes";
 
-const TIPOS_ITEM = ["Insumo", "Porta", "Peca", "Material", "Servico"];
+const TIPOS_ITEM = [
+    { valor: "Insumo", label: "Insumo (Matéria-prima / Componente)" },
+    { valor: "Porta", label: "Porta (Produto Final)" },
+    { valor: "Peca", label: "Peça (Reposição / Acessório)" },
+];
 
-const UNIDADES_SUGERIDAS = ["UN", "PC", "M", "M2", "KIT", "KG", "PAR"];
+const CATEGORIAS_SUGERIDAS = ["GERAL", "Automatizador", "Perfil", "Vidro", "Eletrônica", "Ferragem", "Sensor"];
+
+const UNIDADES_SUGERIDAS = ["UN", "PC", "M", "M2", "KIT", "KG", "PAR", "CX"];
 
 const FORM_INICIAL = {
     id: null,
@@ -139,14 +147,7 @@ export default function CatalogoEstoque({ usuario }) {
         return itens.filter((it) => Number(it.quantidade_atual ?? 0) <= Number(it.estoque_minimo ?? 0));
     }, [ehAdm, alertasApi, itens]);
 
-    const valorTotalEstoque = useMemo(
-        () =>
-            itens.reduce(
-                (acc, it) => acc + Number(it.quantidade_atual ?? 0) * Number(it.valor_unitario_padrao ?? 0),
-                0
-            ),
-        [itens]
-    );
+    const itensRegularesCount = Math.max(0, itens.length - itensCriticos.length);
 
     const itensFiltrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
@@ -414,14 +415,10 @@ export default function CatalogoEstoque({ usuario }) {
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
                         <CardContent>
                             <Typography variant="subtitle2" color="text.secondary">
-                                Alertas de Estoque Mínimo
+                                Itens com Saldo Regular
                             </Typography>
-                            <Typography
-                                variant="h4"
-                                fontWeight="bold"
-                                color={itensCriticos.length > 0 ? "error.main" : "success.main"}
-                            >
-                                {itensCriticos.length}
+                            <Typography variant="h4" fontWeight="bold" color="success.main">
+                                {itensRegularesCount}
                             </Typography>
                         </CardContent>
                     </Card>
@@ -430,10 +427,14 @@ export default function CatalogoEstoque({ usuario }) {
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
                         <CardContent>
                             <Typography variant="subtitle2" color="text.secondary">
-                                Valor Estimado em Estoque
+                                Alertas de Estoque Mínimo
                             </Typography>
-                            <Typography variant="h4" fontWeight="bold" color="primary.main">
-                                {formatarMoedaBr(valorTotalEstoque)}
+                            <Typography
+                                variant="h4"
+                                fontWeight="bold"
+                                color={itensCriticos.length > 0 ? "error.main" : "success.main"}
+                            >
+                                {itensCriticos.length}
                             </Typography>
                         </CardContent>
                     </Card>
@@ -476,16 +477,16 @@ export default function CatalogoEstoque({ usuario }) {
                         />
                         {TIPOS_ITEM.map((t) => {
                             const qtd = itens.filter(
-                                (it) => String(it.tipo).toLowerCase() === t.toLowerCase()
+                                (it) => String(it.tipo).toLowerCase() === t.valor.toLowerCase()
                             ).length;
                             return (
                                 <Chip
-                                    key={t}
+                                    key={t.valor}
                                     size="small"
-                                    label={`${t} (${qtd})`}
-                                    color={filtroTipo === t ? "primary" : "default"}
-                                    variant={filtroTipo === t ? "filled" : "outlined"}
-                                    onClick={() => setFiltroTipo(filtroTipo === t ? "TODOS" : t)}
+                                    label={`${t.valor} (${qtd})`}
+                                    color={filtroTipo === t.valor ? "primary" : "default"}
+                                    variant={filtroTipo === t.valor ? "filled" : "outlined"}
+                                    onClick={() => setFiltroTipo(filtroTipo === t.valor ? "TODOS" : t.valor)}
                                 />
                             );
                         })}
@@ -635,121 +636,179 @@ export default function CatalogoEstoque({ usuario }) {
                         {modoEdicao ? "Editar Item do Catálogo" : "Novo Item no Catálogo"}
                     </DialogTitle>
                     <DialogContent dividers>
-                        <Stack spacing={2} sx={{ pt: 1 }}>
+                        <Stack spacing={2.5} sx={{ pt: 0.5 }}>
                             {erroModal && <Alert severity="error">{erroModal}</Alert>}
 
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth required>
-                                        <InputLabel id="tipo-item-label">Tipo</InputLabel>
-                                        <Select
-                                            labelId="tipo-item-label"
-                                            label="Tipo"
-                                            value={form.tipo}
-                                            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-                                        >
-                                            {TIPOS_ITEM.map((t) => (
-                                                <MenuItem key={t} value={t}>
-                                                    {t}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
+                            <Box>
+                                <Typography variant="overline" color="primary" fontWeight="bold" sx={{ display: "block", mb: 1 }}>
+                                    Identificação do Item
+                                </Typography>
+                                <Stack spacing={2}>
                                     <TextField
+                                        required
                                         fullWidth
-                                        label="Código de Referência"
-                                        placeholder="Ex: MOT-SLIM-200"
-                                        value={form.codigo_referencia}
-                                        onChange={(e) => setForm({ ...form, codigo_referencia: e.target.value })}
+                                        label="Descrição do Item"
+                                        placeholder="Ex: Automatizador APORTEC Slim 200kg c/ central digital"
+                                        value={form.descricao}
+                                        onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                                     />
-                                </Grid>
-                            </Grid>
 
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Categoria"
-                                        placeholder="Ex: Automatizador, Vidro, Perfil"
-                                        value={form.categoria}
-                                        onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12} sm={7}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel id="tipo-item-label">Tipo</InputLabel>
+                                                <Select
+                                                    labelId="tipo-item-label"
+                                                    label="Tipo"
+                                                    value={form.tipo}
+                                                    onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+                                                >
+                                                    {TIPOS_ITEM.map((t) => (
+                                                        <MenuItem key={t.valor} value={t.valor}>
+                                                            {t.label}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                        <Grid item xs={12} sm={5}>
+                                            <TextField
+                                                fullWidth
+                                                label="Código de Referência"
+                                                placeholder="Ex: MOT-SLIM-200"
+                                                value={form.codigo_referencia}
+                                                onChange={(e) => setForm({ ...form, codigo_referencia: e.target.value })}
+                                            />
+                                        </Grid>
+                                    </Grid>
+
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12} sm={7}>
+                                            <Autocomplete
+                                                freeSolo
+                                                options={CATEGORIAS_SUGERIDAS}
+                                                value={form.categoria}
+                                                onInputChange={(_, novoValor) =>
+                                                    setForm((prev) => ({ ...prev, categoria: novoValor }))
+                                                }
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        fullWidth
+                                                        label="Categoria"
+                                                        placeholder="Ex: Automatizador, Vidro, Perfil"
+                                                    />
+                                                )}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={5}>
+                                            <FormControl fullWidth required>
+                                                <InputLabel id="unidade-medida-label">Unidade</InputLabel>
+                                                <Select
+                                                    labelId="unidade-medida-label"
+                                                    label="Unidade"
+                                                    value={
+                                                        UNIDADES_SUGERIDAS.includes(form.unidade_medida)
+                                                            ? form.unidade_medida
+                                                            : "UN"
+                                                    }
+                                                    onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })}
+                                                >
+                                                    {UNIDADES_SUGERIDAS.map((u) => (
+                                                        <MenuItem key={u} value={u}>
+                                                            {u}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                    </Grid>
+                                </Stack>
+                            </Box>
+
+                            <Divider />
+
+                            <Box>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                                    <Typography variant="overline" color="primary" fontWeight="bold">
+                                        Precificação e Controle de Saldo
+                                    </Typography>
+                                    <Chip
+                                        size="small"
+                                        color={
+                                            Number(form.quantidade_estoque) <= Number(form.estoque_minimo)
+                                                ? "warning"
+                                                : "success"
+                                        }
+                                        variant="outlined"
+                                        label={
+                                            Number(form.quantidade_estoque) <= Number(form.estoque_minimo)
+                                                ? "Nasce em alerta de reposição"
+                                                : "Saldo regular"
+                                        }
                                     />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth required>
-                                        <InputLabel id="unidade-medida-label">Unidade de Medida</InputLabel>
-                                        <Select
-                                            labelId="unidade-medida-label"
-                                            label="Unidade de Medida"
-                                            value={
-                                                UNIDADES_SUGERIDAS.includes(form.unidade_medida)
-                                                    ? form.unidade_medida
-                                                    : "UN"
+                                </Stack>
+
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            required
+                                            fullWidth
+                                            type="number"
+                                            inputProps={{ min: 0, step: "0.01" }}
+                                            label="Valor Unitário"
+                                            value={form.valor_unitario_padrao}
+                                            onChange={(e) =>
+                                                setForm({ ...form, valor_unitario_padrao: e.target.value })
                                             }
-                                            onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })}
-                                        >
-                                            {UNIDADES_SUGERIDAS.map((u) => (
-                                                <MenuItem key={u} value={u}>
-                                                    {u}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start">R$</InputAdornment>,
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            required
+                                            fullWidth
+                                            type="number"
+                                            inputProps={{ min: 0, step: "0.01" }}
+                                            label={modoEdicao ? "Saldo Atual" : "Saldo Inicial"}
+                                            value={form.quantidade_estoque}
+                                            onChange={(e) =>
+                                                setForm({ ...form, quantidade_estoque: e.target.value })
+                                            }
+                                            InputProps={{
+                                                endAdornment: (
+                                                    <InputAdornment position="end">
+                                                        {form.unidade_medida || "UN"}
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            required
+                                            fullWidth
+                                            type="number"
+                                            inputProps={{ min: 0, step: "0.01" }}
+                                            label="Estoque Mínimo"
+                                            value={form.estoque_minimo}
+                                            onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })}
+                                            InputProps={{
+                                                endAdornment: (
+                                                    <InputAdornment position="end">
+                                                        {form.unidade_medida || "UN"}
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                        />
+                                    </Grid>
                                 </Grid>
-                            </Grid>
-
-                            <TextField
-                                required
-                                fullWidth
-                                multiline
-                                rows={2}
-                                label="Descrição do Item"
-                                placeholder="Ex: Automatizador APORTEC Slim 200kg c/ central digital"
-                                value={form.descricao}
-                                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                            />
-
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        required
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0, step: "0.01" }}
-                                        label="Valor Unitário (R$)"
-                                        value={form.valor_unitario_padrao}
-                                        onChange={(e) =>
-                                            setForm({ ...form, valor_unitario_padrao: e.target.value })
-                                        }
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        required
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0, step: "0.01" }}
-                                        label="Saldo Atual"
-                                        value={form.quantidade_estoque}
-                                        onChange={(e) =>
-                                            setForm({ ...form, quantidade_estoque: e.target.value })
-                                        }
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        required
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0, step: "0.01" }}
-                                        label="Estoque Mínimo"
-                                        value={form.estoque_minimo}
-                                        onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })}
-                                    />
-                                </Grid>
-                            </Grid>
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                                    O sistema emitirá um alerta automático quando o saldo ficar menor ou igual ao estoque mínimo.
+                                </Typography>
+                            </Box>
                         </Stack>
                     </DialogContent>
                     <DialogActions sx={{ p: 2 }}>

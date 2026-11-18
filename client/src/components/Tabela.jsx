@@ -10,10 +10,13 @@ import {
     Box,
     IconButton,
     Tooltip,
+    Stack,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
-export default function Tabela({ dados = [], onSelecionar }) {
+export default function Tabela({ dados = [], onSelecionar, onEditar, onExcluir }) {
     if (!dados || dados.length === 0) {
         return (
             <Box sx={{ p: 4, textAlign: "center" }}>
@@ -23,6 +26,8 @@ export default function Tabela({ dados = [], onSelecionar }) {
             </Box>
         );
     }
+
+    const temAcoes = Boolean(onSelecionar || onEditar || onExcluir);
 
     return (
         <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2, overflow: "hidden" }}>
@@ -35,7 +40,7 @@ export default function Tabela({ dados = [], onSelecionar }) {
                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>Telefone</TableCell>
                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>E-mail</TableCell>
                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>Endereço</TableCell>
-                        {onSelecionar && (
+                        {temAcoes && (
                             <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                 Ações
                             </TableCell>
@@ -68,17 +73,43 @@ export default function Tabela({ dados = [], onSelecionar }) {
                                 <TableCell>{tel}</TableCell>
                                 <TableCell>{email}</TableCell>
                                 <TableCell>{end}</TableCell>
-                                {onSelecionar && (
+                                {temAcoes && (
                                     <TableCell align="center">
-                                        <Tooltip title="Ver Detalhes">
-                                            <IconButton
-                                                color="primary"
-                                                size="small"
-                                                onClick={() => onSelecionar(item)}
-                                            >
-                                                <VisibilityIcon />
-                                            </IconButton>
-                                        </Tooltip>
+                                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                                            {onSelecionar && (
+                                                <Tooltip title="Ver Detalhes">
+                                                    <IconButton
+                                                        color="primary"
+                                                        size="small"
+                                                        onClick={() => onSelecionar(item)}
+                                                    >
+                                                        <VisibilityIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {onEditar && (
+                                                <Tooltip title="Editar / Redefinir Senha">
+                                                    <IconButton
+                                                        color="secondary"
+                                                        size="small"
+                                                        onClick={() => onEditar(item)}
+                                                    >
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {onExcluir && (
+                                                <Tooltip title="Excluir Cliente">
+                                                    <IconButton
+                                                        color="error"
+                                                        size="small"
+                                                        onClick={() => onExcluir(item)}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                        </Stack>
                                     </TableCell>
                                 )}
                             </TableRow>

@@ -1,5 +1,18 @@
 const clienteService = require("./cliente.service");
 
+function extrairMensagemUnicidade(erro) {
+    const ehDuplicado = erro.code === "23505" || erro.name === "SequelizeUniqueConstraintError";
+    if (!ehDuplicado) return null;
+
+    const constraint = erro.parent?.constraint || "";
+    const campo = erro.errors?.[0]?.path || "";
+
+    if (constraint === "uq_usuario_email" || campo === "email") {
+        return "Já existe um usuário/cliente cadastrado com este e-mail.";
+    }
+    return "Já existe um cliente cadastrado com este CNPJ/CPF.";
+}
+
 async function listar(req, res) {
     try {
         const cliente = await clienteService.listar();
@@ -29,8 +42,9 @@ async function criar(req, res) {
         return res.status(201).json(registro);
     } catch (erro) {
         console.error("Erro ao criar cliente:", erro);
-        if (erro.code === "23505") {
-            return res.status(400).json({ erro: "Já existe um cliente cadastrado com este CNPJ/CPF." });
+        const msgDuplicado = extrairMensagemUnicidade(erro);
+        if (msgDuplicado) {
+            return res.status(400).json({ erro: msgDuplicado });
         }
         return res.status(erro.status || 400).json({ erro: erro.message });
     }
@@ -45,8 +59,9 @@ async function atualizar(req, res) {
         return res.status(200).json(registro);
     } catch (erro) {
         console.error("Erro ao atualizar cliente:", erro);
-        if (erro.code === "23505") {
-            return res.status(400).json({ erro: "Já existe um cliente cadastrado com este CNPJ/CPF." });
+        const msgDuplicado = extrairMensagemUnicidade(erro);
+        if (msgDuplicado) {
+            return res.status(400).json({ erro: msgDuplicado });
         }
         return res.status(erro.status || 400).json({ erro: erro.message });
     }
@@ -70,5 +85,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

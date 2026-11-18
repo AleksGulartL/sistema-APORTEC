@@ -4,6 +4,7 @@ import {
     Box,
     Button,
     Card,
+    CardContent,
     Chip,
     CircularProgress,
     Dialog,
@@ -12,6 +13,7 @@ import {
     DialogTitle,
     FormControl,
     FormControlLabel,
+    Grid,
     IconButton,
     InputAdornment,
     InputLabel,
@@ -40,6 +42,12 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import api from "../services/api";
 import { usuarioEhAdm } from "../utils/permissoes";
+import {
+    emailEhGmail,
+    MENSAGEM_ERRO_GMAIL,
+    normalizarEmailGmail,
+    obterAjudaEmailGmail,
+} from "../utils/validacoes";
 
 const COR_PERFIL = {
     ADM: "error",
@@ -67,11 +75,13 @@ export default function Usuarios({ usuario }) {
     const [sucessoMsg, setSucessoMsg] = useState("");
     const [busca, setBusca] = useState("");
     const [filtroPerfil, setFiltroPerfil] = useState("TODOS");
+    const [incluirClientes, setIncluirClientes] = useState(false);
 
     // Modal de criação / edição
     const [modalAberto, setModalAberto] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
+    const [emailTocado, setEmailTocado] = useState(false);
     const [mostrarSenha, setMostrarSenha] = useState(false);
     const [erroModal, setErroModal] = useState("");
     const [salvando, setSalvando] = useState(false);
@@ -102,9 +112,15 @@ export default function Usuarios({ usuario }) {
         carregarUsuarios();
     }, [carregarUsuarios]);
 
+    const colaboradoresInternos = useMemo(
+        () => usuarios.filter((u) => u.perfil !== "CLIENTE"),
+        [usuarios]
+    );
+
     const usuariosFiltrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
         return usuarios.filter((u) => {
+            if (!incluirClientes && u.perfil === "CLIENTE") return false;
             if (filtroPerfil !== "TODOS" && u.perfil !== filtroPerfil) return false;
             if (!termo) return true;
             return (
@@ -113,27 +129,30 @@ export default function Usuarios({ usuario }) {
                 String(u.cargo_funcao || "").toLowerCase().includes(termo)
             );
         });
-    }, [usuarios, busca, filtroPerfil]);
+    }, [usuarios, busca, filtroPerfil, incluirClientes]);
 
     function abrirNovoUsuario() {
         setModoEdicao(false);
         setForm(FORM_INICIAL);
+        setEmailTocado(false);
         setMostrarSenha(false);
         setErroModal("");
         setModalAberto(true);
     }
 
     function abrirEdicao(registro) {
+        const emailAtual = registro.email || "";
         setModoEdicao(true);
         setForm({
             id: registro.id ?? registro.id_usuario,
             nome_completo: registro.nome_completo || "",
-            email: registro.email || "",
+            email: emailAtual,
             perfil: registro.perfil || "TECNICO",
             cargo_funcao: registro.cargo_funcao || "",
             senha: "",
             ativo: registro.ativo !== false,
         });
+        setEmailTocado(Boolean(emailAtual.trim()) && !emailEhGmail(emailAtual));
         setMostrarSenha(false);
         setErroModal("");
         setModalAberto(true);
@@ -142,32 +161,40 @@ export default function Usuarios({ usuario }) {
     async function salvarUsuario(event) {
         event.preventDefault();
         setErroModal("");
+
+        if (!emailEhGmail(form.email)) {
+            setEmailTocado(true);
+            setErroModal(MENSAGEM_ERRO_GMAIL);
+            return;
+        }
+
         setSalvando(true);
+        const emailNormalizado = normalizarEmailGmail(form.email);
 
         try {
             if (modoEdicao) {
                 const payload = {
                     nome_completo: form.nome_completo.trim(),
-                    email: form.email.trim(),
+                    email: emailNormalizado,
                     perfil: form.perfil,
-                    cargo_funcao: form.cargo_funcao.trim() || form.perfil,
+                    cargo_funcao: form.cargo_funcao.trim() || (form.perfil === "ADM" ? "Administrador" : "Técnico"),
                     ativo: form.ativo,
                 };
                 if (form.senha.trim()) {
-                    payload.senha = form.senha;
+                    payload.senha = form.senha.trim();
                 }
                 await api.put(`/usuarios/${form.id}`, payload);
-                setSucessoMsg("Usuário atualizado com sucesso!");
+                setSucessoMsg("Colaborador atualizado com sucesso!");
             } else {
-                // Usa /auth/registrar autenticado como ADM para criar usuário já com hash bcrypt
+                const cargoPadrao = form.perfil === "ADM" ? "Administrador" : "Técnico";
                 await api.post("/auth/registrar", {
                     nome_completo: form.nome_completo.trim(),
-                    email: form.email.trim(),
+                    email: emailNormalizado,
                     senha: form.senha,
                     perfil: form.perfil,
-                    cargo_funcao: form.cargo_funcao.trim() || form.perfil,
+                    cargo_funcao: form.cargo_funcao.trim() || cargoPadrao,
                 });
-                setSucessoMsg("Usuário cadastrado com sucesso!");
+                setSucessoMsg(`Usuário "${form.nome_completo.trim()}" cadastrado com perfil ${form.perfil}!`);
             }
 
             setModalAberto(false);
@@ -208,6 +235,9 @@ export default function Usuarios({ usuario }) {
         );
     }
 
+    const totalAdmins = colaboradoresInternos.filter((u) => u.perfil === "ADM").length;
+    const totalTecnicos = colaboradoresInternos.filter((u) => u.perfil === "TECNICO").length;
+
     return (
         <Box sx={{ py: 3 }}>
             <Stack
@@ -219,10 +249,10 @@ export default function Usuarios({ usuario }) {
             >
                 <Box>
                     <Typography variant="h4" fontWeight="bold" color="text.primary">
-                        Usuários do Sistema
+                        Equipe e Usuários Internos
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Cadastro, alteração de perfis (ADM, TECNICO, CLIENTE) e controle de acesso (RF01)
+                        Gerencie colaboradores (Administradores e Técnicos). Contas de clientes são criadas na aba Clientes.
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
@@ -234,12 +264,8 @@ export default function Usuarios({ usuario }) {
                     >
                         Atualizar
                     </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={abrirNovoUsuario}
-                    >
-                        Novo Usuário
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNovoUsuario}>
+                        Novo Colaborador
                     </Button>
                 </Stack>
             </Stack>
@@ -254,6 +280,46 @@ export default function Usuarios({ usuario }) {
                     {erro}
                 </Alert>
             )}
+
+            {/* Resumo */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={4}>
+                    <Card elevation={2} sx={{ borderRadius: 2 }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Colaboradores Internos
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold">
+                                {colaboradoresInternos.length}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                    <Card elevation={2} sx={{ borderRadius: 2 }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Administradores (ADM)
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold" color="error.main">
+                                {totalAdmins}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                    <Card elevation={2} sx={{ borderRadius: 2 }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Técnicos (TECNICO)
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold" color="warning.main">
+                                {totalTecnicos}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
 
             <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                 <Stack
@@ -277,21 +343,36 @@ export default function Usuarios({ usuario }) {
                         }}
                     />
 
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {["TODOS", "ADM", "TECNICO", "CLIENTE"].map((p) => (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                        {["TODOS", "ADM", "TECNICO"].map((p) => (
                             <Chip
                                 key={p}
                                 size="small"
                                 label={
                                     p === "TODOS"
-                                        ? `Todos (${usuarios.length})`
-                                        : `${p} (${usuarios.filter((u) => u.perfil === p).length})`
+                                        ? `Equipe (${colaboradoresInternos.length})`
+                                        : `${p} (${colaboradoresInternos.filter((u) => u.perfil === p).length})`
                                 }
                                 color={filtroPerfil === p ? COR_PERFIL[p] || "primary" : "default"}
                                 variant={filtroPerfil === p ? "filled" : "outlined"}
                                 onClick={() => setFiltroPerfil(p)}
                             />
                         ))}
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    size="small"
+                                    checked={incluirClientes}
+                                    onChange={(e) => {
+                                        setIncluirClientes(e.target.checked);
+                                        if (!e.target.checked && filtroPerfil === "CLIENTE") {
+                                            setFiltroPerfil("TODOS");
+                                        }
+                                    }}
+                                />
+                            }
+                            label={<Typography variant="caption">Mostrar acessos de Clientes</Typography>}
+                        />
                     </Stack>
                 </Stack>
             </Card>
@@ -303,7 +384,7 @@ export default function Usuarios({ usuario }) {
             ) : usuariosFiltrados.length === 0 ? (
                 <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
                     <Typography variant="body1" color="text.secondary">
-                        Nenhum usuário encontrado.
+                        Nenhum usuário encontrado para os filtros atuais.
                     </Typography>
                 </Paper>
             ) : (
@@ -393,16 +474,28 @@ export default function Usuarios({ usuario }) {
                 </TableContainer>
             )}
 
-            {/* Modal Criar / Editar Usuário */}
+            {/* Modal Criar / Editar Colaborador */}
             <Dialog open={modalAberto} onClose={() => setModalAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={salvarUsuario}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <ManageAccountsIcon color="primary" />
-                        {modoEdicao ? "Editar Usuário" : "Cadastrar Novo Usuário"}
+                        {modoEdicao ? "Editar Usuário" : "Cadastrar Novo Colaborador"}
                     </DialogTitle>
                     <DialogContent dividers>
-                        <Stack spacing={2} sx={{ pt: 1 }}>
+                        <Stack spacing={2} sx={{ pt: 0.5 }}>
                             {erroModal && <Alert severity="error">{erroModal}</Alert>}
+
+                            {modoEdicao && form.perfil === "CLIENTE" ? (
+                                <Alert severity="info">
+                                    Esta conta pertence a um Cliente cadastrado. Para alterar dados comerciais (CNPJ/CPF,
+                                    telefone ou endereço) utilize a aba <strong>Clientes</strong>.
+                                </Alert>
+                            ) : (
+                                <Alert severity="info" variant="outlined">
+                                    <strong>ADM:</strong> acesso total ao sistema. <strong>TECNICO:</strong> medições,
+                                    andamento de produção, OS e prontuários.
+                                </Alert>
+                            )}
 
                             <TextField
                                 required
@@ -414,33 +507,53 @@ export default function Usuarios({ usuario }) {
                             <TextField
                                 required
                                 fullWidth
-                                type="email"
-                                label="E-mail"
+                                type="text"
+                                label="E-mail de Acesso"
+                                placeholder="nome@gmail.com"
+                                autoComplete="email"
+                                inputProps={{ inputMode: "email" }}
                                 value={form.email}
-                                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                onChange={(e) => {
+                                    const novoEmail = e.target.value;
+                                    setForm({ ...form, email: novoEmail });
+                                    if (erroModal === MENSAGEM_ERRO_GMAIL && emailEhGmail(novoEmail)) {
+                                        setErroModal("");
+                                    }
+                                }}
+                                onBlur={() => setEmailTocado(true)}
+                                {...obterAjudaEmailGmail(form.email, emailTocado)}
                             />
-                            <FormControl fullWidth required>
-                                <InputLabel id="perfil-select-label">Perfil de Acesso</InputLabel>
-                                <Select
-                                    labelId="perfil-select-label"
-                                    label="Perfil de Acesso"
-                                    value={form.perfil}
-                                    onChange={(e) => setForm({ ...form, perfil: e.target.value })}
-                                >
-                                    <MenuItem value="ADM">ADM — Acesso total (administrativo e financeiro)</MenuItem>
-                                    <MenuItem value="TECNICO">
-                                        TECNICO — Operação em campo (medições, OS, consultas)
-                                    </MenuItem>
-                                    <MenuItem value="CLIENTE">CLIENTE — Cadastro externo (sem acesso interno)</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <TextField
-                                fullWidth
-                                label="Cargo / Função (descrição)"
-                                placeholder="Ex: Gerente de Produção, Instalador, Comercial"
-                                value={form.cargo_funcao}
-                                onChange={(e) => setForm({ ...form, cargo_funcao: e.target.value })}
-                            />
+
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6}>
+                                    {modoEdicao && form.perfil === "CLIENTE" ? (
+                                        <TextField fullWidth label="Perfil de Acesso" value="CLIENTE" disabled />
+                                    ) : (
+                                        <FormControl fullWidth required>
+                                            <InputLabel id="perfil-select-label">Perfil de Acesso</InputLabel>
+                                            <Select
+                                                labelId="perfil-select-label"
+                                                label="Perfil de Acesso"
+                                                value={form.perfil}
+                                                onChange={(e) => setForm({ ...form, perfil: e.target.value })}
+                                            >
+                                                <MenuItem value="TECNICO">TECNICO — Equipe Técnica / Campo</MenuItem>
+                                                <MenuItem value="ADM">ADM — Administrador Geral</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    )}
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Cargo / Função (descrição)"
+                                        placeholder="Ex: Instalador, Supervisor"
+                                        value={form.cargo_funcao}
+                                        onChange={(e) => setForm({ ...form, cargo_funcao: e.target.value })}
+                                    />
+                                </Grid>
+                            </Grid>
+
                             <TextField
                                 required={!modoEdicao}
                                 fullWidth
@@ -451,10 +564,7 @@ export default function Usuarios({ usuario }) {
                                 InputProps={{
                                     endAdornment: (
                                         <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setMostrarSenha(!mostrarSenha)}
-                                                edge="end"
-                                            >
+                                            <IconButton onClick={() => setMostrarSenha(!mostrarSenha)} edge="end">
                                                 {mostrarSenha ? <VisibilityOff /> : <Visibility />}
                                             </IconButton>
                                         </InputAdornment>
@@ -469,7 +579,7 @@ export default function Usuarios({ usuario }) {
                                             onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                                         />
                                     }
-                                    label={form.ativo ? "Usuário Ativo" : "Usuário Inativo"}
+                                    label={form.ativo ? "Conta Ativa" : "Conta Inativa (login bloqueado)"}
                                 />
                             )}
                         </Stack>

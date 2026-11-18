@@ -21,6 +21,10 @@ export function usuarioEhFuncionario(usuario) {
     return perfil === "ADM" || perfil === "TECNICO";
 }
 
+export function usuarioEhCliente(usuario) {
+    return obterPerfilUsuario(usuario) === "CLIENTE";
+}
+
 // Converte DATEONLY ("YYYY-MM-DD") ou TIMESTAMPTZ em chave local "YYYY-MM-DD" sem deslocamento de fuso
 export function extrairChaveDataLocal(valor) {
     if (!valor) return null;

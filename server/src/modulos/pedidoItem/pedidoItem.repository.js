@@ -5,7 +5,7 @@ function obterIncludes() {
     if (pedido) {
         includes.push({
             model: pedido,
-            as: "orcamento",
+            as: "pedido",
         });
     }
     if (item_catalogo) {

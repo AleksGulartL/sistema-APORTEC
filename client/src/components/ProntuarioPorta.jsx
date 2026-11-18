@@ -512,7 +512,9 @@ export default function ProntuarioPorta({
                                                     label="Técnico Responsável"
                                                     valor={
                                                         os.tecnico_responsavel?.nome_completo ||
-                                                        `Técnico #${os.tecnico_responsavel_id}`
+                                                        (os.tecnico_responsavel_id
+                                                            ? `Técnico #${os.tecnico_responsavel_id}`
+                                                            : "Aguardando atribuição")
                                                     }
                                                 />
                                                 <CampoFicha

@@ -19,7 +19,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ScheduleIcon from "@mui/icons-material/Schedule";
-import { formatarDataBr, formatarHoraBr, formatarMoedaBr } from "../../utils/permissoes";
+import { formatarDataBr, formatarHoraBr } from "../../utils/permissoes";
 
 const ETAPAS_PROGRESSO = {
     Rascunho: 5,
@@ -70,15 +70,6 @@ export default function LevantamentoOperacional({
         if (filtroEtapa === "BLOQUEADOS") return pedidosAtivos.filter((p) => p.bloqueio_fabricacao);
         return pedidosAtivos.filter((p) => p.status === filtroEtapa);
     }, [pedidosAtivos, filtroEtapa]);
-
-    const valorTotalEmEstoque = useMemo(
-        () =>
-            itensEstoque.reduce(
-                (acc, item) => acc + Number(item.quantidade_atual || 0) * Number(item.valor_unitario_padrao || 0),
-                0
-            ),
-        [itensEstoque]
-    );
 
     const osAbertas = useMemo(
         () => ordensServico.filter((os) => ["Aberta", "Em Andamento"].includes(os.status_os)),
@@ -219,8 +210,8 @@ export default function LevantamentoOperacional({
                             <Chip
                                 size="small"
                                 variant="outlined"
-                                color="primary"
-                                label={`Valor: ${formatarMoedaBr(valorTotalEmEstoque)}`}
+                                color={alertasEstoque.length > 0 ? "error" : "success"}
+                                label={`${itensEstoque.length} itens`}
                             />
                         </Stack>
 
@@ -308,7 +299,10 @@ export default function LevantamentoOperacional({
                                 {osAbertas.slice(0, 6).map((os) => {
                                     const nomeCliente = os.cliente?.usuario?.nome_completo || `Cliente #${os.cliente_id}`;
                                     const nomeTecnico =
-                                        os.tecnico_responsavel?.nome_completo || `Técnico #${os.tecnico_responsavel_id}`;
+                                        os.tecnico_responsavel?.nome_completo ||
+                                        (os.tecnico_responsavel_id
+                                            ? `Técnico #${os.tecnico_responsavel_id}`
+                                            : "Aguardando atribuição");
                                     const hora = formatarHoraBr(os.data_agendamento);
                                     return (
                                         <Grid item xs={12} sm={6} md={4} key={os.id}>

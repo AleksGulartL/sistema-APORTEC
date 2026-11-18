@@ -88,9 +88,6 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     const pedidosEmAndamento = pedidos.filter((p) => !["Concluido", "Cancelado"].includes(p.status));
     const totalBloqueados = pedidosEmAndamento.filter((p) => p.bloqueio_fabricacao).length;
     const osAbertas = ordensServico.filter((os) => ["Aberta", "Em Andamento"].includes(os.status_os));
-    const valorCarteiraAprovada = pedidos
-        .filter((p) => p.status_aprovacao === "Aprovado" && p.status !== "Cancelado")
-        .reduce((acc, p) => acc + Number(p.valor_total || 0), 0);
 
     return (
         <Box sx={{ py: 3 }}>
@@ -132,14 +129,12 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
             ) : (
                 <>
                     <DashboardKpis
-                        ehAdm={ehAdm}
                         totalPedidosAndamento={pedidosEmAndamento.length}
                         totalBloqueados={totalBloqueados}
                         totalAlertasEstoque={alertasEstoque.length}
                         totalItensCatalogo={itensEstoque.length}
                         totalOsAbertas={osAbertas.length}
                         totalOsTotal={ordensServico.length}
-                        valorCarteiraAprovada={valorCarteiraAprovada}
                         totalClientes={clientes.length}
                     />
 

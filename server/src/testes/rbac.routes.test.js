@@ -20,11 +20,14 @@ jest.mock("../modulos/cliente/cliente.controller", () => mockStubController(mock
 jest.mock("../modulos/itemCatalogo/itemCatalogo.controller", () =>
     mockStubController([...mockCRUD, "listarAlertasEstoqueMinimo"])
 );
-jest.mock("../modulos/itemOrcamento/itemOrcamento.controller", () => mockStubController(mockCRUD));
+jest.mock("../modulos/pedidoItem/pedidoItem.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/checklist_medicao/checklist_medicao.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/ordemServico/ordemServico.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/pedido/pedido.controller", () =>
     mockStubController([...mockCRUD, "atualizarStatusEtapa", "coletarAssinaturaAceite"])
+);
+jest.mock("../modulos/portalCliente/portalCliente.controller", () =>
+    mockStubController(["obterResumo", "responderAprovacao", "abrirSolicitacao"])
 );
 
 const app = express();
@@ -32,10 +35,11 @@ app.use(express.json());
 app.use(require("../modulos/usuario/usuario.routes"));
 app.use(require("../modulos/cliente/cliente.routes"));
 app.use(require("../modulos/itemCatalogo/itemCatalogo.routes"));
-app.use(require("../modulos/itemOrcamento/itemOrcamento.routes"));
+app.use(require("../modulos/pedidoItem/pedidoItem.routes"));
 app.use(require("../modulos/checklist_medicao/checklist_medicao.routes"));
 app.use(require("../modulos/ordemServico/ordemServico.routes"));
 app.use(require("../modulos/pedido/pedido.routes"));
+app.use(require("../modulos/portalCliente/portalCliente.routes"));
 
 // [método, caminho, módulo, ação] - um item por função de controller exposta
 const ROTAS = [
@@ -58,11 +62,11 @@ const ROTAS = [
     ["put", "/itens-catalogo/1", "itemCatalogo", "atualizar"],
     ["delete", "/itens-catalogo/1", "itemCatalogo", "deletar"],
 
-    ["get", "/pedido-itens", "itemOrcamento", "listar"],
-    ["get", "/pedido-itens/1", "itemOrcamento", "buscarPorId"],
-    ["post", "/pedido-itens", "itemOrcamento", "criar"],
-    ["put", "/pedido-itens/1", "itemOrcamento", "atualizar"],
-    ["delete", "/pedido-itens/1", "itemOrcamento", "deletar"],
+    ["get", "/pedido-itens", "pedidoItem", "listar"],
+    ["get", "/pedido-itens/1", "pedidoItem", "buscarPorId"],
+    ["post", "/pedido-itens", "pedidoItem", "criar"],
+    ["put", "/pedido-itens/1", "pedidoItem", "atualizar"],
+    ["delete", "/pedido-itens/1", "pedidoItem", "deletar"],
 
     ["get", "/checklist-medicao", "checklistMedicao", "listar"],
     ["get", "/checklist-medicao/1", "checklistMedicao", "buscarPorId"],
@@ -83,6 +87,10 @@ const ROTAS = [
     ["patch", "/pedido/1/status", "pedido", "atualizarStatusEtapa"],
     ["post", "/pedido/1/aceite-instalacao", "pedido", "coletarAssinaturaAceite"],
     ["delete", "/pedido/1", "pedido", "deletar"],
+
+    ["get", "/portal-cliente/resumo", "portalCliente", "obterResumo"],
+    ["patch", "/portal-cliente/pedidos/1/aprovacao", "portalCliente", "responderAprovacao"],
+    ["post", "/portal-cliente/ordens-servico", "portalCliente", "abrirSolicitacao"],
 ];
 
 const TODOS_PERFIS = Object.values(PERFIS);
@@ -98,7 +106,8 @@ describe("Segurança das rotas (RBAC - RF01 / CT01 Cenário 6)", () => {
     });
 
     test("Nenhuma rota administrativa é acessível pelo perfil CLIENTE", () => {
-        for (const acoes of Object.values(PERMISSOES)) {
+        for (const [modulo, acoes] of Object.entries(PERMISSOES)) {
+            if (modulo === "portalCliente") continue;
             for (const perfis of Object.values(acoes)) {
                 expect(perfis).not.toContain(PERFIS.CLIENTE);
             }
@@ -134,7 +143,7 @@ describe("Segurança das rotas (RBAC - RF01 / CT01 Cenário 6)", () => {
     test("cargo_funcao em texto livre não concede privilégio quando o token possui perfil", async () => {
         const res = await request(app)
             .delete("/usuarios/1")
-            .set(cabecalhoPara("COMERCIAL", { cargo_funcao: "ADM", role: "ADM" }));
+            .set(cabecalhoPara("TECNICO", { cargo_funcao: "ADM", role: "ADM" }));
         expect(res.status).toBe(403);
     });
 });

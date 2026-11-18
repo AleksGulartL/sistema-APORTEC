@@ -118,10 +118,6 @@ pedidoItem.associate = (models) => {
             foreignKey: "pedido_id",
             as: "pedido",
         });
-        pedidoItem.belongsTo(models.pedido, {
-            foreignKey: "pedido_id",
-            as: "orcamento",
-        });
     }
 
     if (models.item_catalogo) {

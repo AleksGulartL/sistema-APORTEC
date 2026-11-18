@@ -43,7 +43,7 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
 
     test("Deve lançar erro HTTP 400 quando o campo 'nome_completo' for omitido", async () => {
         // DADOS: Payloads sem o campo obrigatório
-        const dadosInvalidos = { cnpj_cpf: "123", telefone: "999", email: "a@a.com", endereco: "Rua A" };
+        const dadosInvalidos = { cnpj_cpf: "123", telefone: "999", email: "empresa@gmail.com", endereco: "Rua A" };
 
         // AÇÃO & VALIDAÇÃO: Verifica se a regra de validação bloqueia o cadastro sem chamar o banco
         await expect(clienteService.criar(dadosInvalidos))
@@ -52,30 +52,59 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
     });
 
     test("Deve lançar erro HTTP 400 quando o campo 'cnpj_cpf' for omitido", async () => {
-        const dadosInvalidos = { nome_completo: "Empresa X", telefone: "999", email: "a@a.com", endereco: "Rua A" };
+        const dadosInvalidos = { nome_completo: "Empresa X", telefone: "999", email: "empresa@gmail.com", endereco: "Rua A" };
 
         await expect(clienteService.criar(dadosInvalidos))
             .rejects
             .toMatchObject({ message: "O campo 'cnpj_cpf' é obrigatório e deve ser um texto válido.", status: 400 });
     });
 
-    test("Deve cadastrar cliente com sucesso quando todos os dados obrigatórios forem válidos", async () => {
+    test("Deve lançar erro HTTP 400 quando o e-mail não terminar com @gmail.com", async () => {
+        for (const emailInvalido of ["cliente01@gmail", "contato@empresa.com", "cliente01", "@gmail.com"]) {
+            await expect(
+                clienteService.criar({
+                    nome_completo: "Empresa X",
+                    cnpj_cpf: "12345678000199",
+                    telefone: "4999999999",
+                    email: emailInvalido,
+                    endereco: "Rua Central, 100",
+                })
+            )
+                .rejects
+                .toMatchObject({
+                    status: 400,
+                    message: expect.stringContaining("@gmail.com"),
+                });
+        }
+
+        await expect(clienteService.atualizar(1, { email: "cliente@hotmail.com" }))
+            .rejects
+            .toMatchObject({
+                status: 400,
+                message: expect.stringContaining("@gmail.com"),
+            });
+    });
+
+    test("Deve cadastrar cliente com sucesso quando todos os dados obrigatórios forem válidos e normalizar @gmail.com", async () => {
         // DADOS: Payload completo do cliente
         const dadosValidos = { 
             nome_completo: "Empresa X", 
             cnpj_cpf: "12345678000199", 
             telefone: "4999999999", 
-            email: "contato@empresa.com", 
+            email: "  Contato@Gmail.COM ", 
             endereco: "Rua Central, 100" 
         };
         
         // MOCK: Simula a criação bem-sucedida retornando o objeto com o ID gerado pelo banco
-        clienteRepository.criar.mockResolvedValue({ id_cliente: 1, ...dadosValidos });
+        clienteRepository.criar.mockResolvedValue({ id_cliente: 1, ...dadosValidos, email: "contato@gmail.com" });
 
         // AÇÃO: Executa o método de criação
         const resultado = await clienteService.criar(dadosValidos);
 
-        // VALIDAÇÃO: Confirma se o objeto gerado possui a propriedade chave id_cliente
+        // VALIDAÇÃO: Confirma normalização e propriedade chave id_cliente
+        expect(clienteRepository.criar).toHaveBeenCalledWith(
+            expect.objectContaining({ email: "contato@gmail.com" })
+        );
         expect(resultado).toHaveProperty("id_cliente", 1);
     });
 
