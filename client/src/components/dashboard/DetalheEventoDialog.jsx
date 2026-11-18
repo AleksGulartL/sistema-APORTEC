@@ -15,6 +15,7 @@ import {
     Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { formatarDataBr, formatarHoraBr, formatarMoedaBr } from "../../utils/permissoes";
 
 function CampoInfo({ label, valor }) {
@@ -30,7 +31,7 @@ function CampoInfo({ label, valor }) {
     );
 }
 
-export default function DetalheEventoDialog({ selecionado, onClose }) {
+export default function DetalheEventoDialog({ selecionado, onClose, onAbrirPedido }) {
     if (!selecionado) return null;
     const { tipo, registro } = selecionado;
 
@@ -137,6 +138,19 @@ export default function DetalheEventoDialog({ selecionado, onClose }) {
             </DialogContent>
 
             <DialogActions>
+                {ehPedido && onAbrirPedido && (
+                    <Button
+                        variant="contained"
+                        startIcon={<OpenInNewIcon />}
+                        onClick={() => {
+                            const id = registro.id;
+                            onClose?.();
+                            onAbrirPedido(id);
+                        }}
+                    >
+                        Abrir Detalhes do Pedido
+                    </Button>
+                )}
                 <Button onClick={onClose} startIcon={<CloseIcon />}>
                     Fechar
                 </Button>

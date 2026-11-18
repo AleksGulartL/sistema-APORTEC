@@ -8,7 +8,7 @@ import AgendaCalendario from "./dashboard/AgendaCalendario";
 import LevantamentoOperacional from "./dashboard/LevantamentoOperacional";
 import DetalheEventoDialog from "./dashboard/DetalheEventoDialog";
 
-export default function Dashboard({ usuario }) {
+export default function Dashboard({ usuario, onAbrirPedido }) {
     const ehAdm = usuarioEhAdm(usuario);
     const ehFuncionario = usuarioEhFuncionario(usuario);
 
@@ -160,6 +160,7 @@ export default function Dashboard({ usuario }) {
                     <DetalheEventoDialog
                         selecionado={eventoSelecionado}
                         onClose={() => setEventoSelecionado(null)}
+                        onAbrirPedido={onAbrirPedido}
                     />
                 </>
             )}

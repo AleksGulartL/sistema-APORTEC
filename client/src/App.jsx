@@ -3,6 +3,10 @@ import { ThemeProvider, createTheme, CssBaseline, Container, Box } from "@mui/ma
 import Login from "./components/Login";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
+import CatalogoEstoque from "./components/CatalogoEstoque";
+import Pedidos from "./components/Pedidos";
+import OrdensServico from "./components/OrdensServico";
+import ProntuarioPorta from "./components/ProntuarioPorta";
 import Clientes from "./components/Clientes";
 import Usuarios from "./components/Usuarios";
 import Perfil from "./components/Perfil";
@@ -54,6 +58,9 @@ export default function App() {
     });
 
     const [abaAtiva, setAbaAtiva] = useState("dashboard");
+    const [pedidoContextoId, setPedidoContextoId] = useState(null);
+    const [prontuarioBuscaInicial, setProntuarioBuscaInicial] = useState("");
+    const [pedidoParaNovaOs, setPedidoParaNovaOs] = useState(null);
 
     // Event listener para expiração de token tratada pelo interceptor do Axios
     useEffect(() => {
@@ -61,6 +68,9 @@ export default function App() {
             setIsLoggedIn(false);
             setUsuario(null);
             setAbaAtiva("dashboard");
+            setPedidoContextoId(null);
+            setProntuarioBuscaInicial("");
+            setPedidoParaNovaOs(null);
         }
         window.addEventListener("auth:expired", onTokenExpired);
         return () => window.removeEventListener("auth:expired", onTokenExpired);
@@ -83,6 +93,24 @@ export default function App() {
         setIsLoggedIn(false);
         setUsuario(null);
         setAbaAtiva("dashboard");
+        setPedidoContextoId(null);
+        setProntuarioBuscaInicial("");
+        setPedidoParaNovaOs(null);
+    }
+
+    function abrirPedido(idPedido) {
+        setPedidoContextoId(idPedido);
+        setAbaAtiva("pedidos");
+    }
+
+    function abrirProntuario(numeroSerie) {
+        setProntuarioBuscaInicial(numeroSerie || "");
+        setAbaAtiva("prontuario");
+    }
+
+    function abrirNovaOsParaPedido(pedido) {
+        setPedidoParaNovaOs(pedido);
+        setAbaAtiva("ordens_servico");
     }
 
     const ehAdm = usuarioEhAdm(usuario);
@@ -98,12 +126,44 @@ export default function App() {
                     <Navbar
                         usuario={usuario}
                         abaAtiva={abaSegura}
-                        onMudarAba={setAbaAtiva}
+                        onMudarAba={(novaAba) => {
+                            if (novaAba !== "pedidos") setPedidoContextoId(null);
+                            if (novaAba !== "prontuario") setProntuarioBuscaInicial("");
+                            setAbaAtiva(novaAba);
+                        }}
                         onLogout={handleLogout}
                     />
 
-                    <Container maxWidth="lg" sx={{ mt: 2, pb: 6 }}>
-                        {abaSegura === "dashboard" && <Dashboard usuario={usuario} />}
+                    <Container maxWidth="xl" sx={{ mt: 2, pb: 6 }}>
+                        {abaSegura === "dashboard" && (
+                            <Dashboard usuario={usuario} onAbrirPedido={abrirPedido} />
+                        )}
+                        {abaSegura === "pedidos" && (
+                            <Pedidos
+                                usuario={usuario}
+                                pedidoInicialId={pedidoContextoId}
+                                onLimparContexto={() => setPedidoContextoId(null)}
+                                onAbrirProntuario={abrirProntuario}
+                                onAbrirOs={abrirNovaOsParaPedido}
+                            />
+                        )}
+                        {abaSegura === "catalogo" && <CatalogoEstoque usuario={usuario} />}
+                        {abaSegura === "ordens_servico" && (
+                            <OrdensServico
+                                usuario={usuario}
+                                pedidoParaNovaOs={pedidoParaNovaOs}
+                                onLimparContexto={() => setPedidoParaNovaOs(null)}
+                            />
+                        )}
+                        {abaSegura === "prontuario" && (
+                            <ProntuarioPorta
+                                usuario={usuario}
+                                buscaInicial={prontuarioBuscaInicial}
+                                onLimparContexto={() => setProntuarioBuscaInicial("")}
+                                onAbrirPedido={abrirPedido}
+                                onAbrirOs={abrirNovaOsParaPedido}
+                            />
+                        )}
                         {abaSegura === "clientes" && <Clientes usuario={usuario} />}
                         {abaSegura === "usuarios" && ehAdm && <Usuarios usuario={usuario} />}
                         {abaSegura === "perfil" && <Perfil />}

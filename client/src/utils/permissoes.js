@@ -63,3 +63,45 @@ export function formatarMoedaBr(valor) {
         currency: "BRL",
     });
 }
+
+export function formatarDataHoraBr(valor) {
+    if (!valor) return "-";
+    const data = formatarDataBr(valor);
+    const hora = formatarHoraBr(valor);
+    return hora ? `${data} às ${hora}` : data;
+}
+
+export function formatarParaInputDateTimeLocal(valor) {
+    if (!valor) return "";
+    const data = new Date(valor);
+    if (isNaN(data.getTime())) return "";
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    const hora = String(data.getHours()).padStart(2, "0");
+    const min = String(data.getMinutes()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}T${hora}:${min}`;
+}
+
+export function calcularSituacaoGarantia(fimGarantia) {
+    const chave = extrairChaveDataLocal(fimGarantia);
+    if (!chave) {
+        return { possui: false, vigente: false, label: "Sem garantia registrada", diasRestantes: null };
+    }
+    const hoje = hojeChaveLocal();
+    const [a1, m1, d1] = hoje.split("-").map(Number);
+    const [a2, m2, d2] = chave.split("-").map(Number);
+    const dtHoje = new Date(a1, m1 - 1, d1);
+    const dtFim = new Date(a2, m2 - 1, d2);
+    const dias = Math.round((dtFim.getTime() - dtHoje.getTime()) / (1000 * 60 * 60 * 24));
+    const vigente = dias >= 0;
+    return {
+        possui: true,
+        vigente,
+        diasRestantes: dias,
+        dataBr: formatarDataBr(chave),
+        label: vigente
+            ? `Vigente até ${formatarDataBr(chave)} (${dias === 0 ? "vence hoje" : `${dias} dia(s)`})`
+            : `Vencida em ${formatarDataBr(chave)}`,
+    };
+}
