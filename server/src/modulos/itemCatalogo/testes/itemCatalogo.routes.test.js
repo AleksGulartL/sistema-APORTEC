@@ -7,6 +7,11 @@ const itemCatalogoService = require("../itemCatalogo.service");
 jest.mock("../itemCatalogo.service");
 
 // Inicializa a aplicação Express para testes isolados de rotas
+const { cabecalhoPara } = require("../../../testes/authHelper");
+
+// Cabeçalho Authorization de um usuário ADM (acesso total) para os testes de fluxo feliz
+const comoAdm = cabecalhoPara("ADM");
+
 const app = express();
 app.use(express.json());
 app.use(itemCatalogoRoutes);
@@ -31,7 +36,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
         itemCatalogoService.listar.mockResolvedValue([]);
 
         // AÇÃO: Faz requisição GET
-        const res = await request(app).get("/itens-catalogo");
+        const res = await request(app).get("/itens-catalogo").set(comoAdm);
 
         // VALIDAÇÃO: Verifica o status HTTP 200 OK
         expect(res.status).toBe(200);
@@ -42,7 +47,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
         itemCatalogoService.buscarPorId.mockResolvedValue(null);
 
         // AÇÃO: Busca por um ID inexistente
-        const res = await request(app).get("/itens-catalogo/999");
+        const res = await request(app).get("/itens-catalogo/999").set(comoAdm);
 
         // VALIDAÇÃO: Confirma status 404 e payload da mensagem de erro
         expect(res.status).toBe(404);
@@ -55,7 +60,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
         itemCatalogoService.criar.mockResolvedValue({ id_item: 1, ...novoItem });
 
         // AÇÃO: Envia requisição POST
-        const res = await request(app).post("/itens-catalogo").send(novoItem);
+        const res = await request(app).post("/itens-catalogo").set(comoAdm).send(novoItem);
 
         // VALIDAÇÃO: Confirma status 201 Created
         expect(res.status).toBe(201);
@@ -66,7 +71,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
         itemCatalogoService.criar.mockRejectedValue({ code: "23505" });
 
         // AÇÃO: Tenta cadastrar item duplicado
-        const res = await request(app).post("/itens-catalogo").send({ tipo: "Insumo", descricao: "A", unidade_medida: "UN" });
+        const res = await request(app).post("/itens-catalogo").set(comoAdm).send({ tipo: "Insumo", descricao: "A", unidade_medida: "UN" });
 
         // VALIDAÇÃO: Confirma o tratamento do erro de banco resultando em 400 Bad Request
         expect(res.status).toBe(400);
@@ -78,7 +83,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
         itemCatalogoService.atualizar.mockResolvedValue(null);
 
         // AÇÃO: Envia atualização para o ID 999
-        const res = await request(app).put("/itens-catalogo/999").send({ tipo: "Insumo", descricao: "A", unidade_medida: "UN" });
+        const res = await request(app).put("/itens-catalogo/999").set(comoAdm).send({ tipo: "Insumo", descricao: "A", unidade_medida: "UN" });
 
         // VALIDAÇÃO: Confirma status 404
         expect(res.status).toBe(404);
@@ -90,7 +95,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
         itemCatalogoService.deletar.mockResolvedValue({ id_item: 1 });
 
         // AÇÃO: Faz a requisição DELETE
-        const res = await request(app).delete("/itens-catalogo/1");
+        const res = await request(app).delete("/itens-catalogo/1").set(comoAdm);
 
         // VALIDAÇÃO: Confirma retorno de sucesso e mensagem de confirmação
         expect(res.status).toBe(200);

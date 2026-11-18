@@ -1,13 +1,18 @@
 const express = require("express");
 const itemCatalogoController = require("./itemCatalogo.controller");
+const proteger = require("../../middlewares/proteger");
 
 const router = express.Router();
 
-router.get(["/item_catalogo/alertas-estoque", "/itens-catalogo/alertas-estoque"], itemCatalogoController.listarAlertasEstoqueMinimo);
-router.get(["/item_catalogo", "/itens-catalogo"], itemCatalogoController.listar);
-router.get(["/item_catalogo/:id", "/itens-catalogo/:id"], itemCatalogoController.buscarPorId);
-router.post(["/item_catalogo", "/itens-catalogo"], itemCatalogoController.criar);
-router.put(["/item_catalogo/:id", "/itens-catalogo/:id"], itemCatalogoController.atualizar);
-router.delete(["/item_catalogo/:id", "/itens-catalogo/:id"], itemCatalogoController.deletar);
+
+// RF10 - Catálogo de itens e estoque
+// A rota de alertas deve ser registrada antes de "/:id" para não ser capturada como id
+router.get(["/item_catalogo/alertas-estoque", "/itens-catalogo/alertas-estoque"], proteger("itemCatalogo", "listarAlertasEstoqueMinimo"), itemCatalogoController.listarAlertasEstoqueMinimo);
+router.get(["/item_catalogo", "/itens-catalogo"], proteger("itemCatalogo", "listar"), itemCatalogoController.listar);
+router.get(["/item_catalogo/:id", "/itens-catalogo/:id"], proteger("itemCatalogo", "buscarPorId"), itemCatalogoController.buscarPorId);
+router.post(["/item_catalogo", "/itens-catalogo"], proteger("itemCatalogo", "criar"), itemCatalogoController.criar);
+router.put(["/item_catalogo/:id", "/itens-catalogo/:id"], proteger("itemCatalogo", "atualizar"), itemCatalogoController.atualizar);
+router.delete(["/item_catalogo/:id", "/itens-catalogo/:id"], proteger("itemCatalogo", "deletar"), itemCatalogoController.deletar);
 
 module.exports = router;
+ 

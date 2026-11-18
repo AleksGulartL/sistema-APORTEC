@@ -32,7 +32,7 @@ async function login(req, res) {
 
 async function registrar(req, res) {
     try {
-        const usuarioCriado = await authService.criarNovoUsuario(req.body || {});
+        const usuarioCriado = await authService.criarNovoUsuario(req.body || {}, req.usuario || null);
         return res.status(201).json(usuarioCriado);
     } catch (erro) {
         console.error("Erro ao registrar usuário:", erro);

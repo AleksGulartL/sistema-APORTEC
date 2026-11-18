@@ -7,6 +7,11 @@ const clienteService = require("../cliente.service");
 jest.mock("../cliente.service");
 
 // Configuração do ambiente de aplicação Express isolado para os testes de integração das rotas
+const { cabecalhoPara } = require("../../../testes/authHelper");
+
+// Cabeçalho Authorization de um usuário ADM (acesso total) para os testes de fluxo feliz
+const comoAdm = cabecalhoPara("ADM");
+
 const app = express();
 app.use(express.json());
 app.use(clienteRoutes);
@@ -31,7 +36,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         clienteService.listar.mockResolvedValue([]);
 
         // AÇÃO: Faz requisição GET simulada no endpoint da rota
-        const res = await request(app).get("/cliente");
+        const res = await request(app).get("/cliente").set(comoAdm);
 
         // VALIDAÇÃO: Verifica o código de status HTTP esperado
         expect(res.status).toBe(200);
@@ -42,7 +47,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         clienteService.buscarPorId.mockResolvedValue(null);
 
         // AÇÃO: Faz requisição GET para um ID inexistente
-        const res = await request(app).get("/cliente/999");
+        const res = await request(app).get("/cliente/999").set(comoAdm);
 
         // VALIDAÇÃO: Verifica o status 404 e o payload de erro padronizado
         expect(res.status).toBe(404);
@@ -56,7 +61,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         clienteService.criar.mockResolvedValue({ id_cliente: 1, ...novoCliente });
 
         // AÇÃO: Envia o payload via requisição POST
-        const res = await request(app).post("/cliente").send(novoCliente);
+        const res = await request(app).post("/cliente").set(comoAdm).send(novoCliente);
 
         // VALIDAÇÃO: Confirma a criação com status HTTP 201 Created
         expect(res.status).toBe(201);
@@ -67,7 +72,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         clienteService.criar.mockRejectedValue({ code: "23505" });
 
         // AÇÃO: Tenta cadastrar cliente com dado duplicado
-        const res = await request(app).post("/cliente").send({ nome_completo: "Empresa X" });
+        const res = await request(app).post("/cliente").set(comoAdm).send({ nome_completo: "Empresa X" });
 
         // VALIDAÇÃO: Verifica o tratamento de exceção mapeado para status 400 e a mensagem customizada
         expect(res.status).toBe(400);
@@ -79,7 +84,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         clienteService.deletar.mockResolvedValue({ id_cliente: 1 });
 
         // AÇÃO: Executa requisição DELETE
-        const res = await request(app).delete("/cliente/1");
+        const res = await request(app).delete("/cliente/1").set(comoAdm);
 
         // VALIDAÇÃO: Confirma o sucesso da exclusão e o retorno da mensagem informativa
         expect(res.status).toBe(200);

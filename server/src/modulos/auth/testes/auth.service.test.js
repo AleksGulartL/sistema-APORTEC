@@ -103,9 +103,40 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
     });
 
     describe("criarNovoUsuario", () => {
+        const solicitanteAdm = { id_usuario: 1, perfil: "ADM" };
+
+        test("Deve lançar erro 401 se solicitante não for informado (cadastro público bloqueado)", async () => {
+            await expect(
+                authService.criarNovoUsuario({
+                    nome_completo: "Teste",
+                    email: "teste@aportec.com",
+                    senha: "123",
+                })
+            ).rejects.toMatchObject({
+                message: "Cadastro público não permitido. É necessário estar autenticado como administrador.",
+                status: 401,
+            });
+        });
+
+        test("Deve lançar erro 403 se solicitante não for administrador", async () => {
+            await expect(
+                authService.criarNovoUsuario(
+                    {
+                        nome_completo: "Teste",
+                        email: "teste@aportec.com",
+                        senha: "123",
+                    },
+                    { id_usuario: 2, perfil: "TECNICO" }
+                )
+            ).rejects.toMatchObject({
+                message: "Apenas administradores têm permissão para cadastrar novos usuários.",
+                status: 403,
+            });
+        });
+
         test("Deve lançar erro 400 se nome_completo for omitido", async () => {
             await expect(
-                authService.criarNovoUsuario({ email: "teste@aportec.com", senha: "123" })
+                authService.criarNovoUsuario({ email: "teste@aportec.com", senha: "123" }, solicitanteAdm)
             ).rejects.toMatchObject({
                 message: "O campo 'nome_completo' é obrigatório.",
                 status: 400,
@@ -114,7 +145,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
 
         test("Deve lançar erro 400 se email for omitido", async () => {
             await expect(
-                authService.criarNovoUsuario({ nome_completo: "Teste", senha: "123" })
+                authService.criarNovoUsuario({ nome_completo: "Teste", senha: "123" }, solicitanteAdm)
             ).rejects.toMatchObject({
                 message: "O campo 'email' é obrigatório.",
                 status: 400,
@@ -123,7 +154,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
 
         test("Deve lançar erro 400 se senha for omitida", async () => {
             await expect(
-                authService.criarNovoUsuario({ nome_completo: "Teste", email: "teste@aportec.com" })
+                authService.criarNovoUsuario({ nome_completo: "Teste", email: "teste@aportec.com" }, solicitanteAdm)
             ).rejects.toMatchObject({
                 message: "O campo 'senha' é obrigatório.",
                 status: 400,
@@ -134,30 +165,36 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             authRepository.buscarPorEmail.mockResolvedValue({ id_usuario: 1 });
 
             await expect(
-                authService.criarNovoUsuario({
-                    nome_completo: "Teste",
-                    email: "existente@aportec.com",
-                    senha: "123",
-                })
+                authService.criarNovoUsuario(
+                    {
+                        nome_completo: "Teste",
+                        email: "existente@aportec.com",
+                        senha: "123",
+                    },
+                    solicitanteAdm
+                )
             ).rejects.toMatchObject({
                 message: "Já existe um usuário cadastrado com este e-mail.",
                 status: 409,
             });
         });
 
-        test("Deve criar usuário com senha criptografada em senha_hash", async () => {
+        test("Deve criar usuário com senha criptografada em senha_hash quando solicitado por ADM", async () => {
             authRepository.buscarPorEmail.mockResolvedValue(null);
             authRepository.criar.mockImplementation(async (dados) => ({
                 id_usuario: 5,
                 ...dados,
             }));
 
-            const resultado = await authService.criarNovoUsuario({
-                nome_completo: "Ana Paula",
-                email: "ana@aportec.com",
-                senha: "senhaSegura123",
-                cargo_funcao: "Engenheira",
-            });
+            const resultado = await authService.criarNovoUsuario(
+                {
+                    nome_completo: "Ana Paula",
+                    email: "ana@aportec.com",
+                    senha: "senhaSegura123",
+                    cargo_funcao: "Engenheira",
+                },
+                solicitanteAdm
+            );
 
             expect(resultado).toEqual({
                 id_usuario: 5,
@@ -171,6 +208,23 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             expect(dadosEnviados.email).toBe("ana@aportec.com");
             expect(dadosEnviados.senha_hash.startsWith("$2b$")).toBe(true);
             expect(dadosEnviados.senha_hash).not.toBe("senhaSegura123");
+        });
+
+        test("Cadastro feito por ADM autenticado deve respeitar o perfil informado", async () => {
+            authRepository.buscarPorEmail.mockResolvedValue(null);
+            authRepository.criar.mockImplementation(async (dados) => ({ id_usuario: 8, ...dados }));
+
+            await authService.criarNovoUsuario(
+                {
+                    nome_completo: "Técnico Novo",
+                    email: "tecnico.novo@aportec.com",
+                    senha: "123456",
+                    perfil: "TECNICO",
+                },
+                solicitanteAdm
+            );
+
+            expect(authRepository.criar.mock.calls[0][0].perfil).toBe("TECNICO");
         });
     });
 

@@ -6,16 +6,16 @@ const SALT_ROUNDS = 10;
 // Hash bcrypt fictício para garantir tempo de resposta constante e evitar enumeração de usuários
 const HASH_FICTICIO = "$2b$10$wT0vB5pDcfZ2v4VzG0WlzeQk6F.Vb4v9mYgZzM/3vO4JbKgX6f5q6";
 
-const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "TECNICO", "CLIENTE"];
+const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
 
 function normalizarPerfil(cargo) {
-    if (!cargo) return "COMERCIAL";
+    if (!cargo) return new Error("Perfil é obrigatório.");
     const upper = String(cargo).trim().toUpperCase();
     if (PERFIS_VALIDOS.includes(upper)) return upper;
     if (upper.includes("ADM") || upper.includes("ADMIN") || upper.includes("ADMINISTRADOR")) return "ADM";
     if (upper.includes("TECNICO")) return "TECNICO";
-    if (upper.includes("CLIENT")) return "CLIENTE";
-    return "COMERCIAL";
+    if (upper.includes("CLIENTE")) return "CLIENTE";
+    return null;
 }
 
 function getJwtSecret() {
@@ -78,7 +78,27 @@ async function autenticarUsuario(id, senha) {
     };
 }
 
-async function criarNovoUsuario(dados) {
+function solicitanteAdm(solicitante) {
+    if (!solicitante) return false;
+    const papel = String(solicitante.perfil || solicitante.cargo_funcao || solicitante.role || "")
+        .trim()
+        .toUpperCase();
+    return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR"; // 
+}
+
+async function criarNovoUsuario(dados, solicitante = null) {
+    if (!solicitante) {
+        const erro = new Error("Cadastro público não permitido. É necessário estar autenticado como administrador.");
+        erro.status = 401;
+        throw erro;
+    }
+
+    if (!solicitanteAdm(solicitante)) {
+        const erro = new Error("Apenas administradores têm permissão para cadastrar novos usuários.");
+        erro.status = 403;
+        throw erro;
+    }
+
     const nome = (dados.nome_completo || dados.nome || "").trim();
     const email = (dados.email || dados.username || "").trim();
     const senha = dados.senha || dados.password || dados.senha_hash || "";

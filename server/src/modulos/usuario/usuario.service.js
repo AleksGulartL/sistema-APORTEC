@@ -1,18 +1,14 @@
 const usuarioRepository = require("./usuario.repository");
 
-const PERFIS_VALIDOS = ["ADM", "COMERCIAL", "ENGENHARIA", "PRODUCAO", "ALMOXARIFADO", "TECNICO", "CLIENTE"];
+const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
 
 function normalizarPerfil(cargoOuPerfil) {
-    if (!cargoOuPerfil) return "TECNICO";
+    if (!cargoOuPerfil) return "CLIENTE";
     const upper = String(cargoOuPerfil).trim().toUpperCase();
     if (PERFIS_VALIDOS.includes(upper)) return upper;
     if (upper.includes("ADM") || upper.includes("GERENTE")) return "ADM";
-    if (upper.includes("CLIENT")) return "CLIENTE";
-    if (upper.includes("VEND") || upper.includes("COMERC")) return "COMERCIAL";
-    if (upper.includes("ENGENH") || upper.includes("MEDI")) return "ENGENHARIA";
-    if (upper.includes("PROD") || upper.includes("FABRIC")) return "PRODUCAO";
-    if (upper.includes("ALMOX") || upper.includes("ESTOQ")) return "ALMOXARIFADO";
-    return "TECNICO";
+    if (upper.includes("TECNICO")) return "TECNICO";
+    return "CLIENTE";
 }
 
 function validarUsuario(dados) {
@@ -36,9 +32,7 @@ function validarUsuario(dados) {
 
     if (dados.perfil !== undefined && dados.perfil !== null) {
         if (!PERFIS_VALIDOS.includes(String(dados.perfil).toUpperCase())) {
-            const erro = new Error(
-                "O campo 'perfil' deve ser 'ADM', 'COMERCIAL', 'ENGENHARIA', 'PRODUCAO', 'ALMOXARIFADO' ou 'TECNICO'."
-            );
+            const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
             erro.status = 400;
             throw erro;
         }

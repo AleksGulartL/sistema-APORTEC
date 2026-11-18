@@ -6,6 +6,11 @@ const usuarioService = require("../usuario.service");
 // Intercepta o Service de usuários
 jest.mock("../usuario.service");
 
+const { cabecalhoPara } = require("../../../testes/authHelper");
+
+// Cabeçalho Authorization de um usuário ADM (acesso total) para os testes de fluxo feliz
+const comoAdm = cabecalhoPara("ADM");
+
 const app = express();
 app.use(express.json());
 app.use(usuarioRoutes);
@@ -26,13 +31,13 @@ describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
 
     test("GET /usuarios - Deve retornar 200 e a lista", async () => {
         usuarioService.listar.mockResolvedValue([]);
-        const res = await request(app).get("/usuarios");
+        const res = await request(app).get("/usuarios").set(comoAdm);
         expect(res.status).toBe(200);
     });
 
     test("GET /usuarios/:id - Deve retornar 404 se não encontrar usuário", async () => {
         usuarioService.buscarPorId.mockResolvedValue(null);
-        const res = await request(app).get("/usuarios/999");
+        const res = await request(app).get("/usuarios/999").set(comoAdm);
         expect(res.status).toBe(404);
         expect(res.body).toEqual({ erro: "Usuário não encontrado." });
     });
@@ -41,7 +46,7 @@ describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
         const novoUsuario = { nome_completo: "João", email: "j@a.com", senha_hash: "123" };
         usuarioService.criar.mockResolvedValue({ id_usuario: 1, ...novoUsuario });
 
-        const res = await request(app).post("/usuarios").send(novoUsuario);
+        const res = await request(app).post("/usuarios").set(comoAdm).send(novoUsuario);
         expect(res.status).toBe(201);
     });
 
@@ -50,7 +55,7 @@ describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
         usuarioService.criar.mockRejectedValue({ code: "23505" });
 
         // AÇÃO: Tenta cadastrar usuário com e-mail já existente
-        const res = await request(app).post("/usuarios").send({ nome_completo: "João", email: "j@a.com" });
+        const res = await request(app).post("/usuarios").set(comoAdm).send({ nome_completo: "João", email: "j@a.com" });
 
         // VALIDAÇÃO: Confirma retorno do status 400 e a mensagem customizada de e-mail já cadastrado
         expect(res.status).toBe(400);
@@ -60,7 +65,7 @@ describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
     test("DELETE /usuarios/:id - Deve retornar 200 ao deletar usuário", async () => {
         usuarioService.deletar.mockResolvedValue({ id_usuario: 1 });
 
-        const res = await request(app).delete("/usuarios/1");
+        const res = await request(app).delete("/usuarios/1").set(comoAdm);
         expect(res.status).toBe(200);
         expect(res.body.mensagem).toBe("Usuário removido com sucesso.");
     });
