@@ -184,7 +184,7 @@ CREATE TABLE pedido (
     motivo_bloqueio TEXT,
     custo_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     percentual_acrescimo NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
-    valor_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    -- valor_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     condicoes_pagamento TEXT,
     numero_serie VARCHAR(100) UNIQUE,
     fim_garantia DATE NULL,
@@ -201,7 +201,7 @@ CREATE TABLE pedido (
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_pedido_responsavel_producao FOREIGN KEY (responsavel_producao_id)
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT chk_pedido_valor_total CHECK (valor_total >= 0),
+    -- CONSTRAINT chk_pedido_valor_total CHECK (valor_total >= 0),
     -- CHECK valida uma combinacao de colunas; ENUM limita apenas os valores de cada coluna.
     -- Impede avancar na producao enquanto bloqueado ou sem aprovacao comercial.
     CONSTRAINT chk_pedido_desbloqueio_fabricacao CHECK (
@@ -226,7 +226,7 @@ CREATE TABLE pedido_item (
     item_id BIGINT NOT NULL,
     quantidade NUMERIC(12, 2) NOT NULL DEFAULT 1.00,
     valor_unitario NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    valor_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    -- valor_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
@@ -236,7 +236,7 @@ CREATE TABLE pedido_item (
         REFERENCES item_catalogo (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT uq_pedido_item_unico UNIQUE (pedido_id, item_id),
     CONSTRAINT chk_pedido_item_valores CHECK (
-        quantidade > 0 AND valor_unitario >= 0 AND valor_total >= 0
+        quantidade > 0 AND valor_unitario >= 0
     )
 );
 
@@ -289,8 +289,9 @@ FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 -- =============================================================================
 CREATE TABLE ordem_servico (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    pedido_id BIGINT NULL,
-    cliente_id BIGINT NOT NULL,
+    -- Toda OS deve estar vinculada a um pedido, pelo qual identificamos o cliente.
+    -- ON DELETE RESTRICT impede excluir pedidos que possuem OS vinculadas.
+    pedido_id BIGINT NOT NULL,
     tecnico_responsavel_id BIGINT NULL,
     tipo_servico tipo_servico NOT NULL,
     origem_cobertura origem_cobertura,
@@ -304,14 +305,11 @@ CREATE TABLE ordem_servico (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
     CONSTRAINT fk_os_pedido FOREIGN KEY (pedido_id)
-        REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT fk_os_cliente FOREIGN KEY (cliente_id)
-        REFERENCES cliente (usuario_id) ON UPDATE CASCADE ON DELETE RESTRICT,
+        REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_os_tecnico FOREIGN KEY (tecnico_responsavel_id)
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE SET NULL
 );
 
-CREATE INDEX idx_os_cliente_id ON ordem_servico (cliente_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_os_pedido_id ON ordem_servico (pedido_id) WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_ordem_servico_updated_at
