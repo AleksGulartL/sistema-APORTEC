@@ -182,6 +182,8 @@ CREATE TABLE pedido (
     status status_pedido NOT NULL DEFAULT 'Rascunho',
     bloqueio_fabricacao BOOLEAN NOT NULL DEFAULT TRUE,
     motivo_bloqueio TEXT,
+    -- TODO: Definir como calcular orçamentos de serviços sem materiais,
+    -- pois o percentual_acrescimo sobre custo zero resulta em valor zero.
     custo_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     percentual_acrescimo NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
     -- valor_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
