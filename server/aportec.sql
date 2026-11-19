@@ -40,17 +40,6 @@ CREATE TYPE origem_cobertura AS ENUM ('Garantia', 'Contrato', 'Avulso');
 CREATE TYPE status_ordem_servico AS ENUM ('Aberta', 'Em Andamento', 'Finalizada', 'Cancelada');
 
 -- =============================================================================
--- FUNÇÃO DE AUDITORIA AUTOMÁTICA (updated_at)
--- =============================================================================
-CREATE OR REPLACE FUNCTION atualizar_coluna_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- =============================================================================
 -- 1. TABELA: usuario (RF01 - Cadastro de Usuários, Login e Perfis RBAC)
 -- Centraliza nome_completo e email para todos os atores do sistema (ADM, TECNICO, CLIENTE)
 -- =============================================================================
@@ -68,10 +57,6 @@ CREATE TABLE usuario (
     CONSTRAINT uq_usuario_email UNIQUE (email) -- Impede que dois usuarios tenham o mesmo e-mail.
 );
 
-CREATE TRIGGER trg_usuario_updated_at
-BEFORE UPDATE ON usuario
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
-
 -- =============================================================================
 -- 2. TABELA: cliente (RF02 - Especialização 1:1 de usuario sem repetir nome/email)
 -- =============================================================================
@@ -87,10 +72,6 @@ CREATE TABLE cliente (
     CONSTRAINT fk_cliente_usuario FOREIGN KEY (usuario_id)
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
-
-CREATE TRIGGER trg_cliente_updated_at
-BEFORE UPDATE ON cliente
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
 -- 3. TABELA: tipo_item (Tipos de itens cadastráveis)
@@ -162,10 +143,6 @@ CREATE INDEX idx_item_catalogo_alerta_minimo
     ON item_catalogo (id, quantidade_atual, estoque_minimo)
     WHERE quantidade_atual <= estoque_minimo AND deleted_at IS NULL;
 
-CREATE TRIGGER trg_item_catalogo_updated_at
-BEFORE UPDATE ON item_catalogo
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
-
 -- =============================================================================
 -- 6. TABELA: pedido (RF03, RF04, RF05, RF06, RF08, RF09, RF12, RF13, RF15)
 -- Unifica Orçamento + Pedido/OP + Local de Instalação + Prontuário da Porta
@@ -215,10 +192,6 @@ CREATE TABLE pedido (
 CREATE INDEX idx_pedido_cliente_id ON pedido (cliente_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pedido_status_bloqueio ON pedido (status, bloqueio_fabricacao) WHERE deleted_at IS NULL;
 
-CREATE TRIGGER trg_pedido_updated_at
-BEFORE UPDATE ON pedido
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
-
 -- =============================================================================
 -- 7. TABELA: pedido_item (RF04, RF06, RF11 - Relação N:M entre Pedido e Item)
 -- =============================================================================
@@ -243,10 +216,6 @@ CREATE TABLE pedido_item (
 );
 
 CREATE INDEX idx_pedido_item_pedido_id ON pedido_item (pedido_id) WHERE deleted_at IS NULL;
-
-CREATE TRIGGER trg_pedido_item_updated_at
-BEFORE UPDATE ON pedido_item
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
 
 -- =============================================================================
 -- 8. TABELA: checklist_medicao (RF07, RF08 - Levantamento Técnico 1:1 com Pedido)
@@ -282,10 +251,6 @@ CREATE TABLE checklist_medicao (
     )
 );
 
-CREATE TRIGGER trg_checklist_medicao_updated_at
-BEFORE UPDATE ON checklist_medicao
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
-
 -- =============================================================================
 -- 9. TABELA: ordem_servico (RF03, RF13, RF14, RF15 - Instalação e Pós-Venda)
 -- =============================================================================
@@ -313,7 +278,3 @@ CREATE TABLE ordem_servico (
 );
 
 CREATE INDEX idx_os_pedido_id ON ordem_servico (pedido_id) WHERE deleted_at IS NULL;
-
-CREATE TRIGGER trg_ordem_servico_updated_at
-BEFORE UPDATE ON ordem_servico
-FOR EACH ROW EXECUTE FUNCTION atualizar_coluna_updated_at();
