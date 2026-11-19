@@ -60,7 +60,6 @@ const FORM_INICIAL = {
     nome_completo: "",
     email: "",
     perfil: "TECNICO",
-    cargo_funcao: "",
     senha: "",
     ativo: true,
 };
@@ -125,8 +124,7 @@ export default function Usuarios({ usuario }) {
             if (!termo) return true;
             return (
                 String(u.nome_completo || "").toLowerCase().includes(termo) ||
-                String(u.email || "").toLowerCase().includes(termo) ||
-                String(u.cargo_funcao || "").toLowerCase().includes(termo)
+                String(u.email || "").toLowerCase().includes(termo)
             );
         });
     }, [usuarios, busca, filtroPerfil, incluirClientes]);
@@ -148,7 +146,6 @@ export default function Usuarios({ usuario }) {
             nome_completo: registro.nome_completo || "",
             email: emailAtual,
             perfil: registro.perfil || "TECNICO",
-            cargo_funcao: registro.cargo_funcao || "",
             senha: "",
             ativo: registro.ativo !== false,
         });
@@ -177,7 +174,6 @@ export default function Usuarios({ usuario }) {
                     nome_completo: form.nome_completo.trim(),
                     email: emailNormalizado,
                     perfil: form.perfil,
-                    cargo_funcao: form.cargo_funcao.trim() || (form.perfil === "ADM" ? "Administrador" : "Técnico"),
                     ativo: form.ativo,
                 };
                 if (form.senha.trim()) {
@@ -186,13 +182,11 @@ export default function Usuarios({ usuario }) {
                 await api.put(`/usuarios/${form.id}`, payload);
                 setSucessoMsg("Colaborador atualizado com sucesso!");
             } else {
-                const cargoPadrao = form.perfil === "ADM" ? "Administrador" : "Técnico";
                 await api.post("/auth/registrar", {
                     nome_completo: form.nome_completo.trim(),
                     email: emailNormalizado,
                     senha: form.senha,
                     perfil: form.perfil,
-                    cargo_funcao: form.cargo_funcao.trim() || cargoPadrao,
                 });
                 setSucessoMsg(`Usuário "${form.nome_completo.trim()}" cadastrado com perfil ${form.perfil}!`);
             }
@@ -396,7 +390,6 @@ export default function Usuarios({ usuario }) {
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Nome Completo</TableCell>
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>E-mail</TableCell>
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Perfil</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Cargo / Função</TableCell>
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Situação</TableCell>
                                 <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                     Ações
@@ -428,7 +421,6 @@ export default function Usuarios({ usuario }) {
                                                 color={COR_PERFIL[u.perfil] || "default"}
                                             />
                                         </TableCell>
-                                        <TableCell>{u.cargo_funcao || "-"}</TableCell>
                                         <TableCell>
                                             <Chip
                                                 size="small"
@@ -525,7 +517,7 @@ export default function Usuarios({ usuario }) {
                             />
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12} sm={6}>
+                                <Grid item xs={12}>
                                     {modoEdicao && form.perfil === "CLIENTE" ? (
                                         <TextField fullWidth label="Perfil de Acesso" value="CLIENTE" disabled />
                                     ) : (
@@ -542,15 +534,6 @@ export default function Usuarios({ usuario }) {
                                             </Select>
                                         </FormControl>
                                     )}
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Cargo / Função (descrição)"
-                                        placeholder="Ex: Instalador, Supervisor"
-                                        value={form.cargo_funcao}
-                                        onChange={(e) => setForm({ ...form, cargo_funcao: e.target.value })}
-                                    />
                                 </Grid>
                             </Grid>
 

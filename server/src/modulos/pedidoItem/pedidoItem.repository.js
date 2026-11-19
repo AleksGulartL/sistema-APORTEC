@@ -26,10 +26,13 @@ async function recalcularTotaisPedido(pedidoId) {
         where: { pedido_id: pedidoId },
     });
 
-    const valorTotal = itens.reduce((soma, item) => soma + Number(item.valor_total || 0), 0);
+    const custoTotal = itens.reduce(
+        (soma, item) => soma + (Number(item.quantidade || 0) * Number(item.valor_unitario || 0)),
+        0
+    );
 
     await registroPedido.update({
-        valor_total: Number(valorTotal.toFixed(2)),
+        custo_total: Number(custoTotal.toFixed(2)),
     });
 }
 

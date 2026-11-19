@@ -15,7 +15,7 @@ async function buscarClientePorUsuarioId(usuarioId) {
             {
                 model: usuario,
                 as: "usuario",
-                attributes: ["id", "nome_completo", "email", "perfil", "cargo_funcao", "ativo"],
+                attributes: ["id", "nome_completo", "email", "perfil", "ativo"],
             },
         ],
     });
@@ -50,13 +50,14 @@ async function listarPedidosDoCliente(clienteId) {
 
 async function listarOrdensServicoDoCliente(clienteId) {
     return ordem_servico.findAll({
-        where: { cliente_id: clienteId },
         order: [["id", "DESC"]],
         include: [
             {
                 model: pedido,
                 as: "pedido",
-                attributes: ["id", "codigo_proposta", "numero_serie_porta", "status", "fim_garantia"],
+                where: { cliente_id: clienteId },
+                required: true,
+                attributes: ["id", "codigo_proposta", "numero_serie", "status", "fim_garantia"],
             },
             {
                 model: usuario,

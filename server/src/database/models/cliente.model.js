@@ -6,67 +6,13 @@ const toNumberOrNull = (val) => (val !== undefined && val !== null ? Number(val)
 const cliente = sequelize.define(
     "cliente",
     {
-        id: {
-            type: DataTypes.BIGINT,
-            primaryKey: true,
-            autoIncrement: true,
-            field: "id",
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-        },
-        id_cliente: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("id", val);
-            },
-        },
         usuario_id: {
             type: DataTypes.BIGINT,
+            primaryKey: true,
             allowNull: false,
-            unique: true,
             field: "usuario_id",
             get() {
                 return toNumberOrNull(this.getDataValue("usuario_id"));
-            },
-        },
-        id_usuario: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("usuario_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("usuario_id", val);
-            },
-        },
-        nome_completo: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.usuario?.nome_completo || this.getDataValue("nome_completo") || null;
-            },
-            set(val) {
-                this.setDataValue("nome_completo", val);
-            },
-        },
-        nome: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.usuario?.nome_completo || this.getDataValue("nome_completo") || null;
-            },
-            set(val) {
-                this.setDataValue("nome_completo", val);
-            },
-        },
-        email: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.usuario?.email || this.getDataValue("email") || null;
-            },
-            set(val) {
-                this.setDataValue("email", val);
             },
         },
         cnpj_cpf: {
@@ -106,13 +52,6 @@ cliente.associate = (models) => {
         cliente.hasMany(models.pedido, {
             foreignKey: "cliente_id",
             as: "pedidos",
-        });
-    }
-
-    if (models.ordem_servico) {
-        cliente.hasMany(models.ordem_servico, {
-            foreignKey: "cliente_id",
-            as: "ordens_servico",
         });
     }
 };

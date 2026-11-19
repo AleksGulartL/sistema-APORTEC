@@ -28,7 +28,7 @@ import { obterPerfilUsuario, usuarioEhAdm, usuarioEhCliente } from "../utils/per
 export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
     const nome = usuario?.nome_completo || usuario?.nome || usuario?.email || "Usuário";
     const primeiroNome = String(nome).split(" ")[0];
-    const cargo = obterPerfilUsuario(usuario) || usuario?.cargo_funcao || "Operador";
+    const cargo = obterPerfilUsuario(usuario) || "Usuário";
     const ehAdm = usuarioEhAdm(usuario);
     const ehCliente = usuarioEhCliente(usuario);
 

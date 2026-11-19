@@ -15,15 +15,6 @@ const checklistMedicao = sequelize.define(
                 return toNumberOrNull(this.getDataValue("id"));
             },
         },
-        id_medicao: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("id", val);
-            },
-        },
         pedido_id: {
             type: DataTypes.BIGINT,
             allowNull: false,
@@ -31,15 +22,6 @@ const checklistMedicao = sequelize.define(
             field: "pedido_id",
             get() {
                 return toNumberOrNull(this.getDataValue("pedido_id"));
-            },
-        },
-        id_pedido: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("pedido_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("pedido_id", val);
             },
         },
         tecnico_id: {

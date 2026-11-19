@@ -12,14 +12,12 @@ const USUARIOS_INICIAIS = [
         email: "admin@aportec.com",
         senha_plana: "admin123",
         perfil: "ADM",
-        cargo_funcao: "Administrador",
     },
     {
         nome_completo: "Técnico Operacional",
         email: "tecnico@aportec.com",
         senha_plana: "tecnico123",
         perfil: "TECNICO",
-        cargo_funcao: "Técnico",
     },
 ];
 
@@ -37,7 +35,6 @@ async function executarSeed() {
             email: u.email,
             senha_hash,
             perfil: u.perfil,
-            cargo_funcao: u.cargo_funcao,
             ativo: true,
         });
         console.log(`Usuário criado: ${u.email} (perfil: ${u.perfil})`);

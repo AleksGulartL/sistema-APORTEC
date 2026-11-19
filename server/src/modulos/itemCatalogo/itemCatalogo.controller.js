@@ -10,6 +10,26 @@ async function listar(req, res) {
     }
 }
 
+async function listarTipos(req, res) {
+    try {
+        const tipos = await itemCatalogoService.listarTipos();
+        return res.status(200).json(tipos);
+    } catch (erro) {
+        console.error("Erro ao listar tipos de item:", erro);
+        return res.status(erro.status || 500).json({ erro: erro.message });
+    }
+}
+
+async function listarCategorias(req, res) {
+    try {
+        const categorias = await itemCatalogoService.listarCategorias();
+        return res.status(200).json(categorias);
+    } catch (erro) {
+        console.error("Erro ao listar categorias de item:", erro);
+        return res.status(erro.status || 500).json({ erro: erro.message });
+    }
+}
+
 async function listarAlertasEstoqueMinimo(req, res) {
     try {
         const alertas = await itemCatalogoService.listarAlertasEstoqueMinimo();
@@ -68,15 +88,17 @@ async function deletar(req, res) {
         if (!item) {
             return res.status(404).json({ erro: "Item do catálogo não encontrado." });
         }
-        return res.status(200).json({ mensagem: "Item do catálogo removido com sucesso.", item });
+        return res.status(200).json(item);
     } catch (erro) {
-        console.error("Erro ao excluir item do catálogo:", erro);
+        console.error("Erro ao deletar item do catálogo:", erro);
         return res.status(erro.status || 500).json({ erro: erro.message });
     }
 }
 
 module.exports = {
     listar,
+    listarTipos,
+    listarCategorias,
     listarAlertasEstoqueMinimo,
     buscarPorId,
     criar,

@@ -114,7 +114,6 @@ async function criar(dados) {
         item_id: itemId,
         quantidade,
         valor_unitario: valorUnitario ?? 0,
-        valor_total: valorTotal ?? 0,
     };
 
     return pedidoItemRepository.criar(dadosFormatados);
@@ -147,9 +146,7 @@ async function atualizar(id, dados) {
     if (dados.valor_unitario !== undefined) {
         dadosFormatados.valor_unitario = Number(dados.valor_unitario);
     }
-    if (dados.valor_total !== undefined) {
-        dadosFormatados.valor_total = Number(dados.valor_total);
-    }
+
 
     return pedidoItemRepository.atualizar(idNum, dadosFormatados);
 }

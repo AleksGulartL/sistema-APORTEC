@@ -54,7 +54,14 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                 nome_completo: "Carlos Silva",
                 email: "carlos@aportec.com",
                 senha_hash: senhaCorretaHash,
-                cargo_funcao: "Administrador",
+                            authRepository.buscarPorEmail.mockResolvedValue({
+                id_usuario: 1,
+                nome_completo: "Carlos Silva",
+                email: "carlos@aportec.com",
+                senha_hash: senhaCorretaHash,
+                perfil: "ADM",
+                ativo: true,
+            });,
                 ativo: true,
             });
 
@@ -267,7 +274,14 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                 id_usuario: 1,
                 nome_completo: "Roberto",
                 email: "roberto@aportec.com",
-                cargo_funcao: "Administrador",
+                            authRepository.buscarPorEmail.mockResolvedValue({
+                id_usuario: 1,
+                nome_completo: "Carlos Silva",
+                email: "carlos@aportec.com",
+                senha_hash: senhaCorretaHash,
+                perfil: "ADM",
+                ativo: true,
+            });,
             };
 
             const token = authService.gerarToken(usuarioMock);

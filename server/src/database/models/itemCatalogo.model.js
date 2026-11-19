@@ -15,31 +15,27 @@ const itemCatalogo = sequelize.define(
                 return toNumberOrNull(this.getDataValue("id"));
             },
         },
-        id_item: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("id", val);
-            },
-        },
         codigo_referencia: {
             type: DataTypes.STRING(50),
             allowNull: true,
             unique: true,
             field: "codigo_referencia",
         },
-        tipo: {
-            type: DataTypes.STRING(30),
+        tipo_id: {
+            type: DataTypes.BIGINT,
             allowNull: false,
-            field: "tipo",
+            field: "tipo_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("tipo_id"));
+            },
         },
-        categoria: {
-            type: DataTypes.STRING(50),
+        categoria_id: {
+            type: DataTypes.BIGINT,
             allowNull: false,
-            defaultValue: "GERAL",
-            field: "categoria",
+            field: "categoria_id",
+            get() {
+                return toNumberOrNull(this.getDataValue("categoria_id"));
+            },
         },
         descricao: {
             type: DataTypes.TEXT,
@@ -69,15 +65,6 @@ const itemCatalogo = sequelize.define(
                 return toNumberOrNull(this.getDataValue("quantidade_atual"));
             },
         },
-        quantidade_estoque: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("quantidade_atual"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("quantidade_atual", val);
-            },
-        },
         estoque_minimo: {
             type: DataTypes.DECIMAL(12, 2),
             allowNull: false,
@@ -85,14 +72,6 @@ const itemCatalogo = sequelize.define(
             field: "estoque_minimo",
             get() {
                 return toNumberOrNull(this.getDataValue("estoque_minimo"));
-            },
-        },
-        abaixo_estoque_minimo: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                const atual = Number(this.getDataValue("quantidade_atual") || 0);
-                const minimo = Number(this.getDataValue("estoque_minimo") || 0);
-                return atual <= minimo;
             },
         },
     },
@@ -105,6 +84,20 @@ const itemCatalogo = sequelize.define(
 );
 
 itemCatalogo.associate = (models) => {
+    if (models.tipo_item) {
+        itemCatalogo.belongsTo(models.tipo_item, {
+            foreignKey: "tipo_id",
+            as: "tipo",
+        });
+    }
+
+    if (models.categoria_item) {
+        itemCatalogo.belongsTo(models.categoria_item, {
+            foreignKey: "categoria_id",
+            as: "categoria",
+        });
+    }
+
     if (models.pedido_item) {
         itemCatalogo.hasMany(models.pedido_item, {
             foreignKey: "item_id",

@@ -84,17 +84,14 @@ async function autenticarUsuario(id, senha) {
         return { sucesso: false, mensagem: "Usuário inativo. Contate o administrador." };
     }
 
-    const idUsuario = usuarioEncontrado.id_usuario;
-    const usuarioPayload = { // payload vai ser utilizado para gerar o token
+    const idUsuario = usuarioEncontrado.id_usuario || usuarioEncontrado.id;
+    const usuarioPayload = {
         id_usuario: idUsuario,
         nome_completo: usuarioEncontrado.nome_completo,
         email: usuarioEncontrado.email,
-        cargo_funcao: usuarioEncontrado.cargo_funcao || usuarioEncontrado.perfil,
+        perfil: usuarioEncontrado.perfil,
         ativo: usuarioEncontrado.ativo,
     };
-    if (usuarioEncontrado.perfil) {
-        usuarioPayload.perfil = usuarioEncontrado.perfil;
-    }
 
     return {
         sucesso: true,
@@ -104,10 +101,15 @@ async function autenticarUsuario(id, senha) {
 
 function solicitanteAdm(solicitante) {
     if (!solicitante) return false;
-    const papel = String(solicitante.perfil || solicitante.cargo_funcao || solicitante.role || "")
+    // Apenas verifica o campo `perfil`
+    const papel = String(solicitante.perfil || "").trim().toUpperCase();
+    return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR";
+}
+    if (!solicitante) return false;
+    const papel = String(solicitante.perfil || solicitante.role || "")
         .trim()
         .toUpperCase();
-    return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR"; // 
+    return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR";
 }
 
 async function criarNovoUsuario(dados, solicitante = null) {
@@ -126,10 +128,7 @@ async function criarNovoUsuario(dados, solicitante = null) {
     const nome = (dados.nome_completo || dados.nome || "").trim();
     const emailBruto = dados.email || dados.username || "";
     const senha = dados.senha || dados.password || dados.senha_hash || "";
-    const cargo_funcao = dados.cargo_funcao || dados.perfil || dados.role || "usuario";
-    const perfil = dados.perfil
-        ? normalizarPerfil(dados.perfil, true)
-        : normalizarPerfil(cargo_funcao, false);
+    const perfil = normalizarPerfil(dados.perfil || dados.role, true);
 
     if (!nome) {
         const erro = new Error("O campo 'nome_completo' é obrigatório.");
@@ -160,34 +159,26 @@ async function criarNovoUsuario(dados, solicitante = null) {
         email,
         senha_hash,
         perfil,
-        cargo_funcao,
         ativo: true,
     });
 
-    const idCriado = novoUsuario.id_usuario;
-    const resposta = {
+    const idCriado = novoUsuario.id_usuario || novoUsuario.id;
+    return {
         id_usuario: idCriado,
         nome_completo: novoUsuario.nome_completo,
         email: novoUsuario.email,
-        cargo_funcao: novoUsuario.cargo_funcao,
+        perfil: novoUsuario.perfil,
     };
-    if (dados.perfil) {
-        resposta.perfil = novoUsuario.perfil;
-    }
-    return resposta;
 }
 
 function gerarToken(usuario) {
     const id = usuario.id_usuario || usuario.id;
-    const cargo = usuario.cargo_funcao || usuario.perfil || usuario.role;
     const payload = {
         id,
         id_usuario: id,
         email: usuario.email,
         nome_completo: usuario.nome_completo,
-        perfil: usuario.perfil || normalizarPerfil(cargo),
-        cargo_funcao: cargo,
-        role: cargo,
+        perfil: usuario.perfil || "CLIENTE",
     };
 
     return jwt.sign(payload, getJwtSecret(), {

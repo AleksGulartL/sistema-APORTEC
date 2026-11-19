@@ -79,12 +79,8 @@ async function criar(dados) {
     const payload = {
         ...dados,
         email: validarGmail(dados.email),
+        perfil: normalizarPerfil(dados.perfil),
     };
-    if (payload.perfil) {
-        payload.perfil = String(payload.perfil).trim().toUpperCase();
-    } else if (payload.cargo_funcao) {
-        payload.perfil = normalizarPerfil(payload.cargo_funcao);
-    }
     return usuarioRepository.criar(payload);
 }
 

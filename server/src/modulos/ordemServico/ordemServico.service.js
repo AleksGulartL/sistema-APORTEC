@@ -5,20 +5,13 @@ const ORIGENS_COBERTURA = ["Garantia", "Contrato", "Avulso"];
 const STATUS_OS = ["Aberta", "Em Andamento", "Finalizada", "Cancelada"];
 
 function validarOrdemServico(dados, isUpdate = false) {
-    const idCliente = dados.cliente_id ?? dados.id_cliente;
+    const idPedido = dados.pedido_id ?? dados.id_pedido;
     const idTecnico = dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel;
 
     if (!isUpdate) {
-        const idClienteNum = Number(idCliente);
-        if (!idCliente || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
-            const erro = new Error("O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.");
-            erro.status = 400;
-            throw erro;
-        }
-
-        const idTecnicoNum = Number(idTecnico);
-        if (!idTecnico || !Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
-            const erro = new Error("O campo 'id_tecnico_responsavel' é obrigatório e deve ser um número inteiro válido.");
+        const idPedidoNum = Number(idPedido);
+        if (!idPedido || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
+            const erro = new Error("O campo 'pedido_id' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
@@ -31,19 +24,10 @@ function validarOrdemServico(dados, isUpdate = false) {
             throw erro;
         }
     } else {
-        if (idCliente !== undefined) {
-            const idClienteNum = Number(idCliente);
-            if (!Number.isInteger(idClienteNum) || idClienteNum <= 0) {
-                const erro = new Error("O campo 'id_cliente' deve ser um número inteiro válido.");
-                erro.status = 400;
-                throw erro;
-            }
-        }
-
-        if (idTecnico !== undefined) {
-            const idTecnicoNum = Number(idTecnico);
-            if (!Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
-                const erro = new Error("O campo 'id_tecnico_responsavel' deve ser um número inteiro válido.");
+        if (idPedido !== undefined) {
+            const idPedidoNum = Number(idPedido);
+            if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
+                const erro = new Error("O campo 'pedido_id' deve ser um número inteiro válido.");
                 erro.status = 400;
                 throw erro;
             }
@@ -58,11 +42,10 @@ function validarOrdemServico(dados, isUpdate = false) {
         }
     }
 
-    const idPedido = dados.pedido_id ?? dados.id_pedido;
-    if (idPedido !== undefined && idPedido !== null) {
-        const idPedidoNum = Number(idPedido);
-        if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
-            const erro = new Error("O campo 'id_pedido' deve ser um número inteiro válido.");
+    if (idTecnico !== undefined && idTecnico !== null && String(idTecnico).trim() !== "") {
+        const idTecnicoNum = Number(idTecnico);
+        if (!Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
+            const erro = new Error("O campo 'tecnico_responsavel_id' deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
@@ -117,24 +100,25 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarOrdemServico(dados);
-    const idCliente = Number(dados.cliente_id ?? dados.id_cliente);
-    const idTecnico = Number(dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel);
-    const idPedido = dados.pedido_id ?? dados.id_pedido;
+    const idPedido = Number(dados.pedido_id ?? dados.id_pedido);
+    const idTecnicoRaw = dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel;
+    const idTecnico = idTecnicoRaw !== undefined && idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== ""
+        ? Number(idTecnicoRaw)
+        : null;
 
     const dadosFormatados = {
         ...dados,
-        cliente_id: idCliente,
-        id_cliente: idCliente,
+        pedido_id: idPedido,
         tecnico_responsavel_id: idTecnico,
-        id_tecnico_responsavel: idTecnico,
     };
 
-    if (idPedido !== undefined && idPedido !== null) {
-        dadosFormatados.pedido_id = Number(idPedido);
-        dadosFormatados.id_pedido = Number(idPedido);
-    }
-
     delete dadosFormatados.id_os;
+    delete dadosFormatados.id;
+    delete dadosFormatados.id_pedido;
+    delete dadosFormatados.id_tecnico_responsavel;
+    delete dadosFormatados.cliente_id;
+    delete dadosFormatados.id_cliente;
+
     return ordemServicoRepository.criar(dadosFormatados);
 }
 
@@ -149,23 +133,26 @@ async function atualizar(id, dados) {
     validarOrdemServico(dados, true);
     const dadosFormatados = { ...dados };
 
-    if (dadosFormatados.id_cliente !== undefined || dadosFormatados.cliente_id !== undefined) {
-        const idCliente = Number(dadosFormatados.cliente_id ?? dadosFormatados.id_cliente);
-        dadosFormatados.cliente_id = idCliente;
-        dadosFormatados.id_cliente = idCliente;
-    }
-    if (dadosFormatados.id_tecnico_responsavel !== undefined || dadosFormatados.tecnico_responsavel_id !== undefined) {
-        const idTecnico = Number(dadosFormatados.tecnico_responsavel_id ?? dadosFormatados.id_tecnico_responsavel);
-        dadosFormatados.tecnico_responsavel_id = idTecnico;
-        dadosFormatados.id_tecnico_responsavel = idTecnico;
-    }
     if (dadosFormatados.id_pedido !== undefined || dadosFormatados.pedido_id !== undefined) {
         const idPedido = Number(dadosFormatados.pedido_id ?? dadosFormatados.id_pedido);
         dadosFormatados.pedido_id = idPedido;
-        dadosFormatados.id_pedido = idPedido;
+    }
+
+    if (dadosFormatados.id_tecnico_responsavel !== undefined || dadosFormatados.tecnico_responsavel_id !== undefined) {
+        const idTecnicoRaw = dadosFormatados.tecnico_responsavel_id ?? dadosFormatados.id_tecnico_responsavel;
+        dadosFormatados.tecnico_responsavel_id =
+            idTecnicoRaw !== undefined && idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== ""
+                ? Number(idTecnicoRaw)
+                : null;
     }
 
     delete dadosFormatados.id_os;
+    delete dadosFormatados.id;
+    delete dadosFormatados.id_pedido;
+    delete dadosFormatados.id_tecnico_responsavel;
+    delete dadosFormatados.cliente_id;
+    delete dadosFormatados.id_cliente;
+
     return ordemServicoRepository.atualizar(idNum, dadosFormatados);
 }
 

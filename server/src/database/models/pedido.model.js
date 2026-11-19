@@ -15,24 +15,6 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("id"));
             },
         },
-        id_pedido: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("id", val);
-            },
-        },
-        id_orcamento: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined && !this.getDataValue("id")) this.setDataValue("id", val);
-            },
-        },
         codigo_proposta: {
             type: DataTypes.STRING(50),
             allowNull: true,
@@ -47,30 +29,12 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("cliente_id"));
             },
         },
-        id_cliente: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("cliente_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("cliente_id", val);
-            },
-        },
         usuario_criador_id: {
             type: DataTypes.BIGINT,
             allowNull: false,
             field: "usuario_criador_id",
             get() {
                 return toNumberOrNull(this.getDataValue("usuario_criador_id"));
-            },
-        },
-        id_usuario_criador: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("usuario_criador_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("usuario_criador_id", val);
             },
         },
         responsavel_producao_id: {
@@ -81,46 +45,39 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("responsavel_producao_id"));
             },
         },
-        id_responsavel_tecnico: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("responsavel_producao_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("responsavel_producao_id", val);
-            },
-        },
         endereco_instalacao: {
             type: DataTypes.TEXT,
             allowNull: true,
             field: "endereco_instalacao",
         },
         tipo_pedido: {
-            type: DataTypes.STRING(50),
+            type: DataTypes.ENUM("Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"),
             allowNull: false,
             defaultValue: "Instalacao",
             field: "tipo_pedido",
         },
         status_aprovacao: {
-            type: DataTypes.STRING(30),
+            type: DataTypes.ENUM("Pendente", "Aprovado", "Reprovado"),
             allowNull: false,
             defaultValue: "Pendente",
             field: "status_aprovacao",
         },
         status: {
-            type: DataTypes.STRING(50),
+            type: DataTypes.ENUM(
+                "Rascunho",
+                "Pendente",
+                "Aguardando",
+                "Planejada",
+                "Em Fabricacao",
+                "Montagem",
+                "Testes",
+                "Pronto para Instalacao",
+                "Concluido",
+                "Cancelado"
+            ),
             allowNull: false,
-            defaultValue: "Aguardando",
+            defaultValue: "Rascunho",
             field: "status",
-        },
-        status_fluxo: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.getDataValue("status");
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("status", val);
-            },
         },
         bloqueio_fabricacao: {
             type: DataTypes.BOOLEAN,
@@ -131,16 +88,24 @@ const pedido = sequelize.define(
         motivo_bloqueio: {
             type: DataTypes.TEXT,
             allowNull: true,
-            defaultValue: "Aguardando aprovação comercial e checklist técnico de medição.",
             field: "motivo_bloqueio",
         },
-        valor_total: {
+        custo_total: {
             type: DataTypes.DECIMAL(12, 2),
             allowNull: false,
             defaultValue: 0.0,
-            field: "valor_total",
+            field: "custo_total",
             get() {
-                return toNumberOrNull(this.getDataValue("valor_total"));
+                return toNumberOrNull(this.getDataValue("custo_total"));
+            },
+        },
+        percentual_acrescimo: {
+            type: DataTypes.DECIMAL(5, 2),
+            allowNull: false,
+            defaultValue: 0.0,
+            field: "percentual_acrescimo",
+            get() {
+                return toNumberOrNull(this.getDataValue("percentual_acrescimo"));
             },
         },
         condicoes_pagamento: {
@@ -148,11 +113,11 @@ const pedido = sequelize.define(
             allowNull: true,
             field: "condicoes_pagamento",
         },
-        numero_serie_porta: {
+        numero_serie: {
             type: DataTypes.STRING(100),
             allowNull: true,
             unique: true,
-            field: "numero_serie_porta",
+            field: "numero_serie",
         },
         fim_garantia: {
             type: DataTypes.DATEONLY,

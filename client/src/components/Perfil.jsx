@@ -113,7 +113,7 @@ export default function Perfil() {
         return <Alert severity="error">{erro}</Alert>;
     }
 
-    const tipoPerfil = obterPerfilUsuario(perfil) || perfil?.cargo_funcao || "Operador";
+    const tipoPerfil = obterPerfilUsuario(perfil) || "Usuário";
 
     return (
         <Box sx={{ py: 3, maxWidth: 680, mx: "auto" }}>
@@ -175,14 +175,7 @@ export default function Perfil() {
                                 <Typography variant="body1">{perfil?.email || "-"}</Typography>
                             </Grid>
 
-                            {perfil?.cargo_funcao && !usuarioEhCliente(perfil) && (
-                                <Grid item xs={12} sm={6}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Cargo / Função
-                                    </Typography>
-                                    <Typography variant="body1">{perfil.cargo_funcao}</Typography>
-                                </Grid>
-                            )}
+
 
                             {dadosCliente && (
                                 <>

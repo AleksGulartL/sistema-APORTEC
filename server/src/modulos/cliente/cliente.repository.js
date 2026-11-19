@@ -8,7 +8,7 @@ function obterIncludes() {
         includes.push({
             model: usuario,
             as: "usuario",
-            attributes: ["id", "nome_completo", "email", "perfil", "cargo_funcao", "ativo"],
+            attributes: ["id", "nome_completo", "email", "perfil", "ativo"],
         });
     }
     return includes;
@@ -20,7 +20,7 @@ function gerarSenhaTemporaria() {
 
 async function listar() {
     return cliente.findAll({
-        order: [["id", "ASC"]],
+        order: [["usuario_id", "ASC"]],
         include: obterIncludes(),
     });
 }
@@ -49,7 +49,6 @@ async function criar(dados) {
                     email: dados.email,
                     senha_hash: senhaHash,
                     perfil: "CLIENTE",
-                    cargo_funcao: "Cliente",
                     ativo: true,
                 },
                 transaction ? { transaction } : undefined
@@ -68,7 +67,7 @@ async function criar(dados) {
         );
 
         if (transaction) await transaction.commit();
-        return buscarPorId(novoCliente.id);
+        return buscarPorId(novoCliente.usuario_id);
     } catch (erro) {
         if (transaction) await transaction.rollback();
         throw erro;

@@ -15,28 +15,10 @@ const usuario = sequelize.define(
                 return toNumberOrNull(this.getDataValue("id"));
             },
         },
-        id_usuario: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("id", val);
-            },
-        },
         nome_completo: {
             type: DataTypes.STRING(150),
             allowNull: false,
             field: "nome_completo",
-        },
-        nome: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.getDataValue("nome_completo");
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("nome_completo", val);
-            },
         },
         email: {
             type: DataTypes.STRING(150),
@@ -49,34 +31,11 @@ const usuario = sequelize.define(
             allowNull: false,
             field: "senha_hash",
         },
-        senha: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.getDataValue("senha_hash");
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("senha_hash", val);
-            },
-        },
         perfil: {
             type: DataTypes.ENUM("ADM", "TECNICO", "CLIENTE"),
             allowNull: false,
             defaultValue: "TECNICO",
             field: "perfil",
-        },
-        tipo_perfil: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return this.getDataValue("perfil");
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("perfil", val);
-            },
-        },
-        cargo_funcao: {
-            type: DataTypes.STRING(100),
-            allowNull: true,
-            field: "cargo_funcao",
         },
         ativo: {
             type: DataTypes.BOOLEAN,
@@ -84,18 +43,12 @@ const usuario = sequelize.define(
             defaultValue: true,
             field: "ativo",
         },
-        data_criacao: {
-            type: DataTypes.VIRTUAL, // virtual o que é: não é um campo do banco de dados, é um campo virtual que é criado pelo get 
-            get() {
-                return this.getDataValue("createdAt") || this.getDataValue("created_at");
-            },
-        },
     },
     {
         tableName: "usuario",
         timestamps: true,
-        paranoid: true, // serve para fazer o delete no banco de dados, ou seja, quando deletar um usuario ele não será deletado do banco de dados, mas sim marcado como deletado
-        underscored: true, // serve para que o sequelize converta os nomes das colunas do banco de dados para o formato snake_case
+        paranoid: true,
+        underscored: true,
     }
 );
 

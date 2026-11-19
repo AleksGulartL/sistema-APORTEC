@@ -21,9 +21,10 @@ async function obterClienteVinculado(usuarioLogado) {
 
 async function obterResumo(usuarioLogado) {
     const clienteReg = await obterClienteVinculado(usuarioLogado);
+    const idCliente = clienteReg.usuario_id;
     const [pedidos, ordens_servico] = await Promise.all([
-        portalClienteRepository.listarPedidosDoCliente(clienteReg.id),
-        portalClienteRepository.listarOrdensServicoDoCliente(clienteReg.id),
+        portalClienteRepository.listarPedidosDoCliente(idCliente),
+        portalClienteRepository.listarOrdensServicoDoCliente(idCliente),
     ]);
 
     return {
@@ -50,7 +51,7 @@ async function responderAprovacaoOrcamento(usuarioLogado, pedidoId, dados = {}) 
     }
 
     const clienteReg = await obterClienteVinculado(usuarioLogado);
-    const regPedido = await portalClienteRepository.buscarPedidoDoClientePorId(idNum, clienteReg.id);
+    const regPedido = await portalClienteRepository.buscarPedidoDoClientePorId(idNum, clienteReg.usuario_id);
     if (!regPedido) {
         const erro = new Error("Pedido não encontrado para este cliente.");
         erro.status = 404;
@@ -109,34 +110,31 @@ async function abrirSolicitacaoManutencao(usuarioLogado, dados = {}) {
 
     const clienteReg = await obterClienteVinculado(usuarioLogado);
 
-    let pedidoId = null;
-    let origemCobertura = "Avulso";
+    const pedidoIdRaw = dados.pedido_id;
+    const pedidoIdNum = Number(pedidoIdRaw);
+    if (!pedidoIdRaw || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
+        const erro = new Error("Selecione o pedido / porta instalada para a qual deseja abrir assistência.");
+        erro.status = 400;
+        throw erro;
+    }
 
-    if (dados.pedido_id !== undefined && dados.pedido_id !== null && String(dados.pedido_id).trim() !== "") {
-        const pedidoIdNum = Number(dados.pedido_id);
-        if (!Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
-            const erro = new Error("O 'pedido_id' informado é inválido.");
-            erro.status = 400;
-            throw erro;
-        }
-        const regPedido = await portalClienteRepository.buscarPedidoDoClientePorId(pedidoIdNum, clienteReg.id);
-        if (!regPedido) {
-            const erro = new Error("Porta / Pedido selecionado não pertence a este cliente.");
-            erro.status = 404;
-            throw erro;
-        }
-        pedidoId = regPedido.id;
-        if (regPedido.fim_garantia) {
-            const hojeIso = new Date().toISOString().slice(0, 10);
-            if (String(regPedido.fim_garantia).slice(0, 10) >= hojeIso) {
-                origemCobertura = "Garantia";
-            }
+    const regPedido = await portalClienteRepository.buscarPedidoDoClientePorId(pedidoIdNum, clienteReg.usuario_id);
+    if (!regPedido) {
+        const erro = new Error("Porta / Pedido selecionado não pertence a este cliente.");
+        erro.status = 404;
+        throw erro;
+    }
+
+    let origemCobertura = "Avulso";
+    if (regPedido.fim_garantia) {
+        const hojeIso = new Date().toISOString().slice(0, 10);
+        if (String(regPedido.fim_garantia).slice(0, 10) >= hojeIso) {
+            origemCobertura = "Garantia";
         }
     }
 
     return portalClienteRepository.criarOrdemServicoCliente({
-        cliente_id: clienteReg.id,
-        pedido_id: pedidoId,
+        pedido_id: regPedido.id,
         tecnico_responsavel_id: null,
         tipo_servico: tipoServico,
         origem_cobertura: origemCobertura,

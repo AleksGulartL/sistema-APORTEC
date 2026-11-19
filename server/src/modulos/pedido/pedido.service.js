@@ -35,10 +35,28 @@ function validarPedido(dados, isUpdate = false) {
         }
     }
 
-    if (dados.valor_total !== undefined && dados.valor_total !== null) {
-        const valorNum = Number(dados.valor_total);
-        if (isNaN(valorNum) || valorNum < 0) {
-            const erro = new Error("O 'valor_total' deve ser um número maior ou igual a zero.");
+    if (dados.tipo_pedido !== undefined && dados.tipo_pedido !== null) {
+        const TIPOS_VALIDOS = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
+        if (!TIPOS_VALIDOS.includes(dados.tipo_pedido)) {
+            const erro = new Error("O campo 'tipo_pedido' deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.");
+            erro.status = 400;
+            throw erro;
+        }
+    }
+
+    if (dados.custo_total !== undefined && dados.custo_total !== null) {
+        const custoNum = Number(dados.custo_total);
+        if (isNaN(custoNum) || custoNum < 0) {
+            const erro = new Error("O 'custo_total' deve ser um número maior ou igual a zero.");
+            erro.status = 400;
+            throw erro;
+        }
+    }
+
+    if (dados.percentual_acrescimo !== undefined && dados.percentual_acrescimo !== null) {
+        const percNum = Number(dados.percentual_acrescimo);
+        if (isNaN(percNum) || percNum < 0) {
+            const erro = new Error("O 'percentual_acrescimo' deve ser um número maior ou igual a zero.");
             erro.status = 400;
             throw erro;
         }
@@ -102,9 +120,14 @@ async function criar(dados) {
     if (dados.status_fluxo) {
         dadosFormatados.status = dados.status_fluxo;
     }
+    if (dados.numero_serie_porta && !dadosFormatados.numero_serie) {
+        dadosFormatados.numero_serie = dados.numero_serie_porta;
+    }
 
     delete dadosFormatados.id_pedido;
     delete dadosFormatados.id;
+    delete dadosFormatados.numero_serie_porta;
+    delete dadosFormatados.valor_total;
     return pedidoRepository.criar(dadosFormatados);
 }
 
@@ -128,9 +151,14 @@ async function atualizar(id, dados) {
     if (dadosFormatados.status_fluxo) {
         dadosFormatados.status = dadosFormatados.status_fluxo;
     }
+    if (dados.numero_serie_porta && !dadosFormatados.numero_serie) {
+        dadosFormatados.numero_serie = dados.numero_serie_porta;
+    }
 
     delete dadosFormatados.id_pedido;
     delete dadosFormatados.id;
+    delete dadosFormatados.numero_serie_porta;
+    delete dadosFormatados.valor_total;
     return pedidoRepository.atualizar(idNum, dadosFormatados);
 }
 
@@ -155,8 +183,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
     const existente = await pedidoRepository.buscarPorId(idNum);
     if (!existente) return null;
 
-    // RF08 - Impede avanço para etapas de fabricação se o bloqueio estiver ativo
-    if (ETAPAS_FABRICACAO.includes(novoStatus) && existente.bloqueio_fabricacao === true) {
+    if (ETAPAS_FABRICACAO.includes(novoStatus) && (existente.bloqueio_fabricacao === true || existente.status_aprovacao !== "Aprovado")) {
         const erro = new Error(
             existente.motivo_bloqueio ||
                 "Bloqueio de fabricação ativo: verifique a aprovação do orçamento e o checklist técnico de medição."
@@ -209,17 +236,17 @@ async function coletarAssinaturaAceite(id, dados = {}) {
     const umAnoDepois = new Date(agora);
     umAnoDepois.setFullYear(umAnoDepois.getFullYear() + 1);
 
-    const numeroSeriePorta =
-        dados.numero_serie_porta ||
+    const numeroSerie =
         dados.numero_serie ||
-        existente.numero_serie_porta ||
+        dados.numero_serie_porta ||
+        existente.numero_serie ||
         `APORTEC-${agora.getFullYear()}-${String(idNum).padStart(4, "0")}`;
 
     const fimGarantia = dados.fim_garantia || umAnoDepois.toISOString().slice(0, 10);
 
     const pedidoAtualizado = await pedidoRepository.atualizar(idNum, {
         assinatura_cliente_instalacao: assinatura.trim(),
-        numero_serie_porta: numeroSeriePorta,
+        numero_serie: numeroSerie,
         fim_garantia: fimGarantia,
         status: "Concluido",
         data_conclusao: agora,

@@ -1,6 +1,6 @@
 export function obterPerfilUsuario(usuario) {
     if (!usuario) return "";
-    const bruto = String(usuario.perfil || usuario.cargo_funcao || usuario.role || "")
+    const bruto = String(usuario.perfil || usuario.role || "")
         .trim()
         .toUpperCase()
         .normalize("NFD")

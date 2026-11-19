@@ -2,23 +2,28 @@ const { ordem_servico, cliente, pedido, usuario } = require("../../database/mode
 
 function obterIncludes() {
     const includes = [];
-    if (cliente) {
-        includes.push({
-            model: cliente,
-            as: "cliente",
-            include: usuario ? [{ model: usuario, as: "usuario", attributes: ["id", "nome_completo", "email", "perfil"] }] : [],
-        });
-    }
     if (pedido) {
         includes.push({
             model: pedido,
             as: "pedido",
+            include: cliente
+                ? [
+                      {
+                          model: cliente,
+                          as: "cliente",
+                          include: usuario
+                              ? [{ model: usuario, as: "usuario", attributes: ["id", "nome_completo", "email", "perfil"] }]
+                              : [],
+                      },
+                  ]
+                : [],
         });
     }
     if (usuario) {
         includes.push({
             model: usuario,
             as: "tecnico_responsavel",
+            attributes: ["id", "nome_completo", "email", "perfil"],
         });
     }
     return includes;

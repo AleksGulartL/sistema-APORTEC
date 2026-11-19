@@ -10,11 +10,9 @@ function normalizarPapel(papel) {
     return valor;
 }
 
-// Obtém o papel RBAC do usuário autenticado.
-// O campo `perfil` (gravado no token pelo auth.service) é a fonte oficial de permissão.
-// `cargo_funcao` é um texto livre descritivo e só é considerado em tokens legados sem `perfil`.
+// Obtém o papel RBAC do usuário autenticado a partir de `perfil`.
 function obterPapelUsuario(usuario) {
-    const papel = usuario.perfil || usuario.cargo_funcao || usuario.role || "";
+    const papel = usuario.perfil || ""; // removed fallback to `role`
     return papel ? normalizarPapel(papel) : "";
 }
 
@@ -36,7 +34,7 @@ function autorizar(...papeisPermitidos) {
                 erro: "Permissão insuficiente.",
                 mensagem: "Acesso negado. O perfil não tem permissão para esta ação.",
                 necessario: papeisPermitidos.flat(),
-                atual: usuario.perfil || usuario.cargo_funcao || usuario.role || "",
+                atual: usuario.perfil,
             });
         }
 

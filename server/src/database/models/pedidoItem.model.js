@@ -15,15 +15,6 @@ const pedidoItem = sequelize.define(
                 return toNumberOrNull(this.getDataValue("id"));
             },
         },
-        id_item_orcamento: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("id", val);
-            },
-        },
         pedido_id: {
             type: DataTypes.BIGINT,
             allowNull: false,
@@ -32,48 +23,12 @@ const pedidoItem = sequelize.define(
                 return toNumberOrNull(this.getDataValue("pedido_id"));
             },
         },
-        id_orcamento: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("pedido_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("pedido_id", val);
-            },
-        },
-        id_pedido: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("pedido_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("pedido_id", val);
-            },
-        },
         item_id: {
             type: DataTypes.BIGINT,
             allowNull: false,
             field: "item_id",
             get() {
                 return toNumberOrNull(this.getDataValue("item_id"));
-            },
-        },
-        id_item_catalogo: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("item_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("item_id", val);
-            },
-        },
-        id_item: {
-            type: DataTypes.VIRTUAL,
-            get() {
-                return toNumberOrNull(this.getDataValue("item_id"));
-            },
-            set(val) {
-                if (val !== undefined) this.setDataValue("item_id", val);
             },
         },
         quantidade: {
@@ -92,15 +47,6 @@ const pedidoItem = sequelize.define(
             field: "valor_unitario",
             get() {
                 return toNumberOrNull(this.getDataValue("valor_unitario"));
-            },
-        },
-        valor_total: {
-            type: DataTypes.DECIMAL(12, 2),
-            allowNull: false,
-            defaultValue: 0.0,
-            field: "valor_total",
-            get() {
-                return toNumberOrNull(this.getDataValue("valor_total"));
             },
         },
     },
