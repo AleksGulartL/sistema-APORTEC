@@ -105,12 +105,6 @@ function solicitanteAdm(solicitante) {
     const papel = String(solicitante.perfil || "").trim().toUpperCase();
     return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR";
 }
-    if (!solicitante) return false;
-    const papel = String(solicitante.perfil || solicitante.role || "")
-        .trim()
-        .toUpperCase();
-    return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR";
-}
 
 async function criarNovoUsuario(dados, solicitante = null) {
     if (!solicitante) {
