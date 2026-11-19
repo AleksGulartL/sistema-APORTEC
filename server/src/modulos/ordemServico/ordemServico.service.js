@@ -5,12 +5,9 @@ const ORIGENS_COBERTURA = ["Garantia", "Contrato", "Avulso"];
 const STATUS_OS = ["Aberta", "Em Andamento", "Finalizada", "Cancelada"];
 
 function validarOrdemServico(dados, isUpdate = false) {
-    const idPedido = dados.pedido_id ?? dados.id_pedido;
-    const idTecnico = dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel;
-
     if (!isUpdate) {
-        const idPedidoNum = Number(idPedido);
-        if (!idPedido || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
+        const idPedidoNum = Number(dados.pedido_id);
+        if (!dados.pedido_id || !Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
             const erro = new Error("O campo 'pedido_id' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
@@ -24,8 +21,8 @@ function validarOrdemServico(dados, isUpdate = false) {
             throw erro;
         }
     } else {
-        if (idPedido !== undefined) {
-            const idPedidoNum = Number(idPedido);
+        if (dados.pedido_id !== undefined) {
+            const idPedidoNum = Number(dados.pedido_id);
             if (!Number.isInteger(idPedidoNum) || idPedidoNum <= 0) {
                 const erro = new Error("O campo 'pedido_id' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -42,8 +39,12 @@ function validarOrdemServico(dados, isUpdate = false) {
         }
     }
 
-    if (idTecnico !== undefined && idTecnico !== null && String(idTecnico).trim() !== "") {
-        const idTecnicoNum = Number(idTecnico);
+    if (
+        dados.tecnico_responsavel_id !== undefined &&
+        dados.tecnico_responsavel_id !== null &&
+        String(dados.tecnico_responsavel_id).trim() !== ""
+    ) {
+        const idTecnicoNum = Number(dados.tecnico_responsavel_id);
         if (!Number.isInteger(idTecnicoNum) || idTecnicoNum <= 0) {
             const erro = new Error("O campo 'tecnico_responsavel_id' deve ser um número inteiro válido.");
             erro.status = 400;
@@ -99,26 +100,20 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    validarOrdemServico(dados);
-    const idPedido = Number(dados.pedido_id ?? dados.id_pedido);
-    const idTecnicoRaw = dados.tecnico_responsavel_id ?? dados.id_tecnico_responsavel;
-    const idTecnico = idTecnicoRaw !== undefined && idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== ""
-        ? Number(idTecnicoRaw)
-        : null;
+    validarOrdemServico(dados, false);
+    const idTecnicoRaw = dados.tecnico_responsavel_id;
+    const idTecnico =
+        idTecnicoRaw !== undefined && idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== ""
+            ? Number(idTecnicoRaw)
+            : null;
 
     const dadosFormatados = {
         ...dados,
-        pedido_id: idPedido,
+        pedido_id: Number(dados.pedido_id),
         tecnico_responsavel_id: idTecnico,
     };
 
-    delete dadosFormatados.id_os;
     delete dadosFormatados.id;
-    delete dadosFormatados.id_pedido;
-    delete dadosFormatados.id_tecnico_responsavel;
-    delete dadosFormatados.cliente_id;
-    delete dadosFormatados.id_cliente;
-
     return ordemServicoRepository.criar(dadosFormatados);
 }
 
@@ -133,26 +128,17 @@ async function atualizar(id, dados) {
     validarOrdemServico(dados, true);
     const dadosFormatados = { ...dados };
 
-    if (dadosFormatados.id_pedido !== undefined || dadosFormatados.pedido_id !== undefined) {
-        const idPedido = Number(dadosFormatados.pedido_id ?? dadosFormatados.id_pedido);
-        dadosFormatados.pedido_id = idPedido;
+    if (dadosFormatados.pedido_id !== undefined) {
+        dadosFormatados.pedido_id = Number(dadosFormatados.pedido_id);
     }
 
-    if (dadosFormatados.id_tecnico_responsavel !== undefined || dadosFormatados.tecnico_responsavel_id !== undefined) {
-        const idTecnicoRaw = dadosFormatados.tecnico_responsavel_id ?? dadosFormatados.id_tecnico_responsavel;
+    if (dadosFormatados.tecnico_responsavel_id !== undefined) {
+        const idTecnicoRaw = dadosFormatados.tecnico_responsavel_id;
         dadosFormatados.tecnico_responsavel_id =
-            idTecnicoRaw !== undefined && idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== ""
-                ? Number(idTecnicoRaw)
-                : null;
+            idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== "" ? Number(idTecnicoRaw) : null;
     }
 
-    delete dadosFormatados.id_os;
     delete dadosFormatados.id;
-    delete dadosFormatados.id_pedido;
-    delete dadosFormatados.id_tecnico_responsavel;
-    delete dadosFormatados.cliente_id;
-    delete dadosFormatados.id_cliente;
-
     return ordemServicoRepository.atualizar(idNum, dadosFormatados);
 }
 

@@ -1,4 +1,5 @@
 const ordemServicoService = require("./ordemServico.service");
+const { responderErroController } = require("../../utils/tratarErroController");
 
 async function listar(req, res) {
     try {
@@ -6,7 +7,7 @@ async function listar(req, res) {
         return res.status(200).json(ordens);
     } catch (erro) {
         console.error("Erro ao buscar ordens de serviço:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro);
     }
 }
 
@@ -19,7 +20,7 @@ async function buscarPorId(req, res) {
         return res.status(200).json(os);
     } catch (erro) {
         console.error("Erro ao buscar ordem de serviço:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro);
     }
 }
 
@@ -29,10 +30,10 @@ async function criar(req, res) {
         return res.status(201).json(os);
     } catch (erro) {
         console.error("Erro ao criar ordem de serviço:", erro);
-        if (erro.code === "23503") {
-            return res.status(400).json({ erro: "Obra, porta ou técnico informado não existe." });
-        }
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemVinculo: "Pedido ou técnico responsável informado não existe.",
+        });
     }
 }
 
@@ -45,10 +46,10 @@ async function atualizar(req, res) {
         return res.status(200).json(os);
     } catch (erro) {
         console.error("Erro ao atualizar ordem de serviço:", erro);
-        if (erro.code === "23503") {
-            return res.status(400).json({ erro: "Obra, porta ou técnico informado não existe." });
-        }
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemVinculo: "Pedido ou técnico responsável informado não existe.",
+        });
     }
 }
 
@@ -58,10 +59,10 @@ async function deletar(req, res) {
         if (!os) {
             return res.status(404).json({ erro: "Ordem de serviço não encontrada." });
         }
-        return res.status(200).json({ mensagem: "Ordem de serviço removida com sucesso." });
+        return res.status(200).json({ mensagem: "Ordem de serviço removida com sucesso.", os });
     } catch (erro) {
         console.error("Erro ao deletar ordem de serviço:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro);
     }
 }
 
@@ -70,5 +71,5 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
-    deletar
+    deletar,
 };

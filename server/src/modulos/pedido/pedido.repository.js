@@ -4,6 +4,8 @@ const {
     usuario,
     pedido_item,
     item_catalogo,
+    tipo_item,
+    categoria_item,
     checklist_medicao,
     ordem_servico,
 } = require("../../database/models");
@@ -14,24 +16,34 @@ function obterIncludes() {
         includes.push({
             model: cliente,
             as: "cliente",
-            include: usuario ? [{ model: usuario, as: "usuario", attributes: ["id", "nome_completo", "email", "perfil"] }] : [],
+            include: usuario
+                ? [{ model: usuario, as: "usuario", attributes: ["id", "nome_completo", "email", "perfil"] }]
+                : [],
         });
     }
     if (usuario) {
         includes.push({
             model: usuario,
             as: "usuario_criador",
+            attributes: ["id", "nome_completo", "email", "perfil"],
         });
         includes.push({
             model: usuario,
             as: "responsavel_producao",
+            attributes: ["id", "nome_completo", "email", "perfil"],
         });
     }
     if (pedido_item) {
+        const itemIncludes = [];
+        if (tipo_item) itemIncludes.push({ model: tipo_item, as: "tipo" });
+        if (categoria_item) itemIncludes.push({ model: categoria_item, as: "categoria" });
+
         includes.push({
             model: pedido_item,
             as: "itens",
-            include: item_catalogo ? [{ model: item_catalogo, as: "item_catalogo" }] : [],
+            include: item_catalogo
+                ? [{ model: item_catalogo, as: "item_catalogo", include: itemIncludes }]
+                : [],
         });
     }
     if (checklist_medicao) {
@@ -63,26 +75,15 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    const idOrcamento = dados.id_orcamento ? Number(dados.id_orcamento) : null;
-    if (idOrcamento && !dados.cliente_id) {
-        const existente = await pedido.findByPk(idOrcamento);
-        if (existente) {
-            return existente.update({
-                status: dados.status_fluxo || "Aguardando",
-                bloqueio_fabricacao:
-                    dados.bloqueio_fabricacao !== undefined ? dados.bloqueio_fabricacao : existente.bloqueio_fabricacao,
-                motivo_bloqueio:
-                    dados.motivo_bloqueio !== undefined ? dados.motivo_bloqueio : existente.motivo_bloqueio,
-            });
-        }
-    }
-    return pedido.create(dados);
+    const criado = await pedido.create(dados);
+    return buscarPorId(criado.id);
 }
 
 async function atualizar(id, dados) {
     const registro = await pedido.findByPk(id);
     if (!registro) return null;
-    return registro.update(dados);
+    await registro.update(dados);
+    return buscarPorId(id);
 }
 
 async function deletar(id) {

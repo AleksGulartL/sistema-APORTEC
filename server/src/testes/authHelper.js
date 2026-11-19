@@ -1,13 +1,11 @@
-// Utilitário de testes: gera cabeçalhos Authorization com tokens JWT válidos por perfil
 const authService = require("../modulos/auth/auth.service");
 
 function tokenPara(perfil, extras = {}) {
     return authService.gerarToken({
-        id_usuario: 1,
+        id: 1,
         nome_completo: `Usuário ${perfil}`,
-        email: `${String(perfil).toLowerCase()}@aportec.com`,
+        email: `${String(perfil).toLowerCase()}@gmail.com`,
         perfil,
-        cargo_funcao: perfil,
         ...extras,
     });
 }

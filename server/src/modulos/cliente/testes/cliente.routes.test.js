@@ -58,7 +58,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         const novoCliente = { nome_completo: "Empresa X", cnpj_cpf: "123", telefone: "999", email: "a@a.com", endereco: "Rua A" };
         
         // MOCK: Simula retorno do cliente criado com o ID gerado
-        clienteService.criar.mockResolvedValue({ id_cliente: 1, ...novoCliente });
+        clienteService.criar.mockResolvedValue({ usuario_id: 1, ...novoCliente });
 
         // AÇÃO: Envia o payload via requisição POST
         const res = await request(app).post("/cliente").set(comoAdm).send(novoCliente);
@@ -81,7 +81,7 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
 
     test("DELETE /cliente/:id - Deve responder com status 200 ao remover o cliente com sucesso", async () => {
         // MOCK: Simula remoção bem-sucedida retornando o registro excluído
-        clienteService.deletar.mockResolvedValue({ id_cliente: 1 });
+        clienteService.deletar.mockResolvedValue({ usuario_id: 1 });
 
         // AÇÃO: Executa requisição DELETE
         const res = await request(app).delete("/cliente/1").set(comoAdm);

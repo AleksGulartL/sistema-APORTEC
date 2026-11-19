@@ -62,7 +62,7 @@ export default function AgendaCalendario({ pedidos = [], ordensServico = [], onS
                     tipo: "ENTREGA_PEDIDO",
                     cor: p.bloqueio_fabricacao ? "error" : "primary",
                     bloqueado: Boolean(p.bloqueio_fabricacao),
-                    titulo: `Pedido #${p.codigo_proposta || p.id}`,
+                    titulo: `Pedido #${p.id}`,
                     descricaoLista: `Previsão de Entrega — ${nomeCliente} (${p.status})`,
                     badge: p.status,
                     registroTipo: "pedido",
@@ -75,7 +75,7 @@ export default function AgendaCalendario({ pedidos = [], ordensServico = [], onS
                     id: `gar-${p.id}`,
                     tipo: "FIM_GARANTIA",
                     cor: "secondary",
-                    titulo: `Garantia ${p.numero_serie_porta || `#${p.id}`}`,
+                    titulo: `Garantia ${p.numero_serie || `#${p.id}`}`,
                     descricaoLista: `Término da garantia — ${nomeCliente}`,
                     badge: "Garantia",
                     registroTipo: "pedido",
@@ -86,9 +86,11 @@ export default function AgendaCalendario({ pedidos = [], ordensServico = [], onS
 
         for (const os of ordensServico) {
             if (os.data_agendamento && os.status_os !== "Cancelada") {
-                const nomeCliente = os.cliente?.usuario?.nome_completo || `Cliente #${os.cliente_id}`;
+                const nomeCliente =
+                    os.pedido?.cliente?.usuario?.nome_completo || `Pedido #${os.pedido_id}`;
                 const nomeTecnico =
-                    os.tecnico_responsavel?.nome_completo || `Técnico #${os.tecnico_responsavel_id}`;
+                    os.tecnico_responsavel?.nome_completo ||
+                    (os.tecnico_responsavel_id ? `Técnico #${os.tecnico_responsavel_id}` : "Sem técnico");
                 const hora = formatarHoraBr(os.data_agendamento);
                 adicionar(extrairChaveDataLocal(os.data_agendamento), {
                     id: `os-${os.id}`,
@@ -298,41 +300,32 @@ export default function AgendaCalendario({ pedidos = [], ordensServico = [], onS
             <Grid item xs={12} lg={4}>
                 <Card elevation={2} sx={{ borderRadius: 2, height: "100%" }}>
                     <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                            <Typography variant="h6" fontWeight="bold">
-                                Agenda — {formatarDataBr(diaSelecionado)}
-                            </Typography>
-                            {diaSelecionado === hojeIso && <Chip size="small" color="secondary" label="Hoje" />}
-                        </Stack>
-                        <Divider sx={{ mb: 1.5 }} />
+                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                            Agenda de {formatarDataBr(diaSelecionado)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+                            {eventosDoDia.length === 0
+                                ? "Nenhum evento agendado para este dia."
+                                : `${eventosDoDia.length} compromisso(s) programado(s). Clique para detalhes:`}
+                        </Typography>
+                        <Divider sx={{ mb: 1 }} />
 
-                        {eventosDoDia.length === 0 ? (
-                            <Box sx={{ py: 4, textAlign: "center" }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    Nenhuma entrega de pedido, OS ou vencimento de garantia nesta data.
-                                </Typography>
-                            </Box>
-                        ) : (
+                        {eventosDoDia.length > 0 && (
                             <List dense disablePadding>
                                 {eventosDoDia.map((ev) => (
                                     <ListItemButton
                                         key={ev.id}
+                                        divider
                                         onClick={() => onSelecionarEvento?.(ev.registroTipo, ev.registro)}
-                                        sx={{
-                                            mb: 1,
-                                            borderRadius: 1.5,
-                                            borderLeft: 4,
-                                            borderColor: `${ev.cor}.main`,
-                                            bgcolor: "action.hover",
-                                        }}
+                                        sx={{ borderRadius: 1 }}
                                     >
                                         <ListItemText
                                             primary={
-                                                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                                                <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                     <Typography variant="body2" fontWeight="bold">
                                                         {ev.titulo}
                                                     </Typography>
-                                                    <Chip size="small" label={ev.badge} color={ev.cor} variant="outlined" />
+                                                    <Chip size="small" color={ev.cor} label={ev.badge} />
                                                 </Stack>
                                             }
                                             secondary={ev.descricaoLista}

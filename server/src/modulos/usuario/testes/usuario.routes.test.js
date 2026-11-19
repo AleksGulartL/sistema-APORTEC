@@ -44,7 +44,7 @@ describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
 
     test("POST /usuarios - Deve retornar 201 ao cadastrar usuário", async () => {
         const novoUsuario = { nome_completo: "João", email: "j@a.com", senha_hash: "123" };
-        usuarioService.criar.mockResolvedValue({ id_usuario: 1, ...novoUsuario });
+        usuarioService.criar.mockResolvedValue({ id: 1, ...novoUsuario });
 
         const res = await request(app).post("/usuarios").set(comoAdm).send(novoUsuario);
         expect(res.status).toBe(201);
@@ -63,7 +63,7 @@ describe("UsuarioRoutes - Testes de Rotas e Status HTTP", () => {
     });
 
     test("DELETE /usuarios/:id - Deve retornar 200 ao deletar usuário", async () => {
-        usuarioService.deletar.mockResolvedValue({ id_usuario: 1 });
+        usuarioService.deletar.mockResolvedValue({ id: 1 });
 
         const res = await request(app).delete("/usuarios/1").set(comoAdm);
         expect(res.status).toBe(200);

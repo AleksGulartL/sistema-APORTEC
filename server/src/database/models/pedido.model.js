@@ -15,12 +15,6 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("id"));
             },
         },
-        codigo_proposta: {
-            type: DataTypes.STRING(50),
-            allowNull: true,
-            unique: true,
-            field: "codigo_proposta",
-        },
         cliente_id: {
             type: DataTypes.BIGINT,
             allowNull: false,
@@ -165,10 +159,6 @@ pedido.associate = (models) => {
         pedido.belongsTo(models.usuario, {
             foreignKey: "usuario_criador_id",
             as: "usuario_criador",
-        });
-        pedido.belongsTo(models.usuario, {
-            foreignKey: "usuario_criador_id",
-            as: "usuario",
         });
         pedido.belongsTo(models.usuario, {
             foreignKey: "responsavel_producao_id",

@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
     Table,
     TableBody,
@@ -15,8 +16,26 @@ import {
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
+import { ordenarLista } from "../utils/permissoes";
+
+const EXTRATORES_CLIENTE = {
+    usuario_id: (item) => Number(item.usuario_id || 0),
+    nome: (item) => item.usuario?.nome_completo || "",
+    cnpj_cpf: (item) => item.cnpj_cpf || "",
+    telefone: (item) => item.telefone || "",
+    email: (item) => item.usuario?.email || "",
+    endereco: (item) => item.endereco || "",
+};
 
 export default function Tabela({ dados = [], onSelecionar, onEditar, onExcluir }) {
+    const [ordenacao, setOrdenacao] = useState({ campo: "usuario_id", direcao: "asc" });
+
+    const dadosOrdenados = useMemo(
+        () => ordenarLista(dados, ordenacao.campo, ordenacao.direcao, EXTRATORES_CLIENTE),
+        [dados, ordenacao]
+    );
+
     if (!dados || dados.length === 0) {
         return (
             <Box sx={{ p: 4, textAlign: "center" }}>
@@ -31,15 +50,45 @@ export default function Tabela({ dados = [], onSelecionar, onEditar, onExcluir }
 
     return (
         <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2, overflow: "hidden" }}>
-            <Table sx={{ minWidth: 650 }} aria-label="tabela de dados">
+            <Table sx={{ minWidth: 650 }} aria-label="tabela de clientes">
                 <TableHead sx={{ bgcolor: "primary.main" }}>
                     <TableRow>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Nome / Razão Social</TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>CNPJ / CPF</TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Telefone</TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>E-mail</TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Endereço</TableCell>
+                        <CabecalhoOrdenavel
+                            campo="usuario_id"
+                            rotulo="ID"
+                            ordenacao={ordenacao}
+                            onOrdenar={setOrdenacao}
+                        />
+                        <CabecalhoOrdenavel
+                            campo="nome"
+                            rotulo="Nome / Razão Social"
+                            ordenacao={ordenacao}
+                            onOrdenar={setOrdenacao}
+                        />
+                        <CabecalhoOrdenavel
+                            campo="cnpj_cpf"
+                            rotulo="CNPJ / CPF"
+                            ordenacao={ordenacao}
+                            onOrdenar={setOrdenacao}
+                        />
+                        <CabecalhoOrdenavel
+                            campo="telefone"
+                            rotulo="Telefone"
+                            ordenacao={ordenacao}
+                            onOrdenar={setOrdenacao}
+                        />
+                        <CabecalhoOrdenavel
+                            campo="email"
+                            rotulo="E-mail"
+                            ordenacao={ordenacao}
+                            onOrdenar={setOrdenacao}
+                        />
+                        <CabecalhoOrdenavel
+                            campo="endereco"
+                            rotulo="Endereço"
+                            ordenacao={ordenacao}
+                            onOrdenar={setOrdenacao}
+                        />
                         {temAcoes && (
                             <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                 Ações
@@ -48,12 +97,12 @@ export default function Tabela({ dados = [], onSelecionar, onEditar, onExcluir }
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {dados.map((item, index) => {
-                        const id = item.id_cliente || item.id || item.id_usuario || index + 1;
-                        const nome = item.usuario?.nome_completo || item.nome_completo || item.nome || "-";
+                    {dadosOrdenados.map((item) => {
+                        const id = item.usuario_id;
+                        const nome = item.usuario?.nome_completo || "-";
                         const doc = item.cnpj_cpf || "-";
                         const tel = item.telefone || "-";
-                        const email = item.usuario?.email || item.email || "-";
+                        const email = item.usuario?.email || "-";
                         const end = item.endereco || "-";
 
                         return (

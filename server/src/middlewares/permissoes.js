@@ -1,6 +1,5 @@
 // Matriz central de permissões (RBAC - RF01)
 // Define, para cada função de controller, quais perfis de acesso podem executá-la.
-// Os perfis espelham o CHECK constraint `chk_usuario_perfil` da tabela `usuario`.
 
 const PERFIS = Object.freeze({
     ADM: "ADM",
@@ -34,6 +33,8 @@ const PERMISSOES = Object.freeze({
     // RF10 - Catálogo/Estoque: mantido pelo ADM; consulta liberada aos colaboradores
     itemCatalogo: {
         listar: FUNCIONARIOS,
+        listarTipos: FUNCIONARIOS,
+        listarCategorias: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
         listarAlertasEstoqueMinimo: [ADM],
         criar: [ADM],
@@ -47,8 +48,8 @@ const PERMISSOES = Object.freeze({
         buscarPorId: FUNCIONARIOS,
         criar: [ADM],
         atualizar: [ADM],
-        atualizarStatusEtapa: FUNCIONARIOS, // RF12
-        coletarAssinaturaAceite: FUNCIONARIOS, // RF13
+        atualizarStatusEtapa: FUNCIONARIOS,
+        coletarAssinaturaAceite: FUNCIONARIOS,
         deletar: [ADM],
     },
 
@@ -61,7 +62,7 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF07/RF08 - Checklist técnico de medição (preenchido pela equipe técnica/ADM)
+    // RF07/RF08 - Checklist técnico de medição
     checklistMedicao: {
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
@@ -70,7 +71,7 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF14 - Ordens de serviço (instalação / assistência técnica)
+    // RF14 - Ordens de serviço
     ordemServico: {
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,

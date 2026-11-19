@@ -1,7 +1,6 @@
 const usuarioService = require("../usuario.service");
 const usuarioRepository = require("../usuario.repository");
 
-// Intercepta o repositório de Usuários
 jest.mock("../usuario.repository");
 
 describe("UsuarioService - Testes Unitários", () => {
@@ -10,19 +9,15 @@ describe("UsuarioService - Testes Unitários", () => {
     });
 
     test("Deve listar todos os usuários", async () => {
-        // MOCK: Retorna lista mockada de usuários
-        const mockUsuarios = [{ id_usuario: 1, nome_completo: "João Silva", email: "joao@email.com" }];
+        const mockUsuarios = [{ id: 1, nome_completo: "João Silva", email: "joao@gmail.com" }];
         usuarioRepository.listar.mockResolvedValue(mockUsuarios);
 
-        // AÇÃO: Chama o Service
         const resultado = await usuarioService.listar();
-
-        // VALIDAÇÃO: Confirma equivalência com o mock
         expect(resultado).toEqual(mockUsuarios);
     });
 
     test("Deve buscar usuário por ID", async () => {
-        const mockUsuario = { id_usuario: 1, nome_completo: "João Silva" };
+        const mockUsuario = { id: 1, nome_completo: "João Silva" };
         usuarioRepository.buscarPorId.mockResolvedValue(mockUsuario);
 
         const resultado = await usuarioService.buscarPorId(1);
@@ -36,10 +31,8 @@ describe("UsuarioService - Testes Unitários", () => {
     });
 
     test("Deve lançar erro 400 se 'nome_completo' for omitido", async () => {
-        // DADOS: Payload sem o campo obrigatorio nome_completo
         const dadosInvalidos = { email: "a@gmail.com", senha_hash: "123" };
 
-        // AÇÃO & VALIDAÇÃO: Verifica validação do Service
         await expect(usuarioService.criar(dadosInvalidos))
             .rejects
             .toMatchObject({ message: "O campo 'nome_completo' é obrigatório e deve ser um texto válido.", status: 400 });
@@ -66,30 +59,26 @@ describe("UsuarioService - Testes Unitários", () => {
     });
 
     test("Deve criar usuário com sucesso quando dados forem válidos e normalizar @gmail.com", async () => {
-        // DADOS: Payload do usuário completo
-        const dadosValidos = { 
-            nome_completo: "João Silva", 
-            email: "  Joao.Silva@Gmail.COM ", 
-            senha_hash: "hash123", 
-            cargo_funcao: "Operador" 
+        const dadosValidos = {
+            nome_completo: "João Silva",
+            email: "  Joao.Silva@Gmail.COM ",
+            senha_hash: "hash123",
+            perfil: "TECNICO",
         };
-        
-        // MOCK: Retorna o usuário cadastrado com a chave primária criada
-        usuarioRepository.criar.mockResolvedValue({ id_usuario: 1, ...dadosValidos, email: "joao.silva@gmail.com" });
 
-        // AÇÃO: Executa a criação no Service
+        usuarioRepository.criar.mockResolvedValue({ id: 1, ...dadosValidos, email: "joao.silva@gmail.com" });
+
         const resultado = await usuarioService.criar(dadosValidos);
 
-        // VALIDAÇÃO: Garante normalização e retorno com a propriedade id_usuario
         expect(usuarioRepository.criar).toHaveBeenCalledWith(
-            expect.objectContaining({ email: "joao.silva@gmail.com" })
+            expect.objectContaining({ email: "joao.silva@gmail.com", perfil: "TECNICO" })
         );
-        expect(resultado).toHaveProperty("id_usuario", 1);
+        expect(resultado).toHaveProperty("id", 1);
     });
 
     test("Deve atualizar perfil e status ativo sem exigir senha_hash", async () => {
         usuarioRepository.atualizar.mockResolvedValue({
-            id_usuario: 2,
+            id: 2,
             nome_completo: "Maria Técnica",
             perfil: "TECNICO",
             ativo: true,
@@ -110,7 +99,7 @@ describe("UsuarioService - Testes Unitários", () => {
     });
 
     test("Deve gerar senha_hash com bcrypt se 'senha' em texto plano for informada na atualização", async () => {
-        usuarioRepository.atualizar.mockResolvedValue({ id_usuario: 2, nome_completo: "Maria" });
+        usuarioRepository.atualizar.mockResolvedValue({ id: 2, nome_completo: "Maria" });
 
         await usuarioService.atualizar(2, { nome_completo: "Maria", senha: "novaSenha123" });
 

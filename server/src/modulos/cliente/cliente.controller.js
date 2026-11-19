@@ -1,9 +1,7 @@
 const clienteService = require("./cliente.service");
+const { responderErroController } = require("../../utils/tratarErroController");
 
 function extrairMensagemUnicidade(erro) {
-    const ehDuplicado = erro.code === "23505" || erro.name === "SequelizeUniqueConstraintError";
-    if (!ehDuplicado) return null;
-
     const constraint = erro.parent?.constraint || "";
     const campo = erro.errors?.[0]?.path || "";
 
@@ -15,11 +13,11 @@ function extrairMensagemUnicidade(erro) {
 
 async function listar(req, res) {
     try {
-        const cliente = await clienteService.listar();
-        return res.status(200).json(cliente);
+        const clientes = await clienteService.listar();
+        return res.status(200).json(clientes);
     } catch (erro) {
-        console.error("Erro ao buscar cliente:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        console.error("Erro ao buscar clientes:", erro);
+        return responderErroController(res, erro);
     }
 }
 
@@ -32,7 +30,7 @@ async function buscarPorId(req, res) {
         return res.status(200).json(registro);
     } catch (erro) {
         console.error("Erro ao buscar cliente:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro);
     }
 }
 
@@ -42,11 +40,10 @@ async function criar(req, res) {
         return res.status(201).json(registro);
     } catch (erro) {
         console.error("Erro ao criar cliente:", erro);
-        const msgDuplicado = extrairMensagemUnicidade(erro);
-        if (msgDuplicado) {
-            return res.status(400).json({ erro: msgDuplicado });
-        }
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemDuplicado: extrairMensagemUnicidade,
+        });
     }
 }
 
@@ -59,11 +56,10 @@ async function atualizar(req, res) {
         return res.status(200).json(registro);
     } catch (erro) {
         console.error("Erro ao atualizar cliente:", erro);
-        const msgDuplicado = extrairMensagemUnicidade(erro);
-        if (msgDuplicado) {
-            return res.status(400).json({ erro: msgDuplicado });
-        }
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemDuplicado: extrairMensagemUnicidade,
+        });
     }
 }
 
@@ -76,7 +72,10 @@ async function deletar(req, res) {
         return res.status(200).json({ mensagem: "Cliente removido com sucesso.", cliente: registro });
     } catch (erro) {
         console.error("Erro ao excluir cliente:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            mensagemVinculo:
+                "Não é possível excluir este cliente pois ele possui pedidos ou ordens de serviço vinculados.",
+        });
     }
 }
 

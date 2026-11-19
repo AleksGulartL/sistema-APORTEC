@@ -37,28 +37,41 @@ import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturi
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
 import api from "../services/api";
 import {
+    calcularValorTotalPedido,
     formatarDataBr,
     formatarMoedaBr,
     obterPerfilUsuario,
+    ordenarLista,
     usuarioEhAdm,
     usuarioEhFuncionario,
 } from "../utils/permissoes";
 import PedidoDetalhe from "./pedidos/PedidoDetalhe";
 
-const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva", "Misto"];
+const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 
 const FORM_INICIAL = {
-    codigo_proposta: "",
     cliente_id: "",
     responsavel_producao_id: "",
     tipo_pedido: "Instalacao",
     status: "Aguardando",
     status_aprovacao: "Pendente",
+    percentual_acrescimo: "0",
     endereco_instalacao: "",
     condicoes_pagamento: "",
     data_previsao_fim: "",
+};
+
+const EXTRATORES_PEDIDO = {
+    id: (p) => Number(p.id || 0),
+    cliente: (p) => p.cliente?.usuario?.nome_completo || "",
+    tipo_pedido: (p) => p.tipo_pedido || "",
+    status_aprovacao: (p) => p.status_aprovacao || "",
+    status: (p) => p.status || "",
+    valor_total: (p) => calcularValorTotalPedido(p),
+    data_previsao_fim: (p) => p.data_previsao_fim || "",
 };
 
 export default function Pedidos({
@@ -83,16 +96,15 @@ export default function Pedidos({
     const [busca, setBusca] = useState("");
     const [filtroTipo, setFiltroTipo] = useState("TODOS");
     const [somenteBloqueados, setSomenteBloqueados] = useState(false);
+    const [ordenacao, setOrdenacao] = useState({ campo: "id", direcao: "asc" });
 
     const [pedidoSelecionadoId, setPedidoSelecionadoId] = useState(pedidoInicialId);
 
-    // Modal Novo Pedido
     const [modalNovoAberto, setModalNovoAberto] = useState(false);
     const [formNovo, setFormNovo] = useState(FORM_INICIAL);
     const [erroNovo, setErroNovo] = useState("");
     const [salvandoNovo, setSalvandoNovo] = useState(false);
 
-    // Exclusão
     const [pedidoExcluir, setPedidoExcluir] = useState(null);
     const [excluindo, setExcluindo] = useState(false);
 
@@ -142,7 +154,6 @@ export default function Pedidos({
         carregarDados();
     }, [carregarDados]);
 
-    // Lista de técnicos/usuários disponíveis para atribuição (compatível com ADM e TECNICO)
     const tecnicosDisponiveis = useMemo(() => {
         const mapa = new Map();
         const add = (u) => {
@@ -150,14 +161,14 @@ export default function Pedidos({
             if (u.perfil === "CLIENTE") return;
             mapa.set(Number(u.id), {
                 id: Number(u.id),
-                nome_completo: u.nome_completo || u.nome || `Usuário #${u.id}`,
+                nome_completo: u.nome_completo || `Usuário #${u.id}`,
                 perfil: u.perfil || "TECNICO",
             });
         };
 
         if (usuario) {
             add({
-                id: usuario.id_usuario ?? usuario.id,
+                id: usuario.id,
                 nome_completo: usuario.nome_completo,
                 perfil: obterPerfilUsuario(usuario),
             });
@@ -177,19 +188,19 @@ export default function Pedidos({
 
     const pedidosFiltrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
-        return pedidos.filter((p) => {
+        const filtrados = pedidos.filter((p) => {
             if (somenteBloqueados && !p.bloqueio_fabricacao) return false;
             if (filtroTipo !== "TODOS" && p.tipo_pedido !== filtroTipo) return false;
             if (!termo) return true;
             const nomeCliente = String(p.cliente?.usuario?.nome_completo || "").toLowerCase();
             return (
                 String(p.id).includes(termo) ||
-                String(p.codigo_proposta || "").toLowerCase().includes(termo) ||
-                String(p.numero_serie_porta || "").toLowerCase().includes(termo) ||
+                String(p.numero_serie || "").toLowerCase().includes(termo) ||
                 nomeCliente.includes(termo)
             );
         });
-    }, [pedidos, busca, filtroTipo, somenteBloqueados]);
+        return ordenarLista(filtrados, ordenacao.campo, ordenacao.direcao, EXTRATORES_PEDIDO);
+    }, [pedidos, busca, filtroTipo, somenteBloqueados, ordenacao]);
 
     async function atualizarPedidoIndividual(id) {
         try {
@@ -215,17 +226,22 @@ export default function Pedidos({
             return;
         }
 
-        const usuarioCriadorId = Number(usuario?.id_usuario ?? usuario?.id);
+        const percNum = Number(formNovo.percentual_acrescimo || 0);
+        if (isNaN(percNum) || percNum < 0) {
+            setErroNovo("O percentual de acréscimo deve ser maior ou igual a zero.");
+            return;
+        }
+
         const payload = {
-            codigo_proposta: formNovo.codigo_proposta.trim() || null,
             cliente_id: Number(formNovo.cliente_id),
-            usuario_criador_id: usuarioCriadorId,
+            usuario_criador_id: Number(usuario?.id),
             responsavel_producao_id: formNovo.responsavel_producao_id
                 ? Number(formNovo.responsavel_producao_id)
                 : null,
             tipo_pedido: formNovo.tipo_pedido,
             status: formNovo.status,
             status_aprovacao: formNovo.status_aprovacao,
+            percentual_acrescimo: percNum,
             endereco_instalacao: formNovo.endereco_instalacao.trim() || null,
             condicoes_pagamento: formNovo.condicoes_pagamento.trim() || null,
             data_previsao_fim: formNovo.data_previsao_fim || null,
@@ -239,7 +255,7 @@ export default function Pedidos({
             const criado = res.data;
             setModalNovoAberto(false);
             setFormNovo(FORM_INICIAL);
-            setSucessoMsg(`Pedido #${criado.codigo_proposta || criado.id} criado! Adicione os itens e realize a medição.`);
+            setSucessoMsg(`Pedido #${criado.id} criado! Adicione os itens e realize a medição.`);
             await carregarDados();
             setPedidoSelecionadoId(criado.id);
         } catch (err) {
@@ -255,7 +271,7 @@ export default function Pedidos({
         setExcluindo(true);
         try {
             await api.delete(`/pedido/${pedidoExcluir.id}`);
-            setSucessoMsg(`Pedido #${pedidoExcluir.codigo_proposta || pedidoExcluir.id} removido.`);
+            setSucessoMsg(`Pedido #${pedidoExcluir.id} removido.`);
             setPedidoExcluir(null);
             carregarDados();
         } catch (err) {
@@ -278,7 +294,6 @@ export default function Pedidos({
         );
     }
 
-    // Tela de Detalhes do Pedido selecionado
     if (pedidoSelecionado) {
         return (
             <Box sx={{ py: 3 }}>
@@ -303,7 +318,6 @@ export default function Pedidos({
 
     return (
         <Box sx={{ py: 3 }}>
-            {/* Cabeçalho */}
             <Stack
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
@@ -355,7 +369,6 @@ export default function Pedidos({
                 </Alert>
             )}
 
-            {/* Barra de Filtros */}
             <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                 <Stack
                     direction={{ xs: "column", md: "row" }}
@@ -365,7 +378,7 @@ export default function Pedidos({
                 >
                     <TextField
                         size="small"
-                        placeholder="Buscar por proposta, cliente ou nº de série..."
+                        placeholder="Buscar por #pedido, cliente ou nº de série..."
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
                         sx={{ minWidth: { xs: "100%", md: 300 } }}
@@ -411,7 +424,6 @@ export default function Pedidos({
                 </Stack>
             </Card>
 
-            {/* Conteúdo Principal */}
             {carregando ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
                     <CircularProgress />
@@ -427,15 +439,50 @@ export default function Pedidos({
                     <Table sx={{ minWidth: 820 }}>
                         <TableHead sx={{ bgcolor: "primary.main" }}>
                             <TableRow>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Pedido / Proposta</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Cliente</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Tipo</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Comercial</TableCell>
+                                <CabecalhoOrdenavel
+                                    campo="id"
+                                    rotulo="Pedido"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="cliente"
+                                    rotulo="Cliente"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="tipo_pedido"
+                                    rotulo="Tipo"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="status_aprovacao"
+                                    rotulo="Comercial"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Medição</TableCell>
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Trava (RF08)</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Etapa</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Total</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Previsão</TableCell>
+                                <CabecalhoOrdenavel
+                                    campo="status"
+                                    rotulo="Etapa"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="valor_total"
+                                    rotulo="Total"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="data_previsao_fim"
+                                    rotulo="Previsão"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
                                 <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                     Ações
                                 </TableCell>
@@ -453,10 +500,10 @@ export default function Pedidos({
                                         sx={{ "&:nth-of-type(odd)": { bgcolor: "action.hover" } }}
                                     >
                                         <TableCell sx={{ fontWeight: "bold" }}>
-                                            #{p.codigo_proposta || p.id}
-                                            {p.numero_serie_porta && (
+                                            #{p.id}
+                                            {p.numero_serie && (
                                                 <Typography variant="caption" color="text.secondary" display="block">
-                                                    Série: {p.numero_serie_porta}
+                                                    Série: {p.numero_serie}
                                                 </Typography>
                                             )}
                                         </TableCell>
@@ -504,7 +551,7 @@ export default function Pedidos({
                                             <Chip size="small" color="primary" label={p.status} />
                                         </TableCell>
                                         <TableCell sx={{ fontWeight: "medium" }}>
-                                            {formatarMoedaBr(p.valor_total)}
+                                            {formatarMoedaBr(calcularValorTotalPedido(p))}
                                         </TableCell>
                                         <TableCell>{formatarDataBr(p.data_previsao_fim)}</TableCell>
                                         <TableCell align="center">
@@ -537,7 +584,6 @@ export default function Pedidos({
                 </TableContainer>
             )}
 
-            {/* Modal Criar Novo Pedido / Orçamento */}
             <Dialog open={modalNovoAberto} onClose={() => setModalNovoAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={criarNovoPedido}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -556,7 +602,7 @@ export default function Pedidos({
                                     value={formNovo.cliente_id}
                                     onChange={(e) => {
                                         const cliId = e.target.value;
-                                        const cli = clientes.find((c) => Number(c.id) === Number(cliId));
+                                        const cli = clientes.find((c) => Number(c.usuario_id) === Number(cliId));
                                         setFormNovo({
                                             ...formNovo,
                                             cliente_id: cliId,
@@ -565,25 +611,14 @@ export default function Pedidos({
                                     }}
                                 >
                                     {clientes.map((c) => (
-                                        <MenuItem key={c.id} value={String(c.id)}>
-                                            {c.usuario?.nome_completo || `Cliente #${c.id}`} ({c.cnpj_cpf})
+                                        <MenuItem key={c.usuario_id} value={String(c.usuario_id)}>
+                                            {c.usuario?.nome_completo || `Cliente #${c.usuario_id}`} ({c.cnpj_cpf})
                                         </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Código da Proposta (opcional)"
-                                        placeholder="Ex: PROP-2026-001"
-                                        value={formNovo.codigo_proposta}
-                                        onChange={(e) =>
-                                            setFormNovo({ ...formNovo, codigo_proposta: e.target.value })
-                                        }
-                                    />
-                                </Grid>
                                 <Grid item xs={12} sm={6}>
                                     <FormControl fullWidth required>
                                         <InputLabel id="novo-ped-tipo-label">Tipo do Pedido</InputLabel>
@@ -602,6 +637,18 @@ export default function Pedidos({
                                             ))}
                                         </Select>
                                     </FormControl>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        inputProps={{ min: 0, step: "0.01" }}
+                                        label="Acréscimo / Margem (%)"
+                                        value={formNovo.percentual_acrescimo}
+                                        onChange={(e) =>
+                                            setFormNovo({ ...formNovo, percentual_acrescimo: e.target.value })
+                                        }
+                                    />
                                 </Grid>
                             </Grid>
 
@@ -667,7 +714,7 @@ export default function Pedidos({
                             <TextField
                                 fullWidth
                                 label="Condições de Pagamento"
-                                placeholder="Ex: 50% entrada + 50% conclusão"
+                                placeholder="Ex: 50% na aprovação + 50% após instalação"
                                 value={formNovo.condicoes_pagamento}
                                 onChange={(e) =>
                                     setFormNovo({ ...formNovo, condicoes_pagamento: e.target.value })
@@ -680,19 +727,17 @@ export default function Pedidos({
                             Cancelar
                         </Button>
                         <Button type="submit" variant="contained" disabled={salvandoNovo}>
-                            {salvandoNovo ? <CircularProgress size={22} color="inherit" /> : "Criar e Abrir Detalhes"}
+                            {salvandoNovo ? <CircularProgress size={22} color="inherit" /> : "Criar Pedido"}
                         </Button>
                     </DialogActions>
                 </form>
             </Dialog>
 
-            {/* Confirmação de Exclusão */}
             <Dialog open={Boolean(pedidoExcluir)} onClose={() => setPedidoExcluir(null)} maxWidth="xs" fullWidth>
                 <DialogTitle>Confirmar Exclusão</DialogTitle>
                 <DialogContent dividers>
                     <Typography variant="body2">
-                        Deseja realmente excluir o pedido{" "}
-                        <strong>#{pedidoExcluir?.codigo_proposta || pedidoExcluir?.id}</strong>?
+                        Deseja realmente remover o pedido <strong>#{pedidoExcluir?.id}</strong>?
                     </Typography>
                 </DialogContent>
                 <DialogActions>

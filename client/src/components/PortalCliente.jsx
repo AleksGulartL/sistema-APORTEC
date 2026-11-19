@@ -46,6 +46,8 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import api from "../services/api";
 import {
     calcularSituacaoGarantia,
+    calcularSubtotalItem,
+    calcularValorTotalPedido,
     formatarDataBr,
     formatarDataHoraBr,
     formatarMoedaBr,
@@ -78,11 +80,9 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     const [pedidos, setPedidos] = useState([]);
     const [ordensServico, setOrdensServico] = useState([]);
 
-    // Confirmação de aprovação/reprovação de orçamento
     const [decisaoOrcamento, setDecisaoOrcamento] = useState(null);
     const [salvandoDecisao, setSalvandoDecisao] = useState(false);
 
-    // Modal abrir chamado de manutenção
     const [modalOsAberto, setModalOsAberto] = useState(false);
     const [formOs, setFormOs] = useState({
         pedido_id: "",
@@ -123,7 +123,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     );
 
     const portasInstaladas = useMemo(
-        () => pedidos.filter((p) => Boolean(p.numero_serie_porta) || p.status === "Concluido"),
+        () => pedidos.filter((p) => Boolean(p.numero_serie) || p.status === "Concluido"),
         [pedidos]
     );
 
@@ -151,8 +151,8 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
             });
             setSucessoMsg(
                 decisaoOrcamento.decisao === "Aprovado"
-                    ? `Orçamento #${decisaoOrcamento.pedido.codigo_proposta || decisaoOrcamento.pedido.id} aprovado com sucesso!`
-                    : `Orçamento #${decisaoOrcamento.pedido.codigo_proposta || decisaoOrcamento.pedido.id} marcado como reprovado.`
+                    ? `Orçamento #${decisaoOrcamento.pedido.id} aprovado com sucesso!`
+                    : `Orçamento #${decisaoOrcamento.pedido.id} marcado como reprovado.`
             );
             setDecisaoOrcamento(null);
             carregarResumo();
@@ -166,8 +166,9 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     }
 
     function abrirNovaSolicitacao(pedidoPreSelecionado = null) {
+        const pedidoPadrao = pedidoPreSelecionado || pedidos[0] || null;
         setFormOs({
-            pedido_id: pedidoPreSelecionado ? String(pedidoPreSelecionado.id) : "",
+            pedido_id: pedidoPadrao ? String(pedidoPadrao.id) : "",
             tipo_servico: "Manutencao Corretiva",
             descricao_problema: "",
         });
@@ -179,6 +180,10 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
         event.preventDefault();
         setErroOs("");
 
+        if (!formOs.pedido_id) {
+            setErroOs("Selecione o pedido / porta para a qual deseja solicitar assistência.");
+            return;
+        }
         if (!formOs.descricao_problema.trim()) {
             setErroOs("Descreva o problema ou o serviço desejado.");
             return;
@@ -187,7 +192,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
         setSalvandoOs(true);
         try {
             await api.post("/portal-cliente/ordens-servico", {
-                pedido_id: formOs.pedido_id ? Number(formOs.pedido_id) : null,
+                pedido_id: Number(formOs.pedido_id),
                 tipo_servico: formOs.tipo_servico,
                 descricao_problema: formOs.descricao_problema.trim(),
             });
@@ -214,7 +219,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
 
     return (
         <Box sx={{ py: 3 }}>
-            {/* Cabeçalho */}
             <Stack
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
@@ -266,7 +270,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Alert>
             )}
 
-            {/* ==================== VISÃO 1: INÍCIO ==================== */}
             {secao === "cliente_inicio" && (
                 <Stack spacing={3}>
                     {orcamentosPendentes.length > 0 && (
@@ -295,7 +298,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         </Alert>
                     )}
 
-                    {/* KPIs do Cliente */}
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6} md={3}>
                             <Card elevation={2} sx={{ borderRadius: 2 }}>
@@ -367,7 +369,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         </Grid>
                     </Grid>
 
-                    {/* Próximas Datas & Resumo Rápido */}
                     <Grid container spacing={2}>
                         <Grid item xs={12} md={7}>
                             <Card elevation={2} sx={{ borderRadius: 2, height: "100%" }}>
@@ -391,13 +392,14 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                 <Paper key={p.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1.5 }}>
                                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                         <Typography variant="body2" fontWeight="bold">
-                                                            #{p.codigo_proposta || p.id} — {p.tipo_pedido}
+                                                            Pedido #{p.id} — {p.tipo_pedido}
                                                         </Typography>
                                                         <Chip size="small" color="primary" label={p.status} />
                                                     </Stack>
                                                     <Typography variant="caption" color="text.secondary" display="block">
-                                                        Comercial: {p.status_aprovacao} • Total: {formatarMoedaBr(p.valor_total)} •
-                                                        Previsão: {formatarDataBr(p.data_previsao_fim)}
+                                                        Comercial: {p.status_aprovacao} • Total:{" "}
+                                                        {formatarMoedaBr(calcularValorTotalPedido(p))} • Previsão:{" "}
+                                                        {formatarDataBr(p.data_previsao_fim)}
                                                     </Typography>
                                                 </Paper>
                                             ))}
@@ -432,7 +434,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                             {formatarDataBr(p.data_previsao_fim)} — Previsão de Entrega
                                                         </Typography>
                                                         <Typography variant="body2">
-                                                            Pedido #{p.codigo_proposta || p.id} ({p.status})
+                                                            Pedido #{p.id} ({p.status})
                                                         </Typography>
                                                     </Paper>
                                                 ))}
@@ -460,7 +462,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Stack>
             )}
 
-            {/* ==================== VISÃO 2: MEUS PEDIDOS E ORÇAMENTOS ==================== */}
             {secao === "cliente_pedidos" && (
                 <Stack spacing={3}>
                     {pedidos.length === 0 ? (
@@ -490,7 +491,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         >
                                             <Box>
                                                 <Typography variant="h6" fontWeight="bold">
-                                                    Pedido #{p.codigo_proposta || p.id} — {p.tipo_pedido}
+                                                    Pedido #{p.id} — {p.tipo_pedido}
                                                 </Typography>
                                                 <Typography variant="caption" color="text.secondary">
                                                     Local: {p.endereco_instalacao || dadosCliente?.endereco || "-"} • Previsão:{" "}
@@ -514,7 +515,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                 <Chip
                                                     size="small"
                                                     variant="outlined"
-                                                    label={formatarMoedaBr(p.valor_total)}
+                                                    label={formatarMoedaBr(calcularValorTotalPedido(p))}
                                                 />
                                             </Stack>
                                         </Stack>
@@ -597,7 +598,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                             </TableCell>
                                                             <TableCell>{formatarMoedaBr(it.valor_unitario)}</TableCell>
                                                             <TableCell sx={{ fontWeight: "bold" }}>
-                                                                {formatarMoedaBr(it.valor_total)}
+                                                                {formatarMoedaBr(calcularSubtotalItem(it))}
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
@@ -612,7 +613,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Stack>
             )}
 
-            {/* ==================== VISÃO 3: MINHAS PORTAS E GARANTIAS ==================== */}
             {secao === "cliente_portas" && (
                 <Grid container spacing={2}>
                     {portasInstaladas.length === 0 ? (
@@ -635,7 +635,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                 <Chip
                                                     icon={<QrCode2Icon />}
                                                     color="primary"
-                                                    label={p.numero_serie_porta || `Pedido #${p.id}`}
+                                                    label={p.numero_serie || `Pedido #${p.id}`}
                                                 />
                                                 <Chip
                                                     size="small"
@@ -687,7 +687,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Grid>
             )}
 
-            {/* ==================== VISÃO 4: ASSISTÊNCIA / OS ==================== */}
             {secao === "cliente_os" && (
                 <Stack spacing={2}>
                     {ordensServico.length === 0 ? (
@@ -731,9 +730,9 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                     </Stack>
 
                                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                                        {os.pedido?.numero_serie_porta
-                                            ? `Porta: ${os.pedido.numero_serie_porta} • `
-                                            : ""}
+                                        {os.pedido?.numero_serie
+                                            ? `Porta: ${os.pedido.numero_serie} • `
+                                            : `Pedido #${os.pedido_id} • `}
                                         Técnico:{" "}
                                         {os.tecnico_responsavel?.nome_completo || "Aguardando designação da equipe"} •
                                         Agendamento: {formatarDataHoraBr(os.data_agendamento)}
@@ -756,7 +755,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Stack>
             )}
 
-            {/* Modal Confirmar Aprovação / Reprovação de Orçamento (RF05) */}
             <Dialog
                 open={Boolean(decisaoOrcamento)}
                 onClose={() => setDecisaoOrcamento(null)}
@@ -771,10 +769,8 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 <DialogContent dividers>
                     <Typography variant="body2">
                         Deseja marcar o orçamento{" "}
-                        <strong>
-                            #{decisaoOrcamento?.pedido?.codigo_proposta || decisaoOrcamento?.pedido?.id}
-                        </strong>{" "}
-                        ({formatarMoedaBr(decisaoOrcamento?.pedido?.valor_total)}) como{" "}
+                        <strong>#{decisaoOrcamento?.pedido?.id}</strong> (
+                        {formatarMoedaBr(calcularValorTotalPedido(decisaoOrcamento?.pedido))}) como{" "}
                         <strong>{decisaoOrcamento?.decisao}</strong>?
                     </Typography>
                 </DialogContent>
@@ -794,7 +790,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </DialogActions>
             </Dialog>
 
-            {/* Modal Solicitar Manutenção (RF14) */}
             <Dialog open={modalOsAberto} onClose={() => setModalOsAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={enviarSolicitacaoOs}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -805,20 +800,19 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         <Stack spacing={2} sx={{ pt: 0.5 }}>
                             {erroOs && <Alert severity="error">{erroOs}</Alert>}
 
-                            <FormControl fullWidth>
-                                <InputLabel id="cli-os-porta-label">Porta / Pedido Relacionado (opcional)</InputLabel>
+                            <FormControl fullWidth required>
+                                <InputLabel id="cli-os-porta-label">Porta / Pedido Relacionado</InputLabel>
                                 <Select
                                     labelId="cli-os-porta-label"
-                                    label="Porta / Pedido Relacionado (opcional)"
+                                    label="Porta / Pedido Relacionado"
                                     value={formOs.pedido_id}
                                     onChange={(e) => setFormOs({ ...formOs, pedido_id: e.target.value })}
                                 >
-                                    <MenuItem value="">Outro equipamento / Chamado avulso</MenuItem>
                                     {pedidos.map((p) => (
                                         <MenuItem key={p.id} value={String(p.id)}>
-                                            {p.numero_serie_porta
-                                                ? `Série ${p.numero_serie_porta} (Proposta #${p.codigo_proposta || p.id})`
-                                                : `Pedido #${p.codigo_proposta || p.id}`}
+                                            {p.numero_serie
+                                                ? `Série ${p.numero_serie} (Pedido #${p.id})`
+                                                : `Pedido #${p.id} (${p.status})`}
                                         </MenuItem>
                                     ))}
                                 </Select>

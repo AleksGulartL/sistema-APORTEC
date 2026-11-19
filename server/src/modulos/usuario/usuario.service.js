@@ -5,17 +5,16 @@ const { validarGmail } = require("../../utils/validacaoEmail");
 const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
 const SALT_ROUNDS = 10;
 
-function normalizarPerfil(cargoOuPerfil) {
-    if (!cargoOuPerfil) return "CLIENTE";
-    const upper = String(cargoOuPerfil)
+function normalizarPerfil(perfil) {
+    if (!perfil) return "TECNICO";
+    const upper = String(perfil)
         .trim()
         .toUpperCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
     if (PERFIS_VALIDOS.includes(upper)) return upper;
-    if (upper.includes("ADM") || upper.includes("GERENTE")) return "ADM";
-    if (upper.includes("TECNIC")) return "TECNICO";
-    return "CLIENTE";
+    if (upper === "ADMIN" || upper === "ADMINISTRADOR") return "ADM";
+    return "TECNICO";
 }
 
 function validarUsuario(dados, isUpdate = false) {
@@ -81,6 +80,7 @@ async function criar(dados) {
         email: validarGmail(dados.email),
         perfil: normalizarPerfil(dados.perfil),
     };
+    delete payload.id;
     return usuarioRepository.criar(payload);
 }
 
@@ -106,7 +106,6 @@ async function atualizar(id, dados) {
     }
     delete payload.senha;
     delete payload.id;
-    delete payload.id_usuario;
 
     return usuarioRepository.atualizar(idNum, payload);
 }

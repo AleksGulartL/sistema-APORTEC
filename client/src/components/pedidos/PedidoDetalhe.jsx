@@ -3,8 +3,6 @@ import {
     Alert,
     Box,
     Button,
-    Card,
-    CardContent,
     Chip,
     CircularProgress,
     Dialog,
@@ -52,6 +50,8 @@ import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import api from "../../services/api";
 import {
+    calcularSubtotalItem,
+    calcularValorTotalPedido,
     extrairChaveDataLocal,
     formatarDataBr,
     formatarDataHoraBr,
@@ -59,7 +59,7 @@ import {
 } from "../../utils/permissoes";
 import AssinaturaDigital, { VisualizarAssinatura } from "../comum/AssinaturaDigital";
 
-const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva", "Misto"];
+const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 
 const ETAPAS_STEPPER = [
     "Pendente",
@@ -128,18 +128,14 @@ export default function PedidoDetalhe({
     const [sucesso, setSucesso] = useState("");
     const [salvando, setSalvando] = useState(false);
 
-    // Estado Aba 0: Proposta / Dados Gerais
     const [formComercial, setFormComercial] = useState({});
-    // Estado Aba 1: Adicionar / Editar Item
     const [itemSelecionadoId, setItemSelecionadoId] = useState("");
     const [qtdItem, setQtdItem] = useState("1");
     const [valorUnitItem, setValorUnitItem] = useState("0");
     const [itemEdicao, setItemEdicao] = useState(null);
     const [qtdEdicao, setQtdEdicao] = useState("1");
     const [valorUnitEdicao, setValorUnitEdicao] = useState("0");
-    // Estado Aba 2: Checklist de Medição
     const [formMedicao, setFormMedicao] = useState({});
-    // Estado Aba 3: Etapas, Pré-Saída & Assinatura Digital
     const [checklistPreSaida, setChecklistPreSaida] = useState(null);
     const [assinaturaAceite, setAssinaturaAceite] = useState("");
     const [numeroSerieInput, setNumeroSerieInput] = useState("");
@@ -148,11 +144,11 @@ export default function PedidoDetalhe({
     useEffect(() => {
         if (!pedido) return;
         setFormComercial({
-            codigo_proposta: pedido.codigo_proposta || "",
             cliente_id: pedido.cliente_id ? String(pedido.cliente_id) : "",
             responsavel_producao_id: pedido.responsavel_producao_id ? String(pedido.responsavel_producao_id) : "",
             tipo_pedido: pedido.tipo_pedido || "Instalacao",
             status_aprovacao: pedido.status_aprovacao || "Pendente",
+            percentual_acrescimo: String(pedido.percentual_acrescimo ?? 0),
             endereco_instalacao: pedido.endereco_instalacao || "",
             condicoes_pagamento: pedido.condicoes_pagamento || "",
             data_previsao_fim: extrairChaveDataLocal(pedido.data_previsao_fim) || "",
@@ -161,7 +157,7 @@ export default function PedidoDetalhe({
         const cm = pedido.checklist_medicao;
         setFormMedicao({
             id: cm?.id || null,
-            tecnico_id: cm?.tecnico_id ? String(cm.tecnico_id) : String(usuario?.id_usuario ?? usuario?.id ?? ""),
+            tecnico_id: cm?.tecnico_id ? String(cm.tecnico_id) : String(usuario?.id ?? ""),
             medidas_vao: cm?.medidas_vao || "",
             sentido_abertura: cm?.sentido_abertura || "Bipartida (Central)",
             quantidade_folhas: cm?.quantidade_folhas ? String(cm.quantidade_folhas) : "2",
@@ -174,13 +170,14 @@ export default function PedidoDetalhe({
         });
 
         setAssinaturaAceite(pedido.assinatura_cliente_instalacao || "");
-        setNumeroSerieInput(pedido.numero_serie_porta || "");
+        setNumeroSerieInput(pedido.numero_serie || "");
         setFimGarantiaInput(extrairChaveDataLocal(pedido.fim_garantia) || "");
     }, [pedido, usuario]);
 
     const itensPedido = pedido?.itens || [];
     const checklist = pedido?.checklist_medicao || null;
     const nomeCliente = pedido?.cliente?.usuario?.nome_completo || `Cliente #${pedido?.cliente_id}`;
+    const valorFinalPedido = calcularValorTotalPedido(pedido);
 
     const itensCatalogoMap = useMemo(() => {
         const mapa = {};
@@ -199,19 +196,26 @@ export default function PedidoDetalhe({
         if (event) event.preventDefault();
         setErro("");
         setSucesso("");
+
+        const percNum = Number(formComercial.percentual_acrescimo ?? 0);
+        if (isNaN(percNum) || percNum < 0) {
+            setErro("O percentual de acréscimo deve ser maior ou igual a zero.");
+            return;
+        }
+
         setSalvando(true);
 
         const novoStatusAprovacao = overrideStatusAprovacao || formComercial.status_aprovacao;
         const { bloqueado, motivo } = calcularEstadoBloqueio(novoStatusAprovacao, checklist);
 
         const payload = {
-            codigo_proposta: formComercial.codigo_proposta.trim() || null,
             cliente_id: Number(formComercial.cliente_id),
             responsavel_producao_id: formComercial.responsavel_producao_id
                 ? Number(formComercial.responsavel_producao_id)
                 : null,
             tipo_pedido: formComercial.tipo_pedido,
             status_aprovacao: novoStatusAprovacao,
+            percentual_acrescimo: percNum,
             endereco_instalacao: formComercial.endereco_instalacao.trim() || null,
             condicoes_pagamento: formComercial.condicoes_pagamento.trim() || null,
             data_previsao_fim: formComercial.data_previsao_fim || null,
@@ -263,29 +267,30 @@ export default function PedidoDetalhe({
 
         const jaExiste = itensPedido.find((i) => Number(i.item_id) === itemIdNum);
         if (jaExiste) {
-            setErro("Este item já está adicionado ao pedido. Utilize o botão de editar na lista abaixo para alterar a quantidade.");
+            setErro(
+                "Este item já está adicionado ao pedido. Utilize o botão de editar na lista abaixo para alterar a quantidade."
+            );
             return;
         }
 
         setSalvando(true);
         try {
             await api.post("/pedido_item", {
-                id_orcamento: pedido.id,
-                id_item_catalogo: itemIdNum,
+                pedido_id: pedido.id,
+                item_id: itemIdNum,
                 quantidade: qtdNum,
                 valor_unitario: valorUnitNum,
-                valor_total: Number((qtdNum * valorUnitNum).toFixed(2)),
             });
             setItemSelecionadoId("");
             setQtdItem("1");
             setValorUnitItem("0");
-            setSucesso("Item adicionado ao pedido e valor total recalculado!");
+            setSucesso("Item adicionado ao pedido e custo recalculado!");
             await onPedidoAtualizado?.(pedido.id);
         } catch (err) {
             console.error("Erro ao adicionar item:", err);
             setErro(
                 err.response?.data?.erro ||
-                    "Não foi possível adicionar este item ao pedido (verifique se ele não foi removido anteriormente)."
+                    "Não foi possível adicionar este item ao pedido."
             );
         } finally {
             setSalvando(false);
@@ -310,7 +315,6 @@ export default function PedidoDetalhe({
             await api.put(`/pedido_item/${itemEdicao.id}`, {
                 quantidade: qtdNum,
                 valor_unitario: valorUnitNum,
-                valor_total: Number((qtdNum * valorUnitNum).toFixed(2)),
             });
             setItemEdicao(null);
             setSucesso("Item do pedido atualizado com sucesso!");
@@ -329,7 +333,7 @@ export default function PedidoDetalhe({
         setSalvando(true);
         try {
             await api.delete(`/pedido_item/${itemPedido.id}`);
-            setSucesso("Item removido do pedido e valor total atualizado.");
+            setSucesso("Item removido do pedido e custo atualizado.");
             await onPedidoAtualizado?.(pedido.id);
         } catch (err) {
             console.error("Erro ao remover item:", err);
@@ -365,7 +369,7 @@ export default function PedidoDetalhe({
         }
 
         const payload = {
-            id_pedido: pedido.id,
+            pedido_id: pedido.id,
             tecnico_id: formMedicao.tecnico_id ? Number(formMedicao.tecnico_id) : null,
             medidas_vao: formMedicao.medidas_vao.trim(),
             sentido_abertura: formMedicao.sentido_abertura || null,
@@ -428,7 +432,7 @@ export default function PedidoDetalhe({
             assinatura_cliente_instalacao: assinaturaAceite.trim(),
         };
         if (numeroSerieInput.trim()) {
-            payload.numero_serie_porta = numeroSerieInput.trim();
+            payload.numero_serie = numeroSerieInput.trim();
         }
         if (fimGarantiaInput) {
             payload.fim_garantia = fimGarantiaInput;
@@ -439,7 +443,9 @@ export default function PedidoDetalhe({
             const res = await api.post(`/pedido/${pedido.id}/aceite-instalacao`, payload);
             const pedAtual = res.data?.pedido;
             setSucesso(
-                `Aceite registrado! Nº de Série: ${pedAtual?.numero_serie_porta || "gerado"} • Garantia até ${formatarDataBr(pedAtual?.fim_garantia)}.`
+                `Aceite registrado! Nº de Série: ${pedAtual?.numero_serie || "gerado"} • Garantia até ${formatarDataBr(
+                    pedAtual?.fim_garantia
+                )}.`
             );
             await onPedidoAtualizado?.(pedido.id);
         } catch (err) {
@@ -454,7 +460,6 @@ export default function PedidoDetalhe({
 
     return (
         <Box>
-            {/* Barra Superior de Navegação e Resumo */}
             <Stack
                 direction={{ xs: "column", md: "row" }}
                 justifyContent="space-between"
@@ -468,11 +473,12 @@ export default function PedidoDetalhe({
                     </Button>
                     <Box>
                         <Typography variant="h5" fontWeight="bold">
-                            Pedido #{pedido.codigo_proposta || pedido.id} — {nomeCliente}
+                            Pedido #{pedido.id} — {nomeCliente}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                            ID Interno: {pedido.id} • Total: {formatarMoedaBr(pedido.valor_total)} • Criado em{" "}
-                            {formatarDataBr(pedido.created_at)}
+                            Custo Itens: {formatarMoedaBr(pedido.custo_total)} • Acréscimo:{" "}
+                            {Number(pedido.percentual_acrescimo || 0)}% • Total: {formatarMoedaBr(valorFinalPedido)} •
+                            Criado em {formatarDataBr(pedido.created_at)}
                         </Typography>
                     </Box>
                 </Stack>
@@ -484,14 +490,14 @@ export default function PedidoDetalhe({
                         label={pedido.bloqueio_fabricacao ? "Fabricação Bloqueada" : "Fabricação Liberada"}
                     />
                     <Chip color="primary" variant="outlined" label={`Etapa: ${pedido.status}`} />
-                    {pedido.numero_serie_porta && onAbrirProntuario && (
+                    {pedido.numero_serie && onAbrirProntuario && (
                         <Button
                             size="small"
                             variant="outlined"
                             startIcon={<QrCode2Icon />}
-                            onClick={() => onAbrirProntuario(pedido.numero_serie_porta)}
+                            onClick={() => onAbrirProntuario(pedido.numero_serie)}
                         >
-                            Prontuário ({pedido.numero_serie_porta})
+                            Prontuário ({pedido.numero_serie})
                         </Button>
                     )}
                     {onAbrirOs && (
@@ -508,7 +514,6 @@ export default function PedidoDetalhe({
                 </Stack>
             </Stack>
 
-            {/* Banner da Trava Técnica (RF08) */}
             <Alert
                 severity={pedido.bloqueio_fabricacao ? "warning" : "success"}
                 icon={pedido.bloqueio_fabricacao ? <LockIcon /> : <LockOpenIcon />}
@@ -539,7 +544,6 @@ export default function PedidoDetalhe({
                 </Alert>
             )}
 
-            {/* Abas do Detalhe */}
             <Paper elevation={2} sx={{ borderRadius: 2, overflow: "hidden" }}>
                 <Tabs
                     value={aba}
@@ -559,7 +563,6 @@ export default function PedidoDetalhe({
                 </Tabs>
 
                 <Box sx={{ p: 3 }}>
-                    {/* ABA 0: PROPOSTA & COMERCIAL */}
                     {aba === 0 && (
                         <form onSubmit={salvarDadosComerciais}>
                             <Stack spacing={2.5}>
@@ -600,17 +603,6 @@ export default function PedidoDetalhe({
 
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={4}>
-                                        <TextField
-                                            fullWidth
-                                            label="Código da Proposta"
-                                            value={formComercial.codigo_proposta || ""}
-                                            disabled={!ehAdm}
-                                            onChange={(e) =>
-                                                setFormComercial({ ...formComercial, codigo_proposta: e.target.value })
-                                            }
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12} sm={4}>
                                         <FormControl fullWidth disabled={!ehAdm}>
                                             <InputLabel id="det-cliente-label">Cliente</InputLabel>
                                             <Select
@@ -622,8 +614,9 @@ export default function PedidoDetalhe({
                                                 }
                                             >
                                                 {clientes.map((c) => (
-                                                    <MenuItem key={c.id} value={String(c.id)}>
-                                                        {c.usuario?.nome_completo || `Cliente #${c.id}`} ({c.cnpj_cpf})
+                                                    <MenuItem key={c.usuario_id} value={String(c.usuario_id)}>
+                                                        {c.usuario?.nome_completo || `Cliente #${c.usuario_id}`} (
+                                                        {c.cnpj_cpf})
                                                     </MenuItem>
                                                 ))}
                                             </Select>
@@ -647,6 +640,22 @@ export default function PedidoDetalhe({
                                                 ))}
                                             </Select>
                                         </FormControl>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            inputProps={{ min: 0, step: "0.01" }}
+                                            label="Acréscimo Comercial (%)"
+                                            disabled={!ehAdm}
+                                            value={formComercial.percentual_acrescimo ?? "0"}
+                                            onChange={(e) =>
+                                                setFormComercial({
+                                                    ...formComercial,
+                                                    percentual_acrescimo: e.target.value,
+                                                })
+                                            }
+                                        />
                                     </Grid>
 
                                     <Grid item xs={12} sm={4}>
@@ -745,10 +754,10 @@ export default function PedidoDetalhe({
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={4}>
                                         <Typography variant="caption" color="text.secondary">
-                                            Valor Total Calculado (Itens)
+                                            Custo dos Materiais / Valor Final (+{Number(pedido.percentual_acrescimo || 0)}%)
                                         </Typography>
                                         <Typography variant="h6" fontWeight="bold" color="primary.main">
-                                            {formatarMoedaBr(pedido.valor_total)}
+                                            {formatarMoedaBr(pedido.custo_total)} → {formatarMoedaBr(valorFinalPedido)}
                                         </Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
@@ -785,17 +794,22 @@ export default function PedidoDetalhe({
                         </form>
                     )}
 
-                    {/* ABA 1: ITENS DO PEDIDO */}
                     {aba === 1 && (
                         <Stack spacing={3}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
                                 <Typography variant="h6" fontWeight="bold">
                                     Itens e Materiais do Pedido (RF04, RF06, RF11)
                                 </Typography>
-                                <Chip
-                                    color="primary"
-                                    label={`Total do Pedido: ${formatarMoedaBr(pedido.valor_total)}`}
-                                />
+                                <Stack direction="row" spacing={1}>
+                                    <Chip
+                                        variant="outlined"
+                                        label={`Custo Itens: ${formatarMoedaBr(pedido.custo_total)}`}
+                                    />
+                                    <Chip
+                                        color="primary"
+                                        label={`Total c/ Acréscimo: ${formatarMoedaBr(valorFinalPedido)}`}
+                                    />
+                                </Stack>
                             </Stack>
 
                             {ehAdm && (
@@ -918,7 +932,7 @@ export default function PedidoDetalhe({
                                                         </TableCell>
                                                         <TableCell>{formatarMoedaBr(it.valor_unitario)}</TableCell>
                                                         <TableCell sx={{ fontWeight: "bold" }}>
-                                                            {formatarMoedaBr(it.valor_total)}
+                                                            {formatarMoedaBr(calcularSubtotalItem(it))}
                                                         </TableCell>
                                                         {ehAdm && (
                                                             <TableCell align="center">
@@ -956,7 +970,6 @@ export default function PedidoDetalhe({
                         </Stack>
                     )}
 
-                    {/* ABA 2: CHECKLIST DE MEDIÇÃO */}
                     {aba === 2 && (
                         <form onSubmit={salvarChecklistMedicao}>
                             <Stack spacing={2.5}>
@@ -1149,7 +1162,6 @@ export default function PedidoDetalhe({
                         </form>
                     )}
 
-                    {/* ABA 3: PRODUÇÃO, PRÉ-SAÍDA & ASSINATURA DIGITAL */}
                     {aba === 3 && (
                         <Stack spacing={3}>
                             <Box>
@@ -1208,7 +1220,6 @@ export default function PedidoDetalhe({
                                 </Stack>
                             </Box>
 
-                            {/* Checklist de Pré-Saída gerado ao avançar para "Pronto para Instalacao" (RF12) */}
                             {checklistPreSaida && (
                                 <Paper
                                     variant="outlined"
@@ -1273,7 +1284,6 @@ export default function PedidoDetalhe({
 
                             <Divider />
 
-                            {/* RF13 - Assinatura Digital de Aceite e Garantia / Nº de Série */}
                             <Box>
                                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                                     Aceite Digital da Instalação, Nº de Série e Garantia (RF13, RF15)
@@ -1282,7 +1292,7 @@ export default function PedidoDetalhe({
                                 {pedido.assinatura_cliente_instalacao && pedido.status === "Concluido" && (
                                     <Alert severity="success" sx={{ mb: 2 }}>
                                         Instalação concluída em {formatarDataHoraBr(pedido.data_conclusao)} • Nº de Série:{" "}
-                                        <strong>{pedido.numero_serie_porta}</strong> • Garantia até{" "}
+                                        <strong>{pedido.numero_serie}</strong> • Garantia até{" "}
                                         <strong>{formatarDataBr(pedido.fim_garantia)}</strong>
                                     </Alert>
                                 )}
@@ -1360,7 +1370,6 @@ export default function PedidoDetalhe({
                 </Box>
             </Paper>
 
-            {/* Modal de Edição de Item do Pedido */}
             <Dialog open={Boolean(itemEdicao)} onClose={() => setItemEdicao(null)} maxWidth="xs" fullWidth>
                 <form onSubmit={salvarEdicaoItem}>
                     <DialogTitle>Editar Item do Pedido</DialogTitle>

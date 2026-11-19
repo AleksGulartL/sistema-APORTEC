@@ -8,23 +8,21 @@ describe("OrdemServicoService - Testes Unitários", () => {
         jest.clearAllMocks();
     });
 
-    test("Deve criar ordem de serviço com sucesso vinculada diretamente ao cliente e pedido", async () => {
+    test("Deve criar ordem de serviço com sucesso vinculada ao pedido", async () => {
         const dadosEntrada = {
-            id_cliente: 1,
-            id_pedido: 10,
-            id_tecnico_responsavel: 2,
+            pedido_id: 10,
+            tecnico_responsavel_id: 2,
             tipo_servico: "Instalacao",
             origem_cobertura: "Garantia",
             status_os: "Aberta",
         };
-        const mockCriado = { id_os: 1, ...dadosEntrada };
+        const mockCriado = { id: 1, ...dadosEntrada };
         ordemServicoRepository.criar.mockResolvedValue(mockCriado);
 
         const resultado = await ordemServicoService.criar(dadosEntrada);
         expect(resultado).toEqual(mockCriado);
         expect(ordemServicoRepository.criar).toHaveBeenCalledWith(
             expect.objectContaining({
-                cliente_id: 1,
                 pedido_id: 10,
                 tecnico_responsavel_id: 2,
                 tipo_servico: "Instalacao",
@@ -32,18 +30,18 @@ describe("OrdemServicoService - Testes Unitários", () => {
         );
     });
 
-    test("Deve lançar erro 400 se id_cliente for ausente", async () => {
+    test("Deve lançar erro 400 se pedido_id for ausente", async () => {
         await expect(
-            ordemServicoService.criar({ id_tecnico_responsavel: 2, tipo_servico: "Instalacao" })
+            ordemServicoService.criar({ tecnico_responsavel_id: 2, tipo_servico: "Instalacao" })
         ).rejects.toMatchObject({
-            message: "O campo 'id_cliente' é obrigatório e deve ser um número inteiro válido.",
+            message: "O campo 'pedido_id' é obrigatório e deve ser um número inteiro válido.",
             status: 400,
         });
     });
 
     test("Deve lançar erro 400 se tipo_servico for inválido", async () => {
         await expect(
-            ordemServicoService.criar({ id_cliente: 1, id_tecnico_responsavel: 2, tipo_servico: "Invalido" })
+            ordemServicoService.criar({ pedido_id: 10, tecnico_responsavel_id: 2, tipo_servico: "Invalido" })
         ).rejects.toMatchObject({
             message:
                 "O campo 'tipo_servico' é obrigatório e deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.",
@@ -59,9 +57,9 @@ describe("OrdemServicoService - Testes Unitários", () => {
     });
 
     test("Deve deletar ordem de serviço com sucesso", async () => {
-        ordemServicoRepository.deletar.mockResolvedValue({ id_os: 1 });
+        ordemServicoRepository.deletar.mockResolvedValue({ id: 1 });
 
         const resultado = await ordemServicoService.deletar(1);
-        expect(resultado).toEqual({ id_os: 1 });
+        expect(resultado).toEqual({ id: 1 });
     });
 });

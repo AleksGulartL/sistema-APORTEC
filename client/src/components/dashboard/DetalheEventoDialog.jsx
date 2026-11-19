@@ -16,7 +16,13 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { formatarDataBr, formatarHoraBr, formatarMoedaBr } from "../../utils/permissoes";
+import {
+    calcularSubtotalItem,
+    calcularValorTotalPedido,
+    formatarDataBr,
+    formatarHoraBr,
+    formatarMoedaBr,
+} from "../../utils/permissoes";
 
 function CampoInfo({ label, valor }) {
     return (
@@ -36,16 +42,16 @@ export default function DetalheEventoDialog({ selecionado, onClose, onAbrirPedid
     const { tipo, registro } = selecionado;
 
     const ehPedido = tipo === "pedido";
-    const nomeCliente = registro.cliente?.usuario?.nome_completo || `Cliente #${registro.cliente_id}`;
+    const nomeCliente = ehPedido
+        ? registro.cliente?.usuario?.nome_completo || `Cliente #${registro.cliente_id}`
+        : registro.pedido?.cliente?.usuario?.nome_completo || `Pedido #${registro.pedido_id}`;
 
     return (
         <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="h6" fontWeight="bold">
-                        {ehPedido
-                            ? `Pedido #${registro.codigo_proposta || registro.id}`
-                            : `Ordem de Serviço #${registro.id}`}
+                        {ehPedido ? `Pedido #${registro.id}` : `Ordem de Serviço #${registro.id}`}
                     </Typography>
                     <Chip
                         size="small"
@@ -73,9 +79,9 @@ export default function DetalheEventoDialog({ selecionado, onClose, onAbrirPedid
                                 label="Endereço de Instalação"
                                 valor={registro.endereco_instalacao || registro.cliente?.endereco}
                             />
-                            <CampoInfo label="Valor Total" valor={formatarMoedaBr(registro.valor_total)} />
+                            <CampoInfo label="Valor Total" valor={formatarMoedaBr(calcularValorTotalPedido(registro))} />
                             <CampoInfo label="Previsão de Entrega" valor={formatarDataBr(registro.data_previsao_fim)} />
-                            <CampoInfo label="Nº Série da Porta" valor={registro.numero_serie_porta} />
+                            <CampoInfo label="Nº Série da Porta" valor={registro.numero_serie} />
                             <CampoInfo label="Fim da Garantia" valor={formatarDataBr(registro.fim_garantia)} />
                             <CampoInfo
                                 label="Checklist de Medição"
@@ -98,7 +104,9 @@ export default function DetalheEventoDialog({ selecionado, onClose, onAbrirPedid
                                         <ListItem key={item.id} divider>
                                             <ListItemText
                                                 primary={item.item_catalogo?.descricao || `Item #${item.item_id}`}
-                                                secondary={`Qtd: ${item.quantidade} • Total: ${formatarMoedaBr(item.valor_total)}`}
+                                                secondary={`Qtd: ${item.quantidade} • Subtotal: ${formatarMoedaBr(
+                                                    calcularSubtotalItem(item)
+                                                )}`}
                                             />
                                         </ListItem>
                                     ))}
@@ -109,6 +117,7 @@ export default function DetalheEventoDialog({ selecionado, onClose, onAbrirPedid
                 ) : (
                     <Grid container spacing={1.5}>
                         <CampoInfo label="Cliente" valor={nomeCliente} />
+                        <CampoInfo label="Pedido Vinculado" valor={`#${registro.pedido_id}`} />
                         <CampoInfo
                             label="Técnico Responsável"
                             valor={

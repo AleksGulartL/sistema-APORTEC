@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    FormControlLabel,
+    Stack,
+    Switch,
+    Typography,
+} from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../services/api";
 import { obterPerfilUsuario, usuarioEhAdm, usuarioEhFuncionario } from "../utils/permissoes";
@@ -19,60 +29,89 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     const [alertasEstoque, setAlertasEstoque] = useState([]);
     const [ordensServico, setOrdensServico] = useState([]);
     const [clientes, setClientes] = useState([]);
+    const [checklists, setChecklists] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
+    const [autoAtualizar, setAutoAtualizar] = useState(true);
+    const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
     const [eventoSelecionado, setEventoSelecionado] = useState(null);
 
-    const carregarDados = useCallback(async () => {
-        if (!ehFuncionario) {
-            setCarregando(false);
-            return;
-        }
-
-        setCarregando(true);
-        setErro("");
-
-        try {
-            const requisicoes = [
-                api.get("/pedido"),
-                api.get("/item_catalogo"),
-                api.get("/ordem_servico"),
-                api.get("/cliente"),
-                ehAdm ? api.get("/item_catalogo/alertas-estoque") : Promise.resolve({ data: [] }),
-            ];
-
-            const [resPed, resItens, resOs, resCli, resAlertas] = await Promise.allSettled(requisicoes);
-
-            const falhouTudo = [resPed, resItens, resOs, resCli].every((r) => r.status === "rejected");
-            if (falhouTudo) {
-                setErro("Não foi possível carregar os dados da Dashboard. Verifique sua conexão com o servidor.");
+    const carregarDados = useCallback(
+        async (silencioso = false) => {
+            if (!ehFuncionario) {
+                setCarregando(false);
                 return;
             }
 
-            const listaPedidos = resPed.status === "fulfilled" && Array.isArray(resPed.value.data) ? resPed.value.data : [];
-            const listaItens = resItens.status === "fulfilled" && Array.isArray(resItens.value.data) ? resItens.value.data : [];
-            const listaOs = resOs.status === "fulfilled" && Array.isArray(resOs.value.data) ? resOs.value.data : [];
-            const listaCli = resCli.status === "fulfilled" && Array.isArray(resCli.value.data) ? resCli.value.data : [];
+            if (!silencioso) setCarregando(true);
+            setErro("");
 
-            const listaAlertas =
-                ehAdm && resAlertas.status === "fulfilled" && Array.isArray(resAlertas.value.data)
-                    ? resAlertas.value.data
-                    : listaItens.filter((item) => Number(item.quantidade_atual) <= Number(item.estoque_minimo));
+            try {
+                const requisicoes = [
+                    api.get("/pedido"),
+                    api.get("/item_catalogo"),
+                    api.get("/ordem_servico"),
+                    api.get("/cliente"),
+                    api.get("/checklist_medicao"),
+                    ehAdm ? api.get("/usuarios") : Promise.resolve({ data: [] }),
+                    ehAdm ? api.get("/item_catalogo/alertas-estoque") : Promise.resolve({ data: [] }),
+                ];
 
-            setPedidos(listaPedidos);
-            setItensEstoque(listaItens);
-            setOrdensServico(listaOs);
-            setClientes(listaCli);
-            setAlertasEstoque(listaAlertas);
-        } catch (err) {
-            console.error("Erro ao carregar dashboard:", err);
-            setErro("Erro inesperado ao montar o levantamento da Dashboard.");
-        } finally {
-            setCarregando(false);
-        }
-    }, [ehAdm, ehFuncionario]);
+                const [resPed, resItens, resOs, resCli, resChk, resUsu, resAlertas] =
+                    await Promise.allSettled(requisicoes);
+
+                const falhouTudo = [resPed, resItens, resOs, resCli].every((r) => r.status === "rejected");
+                if (falhouTudo) {
+                    setErro("Não foi possível carregar os dados da Dashboard. Verifique sua conexão com o servidor.");
+                    return;
+                }
+
+                const listaPedidos =
+                    resPed.status === "fulfilled" && Array.isArray(resPed.value.data) ? resPed.value.data : [];
+                const listaItens =
+                    resItens.status === "fulfilled" && Array.isArray(resItens.value.data) ? resItens.value.data : [];
+                const listaOs =
+                    resOs.status === "fulfilled" && Array.isArray(resOs.value.data) ? resOs.value.data : [];
+                const listaCli =
+                    resCli.status === "fulfilled" && Array.isArray(resCli.value.data) ? resCli.value.data : [];
+                const listaChk =
+                    resChk.status === "fulfilled" && Array.isArray(resChk.value.data) ? resChk.value.data : [];
+                const listaUsu =
+                    resUsu.status === "fulfilled" && Array.isArray(resUsu.value.data) ? resUsu.value.data : [];
+
+                const listaAlertas =
+                    ehAdm && resAlertas.status === "fulfilled" && Array.isArray(resAlertas.value.data)
+                        ? resAlertas.value.data
+                        : listaItens.filter((item) => Number(item.quantidade_atual) <= Number(item.estoque_minimo));
+
+                setPedidos(listaPedidos);
+                setItensEstoque(listaItens);
+                setOrdensServico(listaOs);
+                setClientes(listaCli);
+                setChecklists(listaChk);
+                setUsuarios(listaUsu);
+                setAlertasEstoque(listaAlertas);
+                setUltimaAtualizacao(new Date());
+            } catch (err) {
+                console.error("Erro ao carregar dashboard:", err);
+                setErro("Erro inesperado ao montar o levantamento da Dashboard.");
+            } finally {
+                setCarregando(false);
+            }
+        },
+        [ehAdm, ehFuncionario]
+    );
 
     useEffect(() => {
-        carregarDados();
+        carregarDados(false);
     }, [carregarDados]);
+
+    useEffect(() => {
+        if (!ehFuncionario || !autoAtualizar) return undefined;
+        const timer = setInterval(() => {
+            carregarDados(true);
+        }, 30000);
+        return () => clearInterval(timer);
+    }, [ehFuncionario, autoAtualizar, carregarDados]);
 
     if (!ehFuncionario) {
         return (
@@ -86,34 +125,59 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     }
 
     const pedidosEmAndamento = pedidos.filter((p) => !["Concluido", "Cancelado"].includes(p.status));
+    const pedidosConcluidos = pedidos.filter((p) => p.status === "Concluido").length;
     const totalBloqueados = pedidosEmAndamento.filter((p) => p.bloqueio_fabricacao).length;
     const osAbertas = ordensServico.filter((os) => ["Aberta", "Em Andamento"].includes(os.status_os));
+    const totalUsuariosAtivos = ehAdm
+        ? usuarios.filter((u) => u.ativo !== false).length
+        : clientes.filter((c) => c.usuario?.ativo !== false).length + 1;
+    const totalUsuariosTabela = ehAdm ? usuarios.length : clientes.length + 1;
+    const totalItensPedidos = pedidos.reduce((acc, p) => acc + (Array.isArray(p.itens) ? p.itens.length : 0), 0);
 
     return (
         <Box sx={{ py: 3 }}>
             <Stack
-                direction={{ xs: "column", sm: "row" }}
+                direction={{ xs: "column", md: "row" }}
                 justifyContent="space-between"
-                alignItems={{ xs: "flex-start", sm: "center" }}
+                alignItems={{ xs: "flex-start", md: "center" }}
                 spacing={2}
                 sx={{ mb: 3 }}
             >
                 <Box>
                     <Typography variant="h4" fontWeight="bold" color="text.primary">
-                        Dashboard Operacional
+                        Dashboard Operacional e Analítica
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Visão consolidada de pedidos em andamento, alertas de estoque e agenda de prazos
+                        Indicadores consolidados, quantidade de registros por tabela, alertas de estoque e agenda
                     </Typography>
                 </Box>
-                <Button
-                    variant="outlined"
-                    startIcon={<RefreshIcon />}
-                    onClick={carregarDados}
-                    disabled={carregando}
-                >
-                    Atualizar Dados
-                </Button>
+                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                    {ultimaAtualizacao && (
+                        <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Atualizado às ${ultimaAtualizacao.toLocaleTimeString("pt-BR")}`}
+                        />
+                    )}
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                size="small"
+                                checked={autoAtualizar}
+                                onChange={(e) => setAutoAtualizar(e.target.checked)}
+                            />
+                        }
+                        label={<Typography variant="caption">Atualização dinâmica (30s)</Typography>}
+                    />
+                    <Button
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        onClick={() => carregarDados(false)}
+                        disabled={carregando}
+                    >
+                        Atualizar Dados
+                    </Button>
+                </Stack>
             </Stack>
 
             {erro && (
@@ -130,12 +194,18 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                 <>
                     <DashboardKpis
                         totalPedidosAndamento={pedidosEmAndamento.length}
+                        totalPedidosTotal={pedidos.length}
+                        totalPedidosConcluidos={pedidosConcluidos}
                         totalBloqueados={totalBloqueados}
                         totalAlertasEstoque={alertasEstoque.length}
                         totalItensCatalogo={itensEstoque.length}
                         totalOsAbertas={osAbertas.length}
                         totalOsTotal={ordensServico.length}
                         totalClientes={clientes.length}
+                        totalUsuariosAtivos={totalUsuariosAtivos}
+                        totalUsuariosTabela={totalUsuariosTabela}
+                        totalChecklists={checklists.length}
+                        totalItensPedidos={totalItensPedidos}
                     />
 
                     <AgendaCalendario

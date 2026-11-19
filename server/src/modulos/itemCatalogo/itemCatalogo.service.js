@@ -1,19 +1,16 @@
 const itemCatalogoRepository = require("./itemCatalogo.repository");
 
 function validarItemCatalogo(dados, isUpdate = false) {
-    const tipoId = dados.tipo_id;
-    const categoriaId = dados.categoria_id;
-
     if (!isUpdate) {
-        const tipoIdNum = Number(tipoId);
-        if (!tipoId || !Number.isInteger(tipoIdNum) || tipoIdNum <= 0) {
+        const tipoIdNum = Number(dados.tipo_id);
+        if (!dados.tipo_id || !Number.isInteger(tipoIdNum) || tipoIdNum <= 0) {
             const erro = new Error("O campo 'tipo_id' é obrigatório e deve ser um ID válido.");
             erro.status = 400;
             throw erro;
         }
 
-        const categoriaIdNum = Number(categoriaId);
-        if (!categoriaId || !Number.isInteger(categoriaIdNum) || categoriaIdNum <= 0) {
+        const categoriaIdNum = Number(dados.categoria_id);
+        if (!dados.categoria_id || !Number.isInteger(categoriaIdNum) || categoriaIdNum <= 0) {
             const erro = new Error("O campo 'categoria_id' é obrigatório e deve ser um ID válido.");
             erro.status = 400;
             throw erro;
@@ -31,8 +28,8 @@ function validarItemCatalogo(dados, isUpdate = false) {
             throw erro;
         }
     } else {
-        if (tipoId !== undefined) {
-            const tipoIdNum = Number(tipoId);
+        if (dados.tipo_id !== undefined) {
+            const tipoIdNum = Number(dados.tipo_id);
             if (!Number.isInteger(tipoIdNum) || tipoIdNum <= 0) {
                 const erro = new Error("O campo 'tipo_id' deve ser um ID válido.");
                 erro.status = 400;
@@ -40,8 +37,8 @@ function validarItemCatalogo(dados, isUpdate = false) {
             }
         }
 
-        if (categoriaId !== undefined) {
-            const categoriaIdNum = Number(categoriaId);
+        if (dados.categoria_id !== undefined) {
+            const categoriaIdNum = Number(dados.categoria_id);
             if (!Number.isInteger(categoriaIdNum) || categoriaIdNum <= 0) {
                 const erro = new Error("O campo 'categoria_id' deve ser um ID válido.");
                 erro.status = 400;
@@ -75,9 +72,8 @@ function validarItemCatalogo(dados, isUpdate = false) {
         }
     }
 
-    const qtdAtual = dados.quantidade_atual ?? dados.quantidade_estoque;
-    if (qtdAtual !== undefined && qtdAtual !== null) {
-        const qtdNum = Number(qtdAtual);
+    if (dados.quantidade_atual !== undefined && dados.quantidade_atual !== null) {
+        const qtdNum = Number(dados.quantidade_atual);
         if (isNaN(qtdNum) || qtdNum < 0) {
             const erro = new Error("A 'quantidade_atual' deve ser um número maior ou igual a zero.");
             erro.status = 400;
@@ -132,11 +128,12 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarItemCatalogo(dados, false);
-    const payload = { ...dados };
-    if (payload.quantidade_estoque !== undefined && payload.quantidade_atual === undefined) {
-        payload.quantidade_atual = payload.quantidade_estoque;
-    }
-    delete payload.quantidade_estoque;
+    const payload = {
+        ...dados,
+        tipo_id: Number(dados.tipo_id),
+        categoria_id: Number(dados.categoria_id),
+    };
+    delete payload.id;
     return itemCatalogoRepository.criar(payload);
 }
 
@@ -150,10 +147,9 @@ async function atualizar(id, dados) {
 
     validarItemCatalogo(dados, true);
     const payload = { ...dados };
-    if (payload.quantidade_estoque !== undefined && payload.quantidade_atual === undefined) {
-        payload.quantidade_atual = payload.quantidade_estoque;
-    }
-    delete payload.quantidade_estoque;
+    if (payload.tipo_id !== undefined) payload.tipo_id = Number(payload.tipo_id);
+    if (payload.categoria_id !== undefined) payload.categoria_id = Number(payload.categoria_id);
+    delete payload.id;
     return itemCatalogoRepository.atualizar(idNum, payload);
 }
 

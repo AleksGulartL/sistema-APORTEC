@@ -2,11 +2,11 @@ const clienteRepository = require("./cliente.repository");
 const { validarGmail } = require("../../utils/validacaoEmail");
 
 function validarCliente(dados, isUpdate = false) {
-    const usuarioId = dados.usuario_id ?? dados.id_usuario;
-    const temUsuarioId = usuarioId !== undefined && usuarioId !== null && String(usuarioId).trim() !== "";
+    const temUsuarioId =
+        dados.usuario_id !== undefined && dados.usuario_id !== null && String(dados.usuario_id).trim() !== "";
 
     if (temUsuarioId) {
-        const idUsuarioNum = Number(usuarioId);
+        const idUsuarioNum = Number(dados.usuario_id);
         if (!Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
             const erro = new Error("O campo 'usuario_id' deve ser um número inteiro válido.");
             erro.status = 400;

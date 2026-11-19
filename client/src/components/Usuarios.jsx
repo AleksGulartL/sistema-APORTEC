@@ -40,8 +40,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
 import api from "../services/api";
-import { usuarioEhAdm } from "../utils/permissoes";
+import { ordenarLista, usuarioEhAdm } from "../utils/permissoes";
 import {
     emailEhGmail,
     MENSAGEM_ERRO_GMAIL,
@@ -64,9 +65,17 @@ const FORM_INICIAL = {
     ativo: true,
 };
 
+const EXTRATORES_USUARIO = {
+    id: (u) => Number(u.id || 0),
+    nome_completo: (u) => u.nome_completo || "",
+    email: (u) => u.email || "",
+    perfil: (u) => u.perfil || "",
+    ativo: (u) => (u.ativo !== false ? 1 : 0),
+};
+
 export default function Usuarios({ usuario }) {
     const ehAdm = usuarioEhAdm(usuario);
-    const idLogado = usuario?.id_usuario ?? usuario?.id ?? null;
+    const idLogado = usuario?.id ?? null;
 
     const [usuarios, setUsuarios] = useState([]);
     const [carregando, setCarregando] = useState(true);
@@ -75,8 +84,8 @@ export default function Usuarios({ usuario }) {
     const [busca, setBusca] = useState("");
     const [filtroPerfil, setFiltroPerfil] = useState("TODOS");
     const [incluirClientes, setIncluirClientes] = useState(false);
+    const [ordenacao, setOrdenacao] = useState({ campo: "id", direcao: "asc" });
 
-    // Modal de criação / edição
     const [modalAberto, setModalAberto] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
@@ -85,7 +94,6 @@ export default function Usuarios({ usuario }) {
     const [erroModal, setErroModal] = useState("");
     const [salvando, setSalvando] = useState(false);
 
-    // Confirmação de exclusão
     const [usuarioExcluir, setUsuarioExcluir] = useState(null);
     const [excluindo, setExcluindo] = useState(false);
 
@@ -118,16 +126,18 @@ export default function Usuarios({ usuario }) {
 
     const usuariosFiltrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
-        return usuarios.filter((u) => {
+        const filtrados = usuarios.filter((u) => {
             if (!incluirClientes && u.perfil === "CLIENTE") return false;
             if (filtroPerfil !== "TODOS" && u.perfil !== filtroPerfil) return false;
             if (!termo) return true;
             return (
+                String(u.id || "").includes(termo) ||
                 String(u.nome_completo || "").toLowerCase().includes(termo) ||
                 String(u.email || "").toLowerCase().includes(termo)
             );
         });
-    }, [usuarios, busca, filtroPerfil, incluirClientes]);
+        return ordenarLista(filtrados, ordenacao.campo, ordenacao.direcao, EXTRATORES_USUARIO);
+    }, [usuarios, busca, filtroPerfil, incluirClientes, ordenacao]);
 
     function abrirNovoUsuario() {
         setModoEdicao(false);
@@ -142,7 +152,7 @@ export default function Usuarios({ usuario }) {
         const emailAtual = registro.email || "";
         setModoEdicao(true);
         setForm({
-            id: registro.id ?? registro.id_usuario,
+            id: registro.id,
             nome_completo: registro.nome_completo || "",
             email: emailAtual,
             perfil: registro.perfil || "TECNICO",
@@ -205,8 +215,7 @@ export default function Usuarios({ usuario }) {
         if (!usuarioExcluir) return;
         setExcluindo(true);
         try {
-            const id = usuarioExcluir.id ?? usuarioExcluir.id_usuario;
-            await api.delete(`/usuarios/${id}`);
+            await api.delete(`/usuarios/${usuarioExcluir.id}`);
             setSucessoMsg(`Usuário "${usuarioExcluir.nome_completo}" removido com sucesso.`);
             setUsuarioExcluir(null);
             carregarUsuarios();
@@ -275,7 +284,6 @@ export default function Usuarios({ usuario }) {
                 </Alert>
             )}
 
-            {/* Resumo */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={4}>
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
@@ -324,7 +332,7 @@ export default function Usuarios({ usuario }) {
                 >
                     <TextField
                         size="small"
-                        placeholder="Filtrar por nome, e-mail ou cargo..."
+                        placeholder="Filtrar por nome, e-mail ou ID..."
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
                         sx={{ minWidth: { xs: "100%", md: 320 } }}
@@ -386,11 +394,36 @@ export default function Usuarios({ usuario }) {
                     <Table sx={{ minWidth: 650 }} aria-label="tabela de usuários">
                         <TableHead sx={{ bgcolor: "primary.main" }}>
                             <TableRow>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Nome Completo</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>E-mail</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Perfil</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Situação</TableCell>
+                                <CabecalhoOrdenavel
+                                    campo="id"
+                                    rotulo="ID"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="nome_completo"
+                                    rotulo="Nome Completo"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="email"
+                                    rotulo="E-mail"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="perfil"
+                                    rotulo="Perfil"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="ativo"
+                                    rotulo="Situação"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
                                 <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                     Ações
                                 </TableCell>
@@ -398,15 +431,14 @@ export default function Usuarios({ usuario }) {
                         </TableHead>
                         <TableBody>
                             {usuariosFiltrados.map((u) => {
-                                const id = u.id ?? u.id_usuario;
-                                const ehProprioUsuario = Number(id) === Number(idLogado);
+                                const ehProprioUsuario = Number(u.id) === Number(idLogado);
                                 return (
                                     <TableRow
-                                        key={id}
+                                        key={u.id}
                                         hover
                                         sx={{ "&:nth-of-type(odd)": { bgcolor: "action.hover" } }}
                                     >
-                                        <TableCell sx={{ fontWeight: "medium" }}>{id}</TableCell>
+                                        <TableCell sx={{ fontWeight: "medium" }}>{u.id}</TableCell>
                                         <TableCell sx={{ fontWeight: "medium" }}>
                                             {u.nome_completo}
                                             {ehProprioUsuario && (
@@ -466,7 +498,6 @@ export default function Usuarios({ usuario }) {
                 </TableContainer>
             )}
 
-            {/* Modal Criar / Editar Colaborador */}
             <Dialog open={modalAberto} onClose={() => setModalAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={salvarUsuario}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -516,26 +547,22 @@ export default function Usuarios({ usuario }) {
                                 {...obterAjudaEmailGmail(form.email, emailTocado)}
                             />
 
-                            <Grid container spacing={2}>
-                                <Grid item xs={12}>
-                                    {modoEdicao && form.perfil === "CLIENTE" ? (
-                                        <TextField fullWidth label="Perfil de Acesso" value="CLIENTE" disabled />
-                                    ) : (
-                                        <FormControl fullWidth required>
-                                            <InputLabel id="perfil-select-label">Perfil de Acesso</InputLabel>
-                                            <Select
-                                                labelId="perfil-select-label"
-                                                label="Perfil de Acesso"
-                                                value={form.perfil}
-                                                onChange={(e) => setForm({ ...form, perfil: e.target.value })}
-                                            >
-                                                <MenuItem value="TECNICO">TECNICO — Equipe Técnica / Campo</MenuItem>
-                                                <MenuItem value="ADM">ADM — Administrador Geral</MenuItem>
-                                            </Select>
-                                        </FormControl>
-                                    )}
-                                </Grid>
-                            </Grid>
+                            {modoEdicao && form.perfil === "CLIENTE" ? (
+                                <TextField fullWidth label="Perfil de Acesso" value="CLIENTE" disabled />
+                            ) : (
+                                <FormControl fullWidth required>
+                                    <InputLabel id="perfil-select-label">Perfil de Acesso</InputLabel>
+                                    <Select
+                                        labelId="perfil-select-label"
+                                        label="Perfil de Acesso"
+                                        value={form.perfil}
+                                        onChange={(e) => setForm({ ...form, perfil: e.target.value })}
+                                    >
+                                        <MenuItem value="TECNICO">TECNICO — Equipe Técnica / Campo</MenuItem>
+                                        <MenuItem value="ADM">ADM — Administrador Geral</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            )}
 
                             <TextField
                                 required={!modoEdicao}
@@ -578,7 +605,6 @@ export default function Usuarios({ usuario }) {
                 </form>
             </Dialog>
 
-            {/* Confirmação de Exclusão */}
             <Dialog open={Boolean(usuarioExcluir)} onClose={() => setUsuarioExcluir(null)} maxWidth="xs" fullWidth>
                 <DialogTitle>Confirmar Exclusão</DialogTitle>
                 <DialogContent dividers>

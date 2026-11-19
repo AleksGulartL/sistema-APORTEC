@@ -26,9 +26,9 @@ import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import { obterPerfilUsuario, usuarioEhAdm, usuarioEhCliente } from "../utils/permissoes";
 
 export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
-    const nome = usuario?.nome_completo || usuario?.nome || usuario?.email || "Usuário";
+    const nome = usuario?.nome_completo || usuario?.email || "Usuário";
     const primeiroNome = String(nome).split(" ")[0];
-    const cargo = obterPerfilUsuario(usuario) || "Usuário";
+    const cargo = obterPerfilUsuario(usuario) || "Operador";
     const ehAdm = usuarioEhAdm(usuario);
     const ehCliente = usuarioEhCliente(usuario);
 

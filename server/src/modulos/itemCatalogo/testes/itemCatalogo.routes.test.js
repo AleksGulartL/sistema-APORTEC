@@ -57,7 +57,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
     test("POST /itens-catalogo - Deve retornar 201 ao criar item com sucesso", async () => {
         // DADOS: Payload do item
         const novoItem = { tipo: "Insumo", descricao: "Motor 2HP", unidade_medida: "UN" };
-        itemCatalogoService.criar.mockResolvedValue({ id_item: 1, ...novoItem });
+        itemCatalogoService.criar.mockResolvedValue({ id: 1, ...novoItem });
 
         // AÇÃO: Envia requisição POST
         const res = await request(app).post("/itens-catalogo").set(comoAdm).send(novoItem);
@@ -92,7 +92,7 @@ describe("ItemCatalogoRoutes - Testes de Rotas e Status HTTP", () => {
 
     test("DELETE /itens-catalogo/:id - Deve retornar 200 ao excluir item", async () => {
         // MOCK: Simula remoção bem-sucedida do registro
-        itemCatalogoService.deletar.mockResolvedValue({ id_item: 1 });
+        itemCatalogoService.deletar.mockResolvedValue({ id: 1 });
 
         // AÇÃO: Faz a requisição DELETE
         const res = await request(app).delete("/itens-catalogo/1").set(comoAdm);

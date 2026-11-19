@@ -1,78 +1,69 @@
 const itemCatalogoService = require("../itemCatalogo.service");
 const itemCatalogoRepository = require("../itemCatalogo.repository");
 
-// Intercepta a camada de acesso ao banco de dados para isolar a regra de negócio
 jest.mock("../itemCatalogo.repository");
 
 describe("ItemCatalogoService - Testes Unitários", () => {
-    // Limpa os mocks após cada execução de teste para evitar vazamento de estado
     afterEach(() => {
         jest.clearAllMocks();
     });
 
     test("Deve listar todos os itens do catálogo", async () => {
-        // MOCK: Simula o retorno de uma lista de itens do repositório
-        const mockItens = [{ id_item: 1, descricao: "Motor 2HP", tipo: "Insumo" }];
+        const mockItens = [{ id: 1, descricao: "Motor 2HP", tipo_id: 1, categoria_id: 1 }];
         itemCatalogoRepository.listar.mockResolvedValue(mockItens);
 
-        // AÇÃO: Executa o método de listagem no Service
         const resultado = await itemCatalogoService.listar();
-
-        // VALIDAÇÃO: Confirma se o resultado corresponde ao mock do repositório
         expect(resultado).toEqual(mockItens);
     });
 
+    test("Deve listar tipos e categorias do catálogo", async () => {
+        itemCatalogoRepository.listarTipos.mockResolvedValue([{ id: 1, nome: "Kit" }]);
+        itemCatalogoRepository.listarCategorias.mockResolvedValue([{ id: 1, nome: "Automatizadores" }]);
+
+        await expect(itemCatalogoService.listarTipos()).resolves.toEqual([{ id: 1, nome: "Kit" }]);
+        await expect(itemCatalogoService.listarCategorias()).resolves.toEqual([{ id: 1, nome: "Automatizadores" }]);
+    });
+
     test("Deve buscar um item por ID válido", async () => {
-        // MOCK: Simula a busca de um item específico por ID
-        const mockItem = { id_item: 1, descricao: "Motor 2HP", tipo: "Insumo" };
+        const mockItem = { id: 1, descricao: "Motor 2HP", tipo_id: 1, categoria_id: 1 };
         itemCatalogoRepository.buscarPorId.mockResolvedValue(mockItem);
 
-        // AÇÃO: Executa a busca passando um ID numérico
         const resultado = await itemCatalogoService.buscarPorId(1);
-
-        // VALIDAÇÃO: Confirma se o item correto foi retornado
         expect(resultado).toEqual(mockItem);
     });
 
     test("Deve lançar erro 400 se o ID for inválido", async () => {
-        // AÇÃO & VALIDAÇÃO: Bloqueia IDs que não sejam números inteiros positivos
         await expect(itemCatalogoService.buscarPorId("abc"))
             .rejects
             .toMatchObject({ message: "O 'id' informado deve ser um número inteiro válido.", status: 400 });
     });
 
-    test("Deve lançar erro 400 se o campo 'tipo' for omitido", async () => {
-        // DADOS: Payload sem o tipo
-        const dadosInvalidos = { descricao: "Perfil de Alumínio", unidade_medida: "M" };
-
-        // AÇÃO & VALIDAÇÃO: Garante a obrigatoriedade do campo tipo
-        await expect(itemCatalogoService.criar(dadosInvalidos))
+    test("Deve lançar erro 400 se o campo 'tipo_id' for omitido ou inválido", async () => {
+        await expect(
+            itemCatalogoService.criar({ categoria_id: 1, descricao: "Perfil de Alumínio", unidade_medida: "M" })
+        )
             .rejects
-            .toMatchObject({ message: "O campo 'tipo' é obrigatório.", status: 400 });
+            .toMatchObject({ message: "O campo 'tipo_id' é obrigatório e deve ser um ID válido.", status: 400 });
     });
 
-    test("Deve lançar erro 400 se o campo 'tipo' tiver valor fora do ENUM (Insumo, Porta, Peca)", async () => {
-        // DADOS: Tipo com valor não permitido pelo banco
-        const dadosInvalidos = { tipo: "Invalido", descricao: "Perfil de Alumínio", unidade_medida: "M" };
-
-        // AÇÃO & VALIDAÇÃO: Valida o tipo antes de estourar erro de restrição no banco
-        await expect(itemCatalogoService.criar(dadosInvalidos))
+    test("Deve lançar erro 400 se o campo 'categoria_id' for omitido ou inválido", async () => {
+        await expect(
+            itemCatalogoService.criar({ tipo_id: 1, descricao: "Perfil de Alumínio", unidade_medida: "M" })
+        )
             .rejects
-            .toMatchObject({ message: "O campo 'tipo' deve ser 'Insumo', 'Porta' ou 'Peca'.", status: 400 });
+            .toMatchObject({ message: "O campo 'categoria_id' é obrigatório e deve ser um ID válido.", status: 400 });
     });
 
     test("Deve lançar erro 400 se 'descricao' for omitida ou for apenas espaço em branco", async () => {
-        // DADOS: Descrição vazia ou composta por espaços
-        const dadosInvalidos = { tipo: "Insumo", descricao: "   ", unidade_medida: "M" };
+        const dadosInvalidos = { tipo_id: 1, categoria_id: 1, descricao: "   ", unidade_medida: "M" };
 
-        // AÇÃO & VALIDAÇÃO: Impede descrições sem conteúdo útil
         await expect(itemCatalogoService.criar(dadosInvalidos))
             .rejects
             .toMatchObject({ message: "O campo 'descricao' é obrigatório e deve ser um texto válido.", status: 400 });
     });
 
     test("Deve lançar erro 400 se 'unidade_medida' for omitida", async () => {
-        const dadosInvalidos = { tipo: "Insumo", descricao: "Perfil de Alumínio", unidade_medida: "" };
+        const dadosInvalidos = { tipo_id: 1, categoria_id: 1, descricao: "Perfil de Alumínio", unidade_medida: "" };
 
         await expect(itemCatalogoService.criar(dadosInvalidos))
             .rejects
@@ -80,54 +71,59 @@ describe("ItemCatalogoService - Testes Unitários", () => {
     });
 
     test("Deve lançar erro 400 se 'valor_unitario_padrao' for negativo", async () => {
-        // DADOS: Valor numérico negativo
-        const dadosInvalidos = { tipo: "Insumo", descricao: "Perfil", unidade_medida: "M", valor_unitario_padrao: -10 };
+        const dadosInvalidos = {
+            tipo_id: 1,
+            categoria_id: 1,
+            descricao: "Perfil",
+            unidade_medida: "M",
+            valor_unitario_padrao: -10,
+        };
 
-        // AÇÃO & VALIDAÇÃO: Impede cadastro de valores negativos
         await expect(itemCatalogoService.criar(dadosInvalidos))
             .rejects
             .toMatchObject({ message: "O 'valor_unitario_padrao' deve ser um número maior ou igual a zero.", status: 400 });
     });
 
-    test("Deve lançar erro 400 se 'quantidade_estoque' for negativa", async () => {
-        // DADOS: Estoque negativo
-        const dadosInvalidos = { tipo: "Insumo", descricao: "Perfil", unidade_medida: "M", quantidade_estoque: -5 };
+    test("Deve lançar erro 400 se 'quantidade_atual' for negativa", async () => {
+        const dadosInvalidos = {
+            tipo_id: 1,
+            categoria_id: 1,
+            descricao: "Perfil",
+            unidade_medida: "M",
+            quantidade_atual: -5,
+        };
 
-        // AÇÃO & VALIDAÇÃO: Bloqueia contagem negativa de estoque no cadastro
         await expect(itemCatalogoService.criar(dadosInvalidos))
             .rejects
-            .toMatchObject({ message: "A 'quantidade_estoque' deve ser um número maior ou igual a zero.", status: 400 });
+            .toMatchObject({ message: "A 'quantidade_atual' deve ser um número maior ou igual a zero.", status: 400 });
     });
 
     test("Deve criar item do catálogo com sucesso quando os dados forem válidos", async () => {
-        // DADOS: Payload completo e válido
-        const dadosValidos = { 
-            tipo: "Insumo", 
-            descricao: "Perfil de Alumínio 50mm", 
-            unidade_medida: "M", 
-            valor_unitario_padrao: 25.5, 
-            quantidade_estoque: 50 
+        const dadosValidos = {
+            tipo_id: 1,
+            categoria_id: 2,
+            descricao: "Perfil de Alumínio 50mm",
+            unidade_medida: "M",
+            valor_unitario_padrao: 25.5,
+            quantidade_atual: 50,
+            estoque_minimo: 10,
         };
-        
-        // MOCK: Simula o salvamento e retorno com a PK gerada
-        itemCatalogoRepository.criar.mockResolvedValue({ id_item: 1, ...dadosValidos });
 
-        // AÇÃO: Executa a criação no Service
+        itemCatalogoRepository.criar.mockResolvedValue({ id: 1, ...dadosValidos });
+
         const resultado = await itemCatalogoService.criar(dadosValidos);
-
-        // VALIDAÇÃO: Confirma a presença do id_item gerado no objeto retornado
-        expect(resultado).toHaveProperty("id_item", 1);
+        expect(resultado).toHaveProperty("id", 1);
     });
 
     test("RF10: Deve listar itens com alerta de estoque mínimo atingido", async () => {
         const mockAlertas = [
             {
-                id_item: 4,
+                id: 4,
                 codigo_referencia: "SENS-01",
                 descricao: "Sensor de Presença",
-                tipo: "Peca",
-                quantidade_estoque: 2,
-                quantidade_reservada: 1,
+                tipo_id: 3,
+                categoria_id: 7,
+                quantidade_atual: 2,
                 estoque_minimo: 5,
             },
         ];

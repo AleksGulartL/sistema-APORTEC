@@ -16,7 +16,7 @@ describe("PedidoItemService - Testes Unitários", () => {
         expect(resultado).toEqual(mockItens);
     });
 
-    test("Deve calcular valor_unitario do catálogo e valor_total automaticamente ao criar item", async () => {
+    test("Deve obter valor_unitario_padrao do catálogo automaticamente quando omitido", async () => {
         pedidoItemRepository.buscarItemCatalogo.mockResolvedValue({ id: 5, valor_unitario_padrao: 150 });
         pedidoItemRepository.criar.mockImplementation(async (dados) => ({ id: 10, ...dados }));
 
@@ -31,17 +31,16 @@ describe("PedidoItemService - Testes Unitários", () => {
             item_id: 5,
             quantidade: 4,
             valor_unitario: 150,
-            valor_total: 600,
         });
         expect(criado.id).toBe(10);
     });
 
-    test("Deve aceitar aliases legados id_orcamento e id_item_catalogo", async () => {
+    test("Deve criar item do pedido com valor_unitario informado explicitamente", async () => {
         pedidoItemRepository.criar.mockImplementation(async (dados) => ({ id: 11, ...dados }));
 
         await pedidoItemService.criar({
-            id_orcamento: 7,
-            id_item_catalogo: 9,
+            pedido_id: 7,
+            item_id: 9,
             quantidade: 2,
             valor_unitario: 50,
         });
@@ -51,7 +50,6 @@ describe("PedidoItemService - Testes Unitários", () => {
             item_id: 9,
             quantidade: 2,
             valor_unitario: 50,
-            valor_total: 100,
         });
     });
 

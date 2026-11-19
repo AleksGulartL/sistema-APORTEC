@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
-    Autocomplete,
     Box,
     Button,
     Card,
@@ -45,29 +44,38 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
 import api from "../services/api";
-import { formatarMoedaBr, obterPerfilUsuario, usuarioEhAdm, usuarioEhFuncionario } from "../utils/permissoes";
-
-const TIPOS_ITEM = [
-    { valor: "Insumo", label: "Insumo (Matéria-prima / Componente)" },
-    { valor: "Porta", label: "Porta (Produto Final)" },
-    { valor: "Peca", label: "Peça (Reposição / Acessório)" },
-];
-
-const CATEGORIAS_SUGERIDAS = ["GERAL", "Automatizador", "Perfil", "Vidro", "Eletrônica", "Ferragem", "Sensor"];
+import {
+    formatarMoedaBr,
+    obterPerfilUsuario,
+    ordenarLista,
+    usuarioEhAdm,
+    usuarioEhFuncionario,
+} from "../utils/permissoes";
 
 const UNIDADES_SUGERIDAS = ["UN", "PC", "M", "M2", "KIT", "KG", "PAR", "CX"];
 
 const FORM_INICIAL = {
     id: null,
     codigo_referencia: "",
-    tipo: "Insumo",
-    categoria: "GERAL",
+    tipo_id: "",
+    categoria_id: "",
     descricao: "",
     unidade_medida: "UN",
     valor_unitario_padrao: "0",
-    quantidade_estoque: "0",
+    quantidade_atual: "0",
     estoque_minimo: "0",
+};
+
+const EXTRATORES_ITEM = {
+    id: (it) => Number(it.id || 0),
+    codigo_referencia: (it) => it.codigo_referencia || "",
+    tipo: (it) => `${it.tipo?.nome || ""} ${it.categoria?.nome || ""}`,
+    descricao: (it) => it.descricao || "",
+    valor_unitario_padrao: (it) => Number(it.valor_unitario_padrao || 0),
+    quantidade_atual: (it) => Number(it.quantidade_atual || 0),
+    estoque_minimo: (it) => Number(it.estoque_minimo || 0),
 };
 
 export default function CatalogoEstoque({ usuario }) {
@@ -75,30 +83,30 @@ export default function CatalogoEstoque({ usuario }) {
     const ehFuncionario = usuarioEhFuncionario(usuario);
 
     const [itens, setItens] = useState([]);
+    const [tipos, setTipos] = useState([]);
+    const [categorias, setCategorias] = useState([]);
     const [alertasApi, setAlertasApi] = useState([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState("");
     const [sucessoMsg, setSucessoMsg] = useState("");
 
     const [busca, setBusca] = useState("");
-    const [filtroTipo, setFiltroTipo] = useState("TODOS");
+    const [filtroTipoId, setFiltroTipoId] = useState("TODOS");
     const [somenteAlertas, setSomenteAlertas] = useState(false);
+    const [ordenacao, setOrdenacao] = useState({ campo: "id", direcao: "asc" });
 
-    // Modal Criar / Editar
     const [modalAberto, setModalAberto] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
     const [erroModal, setErroModal] = useState("");
     const [salvando, setSalvando] = useState(false);
 
-    // Modal Movimentação (Entrada / Baixa)
     const [itemMov, setItemMov] = useState(null);
     const [tipoMov, setTipoMov] = useState("ENTRADA");
     const [qtdMov, setQtdMov] = useState("1");
     const [erroMov, setErroMov] = useState("");
     const [salvandoMov, setSalvandoMov] = useState(false);
 
-    // Confirmação de exclusão
     const [itemExcluir, setItemExcluir] = useState(null);
     const [excluindo, setExcluindo] = useState(false);
 
@@ -110,8 +118,10 @@ export default function CatalogoEstoque({ usuario }) {
         setCarregando(true);
         setErro("");
         try {
-            const [resItens, resAlertas] = await Promise.allSettled([
+            const [resItens, resTipos, resCats, resAlertas] = await Promise.allSettled([
                 api.get("/item_catalogo"),
+                api.get("/item_catalogo/tipos"),
+                api.get("/item_catalogo/categorias"),
                 ehAdm ? api.get("/item_catalogo/alertas-estoque") : Promise.resolve({ data: null }),
             ]);
 
@@ -122,6 +132,13 @@ export default function CatalogoEstoque({ usuario }) {
 
             const lista = Array.isArray(resItens.value.data) ? resItens.value.data : [];
             setItens(lista);
+
+            if (resTipos.status === "fulfilled" && Array.isArray(resTipos.value.data)) {
+                setTipos(resTipos.value.data);
+            }
+            if (resCats.status === "fulfilled" && Array.isArray(resCats.value.data)) {
+                setCategorias(resCats.value.data);
+            }
 
             if (ehAdm && resAlertas.status === "fulfilled" && Array.isArray(resAlertas.value.data)) {
                 setAlertasApi(resAlertas.value.data);
@@ -151,23 +168,31 @@ export default function CatalogoEstoque({ usuario }) {
 
     const itensFiltrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
-        return itens.filter((it) => {
+        const filtrados = itens.filter((it) => {
             const critico = Number(it.quantidade_atual ?? 0) <= Number(it.estoque_minimo ?? 0);
             if (somenteAlertas && !critico) return false;
-            if (filtroTipo !== "TODOS" && String(it.tipo).toLowerCase() !== filtroTipo.toLowerCase()) return false;
+            if (filtroTipoId !== "TODOS" && Number(it.tipo_id) !== Number(filtroTipoId)) return false;
             if (!termo) return true;
+            const nomeTipo = String(it.tipo?.nome || "").toLowerCase();
+            const nomeCategoria = String(it.categoria?.nome || "").toLowerCase();
             return (
+                String(it.id).includes(termo) ||
                 String(it.codigo_referencia || "").toLowerCase().includes(termo) ||
                 String(it.descricao || "").toLowerCase().includes(termo) ||
-                String(it.categoria || "").toLowerCase().includes(termo) ||
-                String(it.tipo || "").toLowerCase().includes(termo)
+                nomeCategoria.includes(termo) ||
+                nomeTipo.includes(termo)
             );
         });
-    }, [itens, busca, filtroTipo, somenteAlertas]);
+        return ordenarLista(filtrados, ordenacao.campo, ordenacao.direcao, EXTRATORES_ITEM);
+    }, [itens, busca, filtroTipoId, somenteAlertas, ordenacao]);
 
     function abrirNovoItem() {
         setModoEdicao(false);
-        setForm(FORM_INICIAL);
+        setForm({
+            ...FORM_INICIAL,
+            tipo_id: tipos[0]?.id ? String(tipos[0].id) : "",
+            categoria_id: categorias[0]?.id ? String(categorias[0].id) : "",
+        });
         setErroModal("");
         setModalAberto(true);
     }
@@ -175,14 +200,14 @@ export default function CatalogoEstoque({ usuario }) {
     function abrirEdicao(item) {
         setModoEdicao(true);
         setForm({
-            id: item.id ?? item.id_item,
+            id: item.id,
             codigo_referencia: item.codigo_referencia || "",
-            tipo: item.tipo || "Insumo",
-            categoria: item.categoria || "GERAL",
+            tipo_id: item.tipo_id ? String(item.tipo_id) : "",
+            categoria_id: item.categoria_id ? String(item.categoria_id) : "",
             descricao: item.descricao || "",
             unidade_medida: item.unidade_medida || "UN",
             valor_unitario_padrao: String(item.valor_unitario_padrao ?? 0),
-            quantidade_estoque: String(item.quantidade_atual ?? item.quantidade_estoque ?? 0),
+            quantidade_atual: String(item.quantidade_atual ?? 0),
             estoque_minimo: String(item.estoque_minimo ?? 0),
         });
         setErroModal("");
@@ -194,9 +219,13 @@ export default function CatalogoEstoque({ usuario }) {
         setErroModal("");
 
         const valorUnit = Number(form.valor_unitario_padrao);
-        const qtdAtual = Number(form.quantidade_estoque);
+        const qtdAtual = Number(form.quantidade_atual);
         const estMin = Number(form.estoque_minimo);
 
+        if (!form.tipo_id || !form.categoria_id) {
+            setErroModal("Selecione o tipo e a categoria do item.");
+            return;
+        }
         if (isNaN(valorUnit) || valorUnit < 0) {
             setErroModal("O valor unitário padrão deve ser maior ou igual a zero.");
             return;
@@ -212,12 +241,11 @@ export default function CatalogoEstoque({ usuario }) {
 
         const payload = {
             codigo_referencia: form.codigo_referencia.trim() || null,
-            tipo: form.tipo,
-            categoria: form.categoria.trim() || "GERAL",
+            tipo_id: Number(form.tipo_id),
+            categoria_id: Number(form.categoria_id),
             descricao: form.descricao.trim(),
             unidade_medida: form.unidade_medida.trim() || "UN",
             valor_unitario_padrao: valorUnit,
-            quantidade_estoque: qtdAtual,
             quantidade_atual: qtdAtual,
             estoque_minimo: estMin,
         };
@@ -250,7 +278,7 @@ export default function CatalogoEstoque({ usuario }) {
 
     const saldoPrevisto = useMemo(() => {
         if (!itemMov) return 0;
-        const atual = Number(itemMov.quantidade_atual ?? itemMov.quantidade_estoque ?? 0);
+        const atual = Number(itemMov.quantidade_atual ?? 0);
         const delta = Number(qtdMov);
         if (isNaN(delta) || delta <= 0) return atual;
         return tipoMov === "ENTRADA" ? Number((atual + delta).toFixed(2)) : Number((atual - delta).toFixed(2));
@@ -271,22 +299,13 @@ export default function CatalogoEstoque({ usuario }) {
             return;
         }
 
-        const id = itemMov.id ?? itemMov.id_item;
         const payload = {
-            codigo_referencia: itemMov.codigo_referencia || null,
-            tipo: itemMov.tipo,
-            categoria: itemMov.categoria || "GERAL",
-            descricao: itemMov.descricao,
-            unidade_medida: itemMov.unidade_medida,
-            valor_unitario_padrao: Number(itemMov.valor_unitario_padrao ?? 0),
-            quantidade_estoque: saldoPrevisto,
             quantidade_atual: saldoPrevisto,
-            estoque_minimo: Number(itemMov.estoque_minimo ?? 0),
         };
 
         setSalvandoMov(true);
         try {
-            await api.put(`/item_catalogo/${id}`, payload);
+            await api.put(`/item_catalogo/${itemMov.id}`, payload);
             setSucessoMsg(
                 `${tipoMov === "ENTRADA" ? "Entrada" : "Baixa"} de ${delta} ${itemMov.unidade_medida} registrada para "${itemMov.descricao}". Novo saldo: ${saldoPrevisto}.`
             );
@@ -304,8 +323,7 @@ export default function CatalogoEstoque({ usuario }) {
         if (!itemExcluir) return;
         setExcluindo(true);
         try {
-            const id = itemExcluir.id ?? itemExcluir.id_item;
-            await api.delete(`/item_catalogo/${id}`);
+            await api.delete(`/item_catalogo/${itemExcluir.id}`);
             setSucessoMsg(`Item "${itemExcluir.descricao}" removido do catálogo.`);
             setItemExcluir(null);
             carregarDados();
@@ -331,7 +349,6 @@ export default function CatalogoEstoque({ usuario }) {
 
     return (
         <Box sx={{ py: 3 }}>
-            {/* Cabeçalho */}
             <Stack
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
@@ -377,7 +394,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </Alert>
             )}
 
-            {/* Banner de Alerta de Estoque Mínimo */}
             {!carregando && itensCriticos.length > 0 && (
                 <Alert
                     severity="warning"
@@ -397,7 +413,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </Alert>
             )}
 
-            {/* Resumo Rápido */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={4}>
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
@@ -441,7 +456,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </Grid>
             </Grid>
 
-            {/* Filtros */}
             <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                 <Stack
                     direction={{ xs: "column", md: "row" }}
@@ -451,7 +465,7 @@ export default function CatalogoEstoque({ usuario }) {
                 >
                     <TextField
                         size="small"
-                        placeholder="Buscar por código, descrição ou categoria..."
+                        placeholder="Buscar por código, descrição, tipo ou categoria..."
                         value={busca}
                         onChange={(e) => setBusca(e.target.value)}
                         sx={{ minWidth: { xs: "100%", md: 320 } }}
@@ -468,25 +482,25 @@ export default function CatalogoEstoque({ usuario }) {
                         <Chip
                             size="small"
                             label={`Todos (${itens.length})`}
-                            color={filtroTipo === "TODOS" && !somenteAlertas ? "primary" : "default"}
-                            variant={filtroTipo === "TODOS" && !somenteAlertas ? "filled" : "outlined"}
+                            color={filtroTipoId === "TODOS" && !somenteAlertas ? "primary" : "default"}
+                            variant={filtroTipoId === "TODOS" && !somenteAlertas ? "filled" : "outlined"}
                             onClick={() => {
-                                setFiltroTipo("TODOS");
+                                setFiltroTipoId("TODOS");
                                 setSomenteAlertas(false);
                             }}
                         />
-                        {TIPOS_ITEM.map((t) => {
-                            const qtd = itens.filter(
-                                (it) => String(it.tipo).toLowerCase() === t.valor.toLowerCase()
-                            ).length;
+                        {tipos.map((t) => {
+                            const qtd = itens.filter((it) => Number(it.tipo_id) === Number(t.id)).length;
                             return (
                                 <Chip
-                                    key={t.valor}
+                                    key={t.id}
                                     size="small"
-                                    label={`${t.valor} (${qtd})`}
-                                    color={filtroTipo === t.valor ? "primary" : "default"}
-                                    variant={filtroTipo === t.valor ? "filled" : "outlined"}
-                                    onClick={() => setFiltroTipo(filtroTipo === t.valor ? "TODOS" : t.valor)}
+                                    label={`${t.nome} (${qtd})`}
+                                    color={Number(filtroTipoId) === Number(t.id) ? "primary" : "default"}
+                                    variant={Number(filtroTipoId) === Number(t.id) ? "filled" : "outlined"}
+                                    onClick={() =>
+                                        setFiltroTipoId(Number(filtroTipoId) === Number(t.id) ? "TODOS" : t.id)
+                                    }
                                 />
                             );
                         })}
@@ -502,7 +516,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </Stack>
             </Card>
 
-            {/* Tabela */}
             {carregando ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
                     <CircularProgress />
@@ -518,13 +531,48 @@ export default function CatalogoEstoque({ usuario }) {
                     <Table sx={{ minWidth: 780 }} aria-label="tabela de catálogo e estoque">
                         <TableHead sx={{ bgcolor: "primary.main" }}>
                             <TableRow>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Código</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Tipo / Categoria</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Descrição</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Valor Unit.</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Saldo Atual</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Est. Mínimo</TableCell>
+                                <CabecalhoOrdenavel
+                                    campo="id"
+                                    rotulo="ID"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="codigo_referencia"
+                                    rotulo="Código"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="tipo"
+                                    rotulo="Tipo / Categoria"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="descricao"
+                                    rotulo="Descrição"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="valor_unitario_padrao"
+                                    rotulo="Valor Unit."
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="quantidade_atual"
+                                    rotulo="Saldo Atual"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="estoque_minimo"
+                                    rotulo="Est. Mínimo"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Situação</TableCell>
                                 {ehAdm && (
                                     <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
@@ -535,24 +583,28 @@ export default function CatalogoEstoque({ usuario }) {
                         </TableHead>
                         <TableBody>
                             {itensFiltrados.map((item) => {
-                                const id = item.id ?? item.id_item;
-                                const atual = Number(item.quantidade_atual ?? item.quantidade_estoque ?? 0);
+                                const atual = Number(item.quantidade_atual ?? 0);
                                 const minimo = Number(item.estoque_minimo ?? 0);
                                 const critico = atual <= minimo;
 
                                 return (
                                     <TableRow
-                                        key={id}
+                                        key={item.id}
                                         hover
                                         sx={{ "&:nth-of-type(odd)": { bgcolor: "action.hover" } }}
                                     >
-                                        <TableCell sx={{ fontWeight: "medium" }}>{id}</TableCell>
+                                        <TableCell sx={{ fontWeight: "medium" }}>{item.id}</TableCell>
                                         <TableCell>{item.codigo_referencia || "-"}</TableCell>
                                         <TableCell>
                                             <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
-                                                <Chip size="small" label={item.tipo} color="primary" variant="outlined" />
+                                                <Chip
+                                                    size="small"
+                                                    label={item.tipo?.nome || "-"}
+                                                    color="primary"
+                                                    variant="outlined"
+                                                />
                                                 <Typography variant="caption" color="text.secondary">
-                                                    {item.categoria || "GERAL"}
+                                                    {item.categoria?.nome || "-"}
                                                 </Typography>
                                             </Stack>
                                         </TableCell>
@@ -628,7 +680,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </TableContainer>
             )}
 
-            {/* Modal Criar / Editar Item */}
             <Dialog open={modalAberto} onClose={() => setModalAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={salvarItem}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -660,12 +711,12 @@ export default function CatalogoEstoque({ usuario }) {
                                                 <Select
                                                     labelId="tipo-item-label"
                                                     label="Tipo"
-                                                    value={form.tipo}
-                                                    onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+                                                    value={form.tipo_id}
+                                                    onChange={(e) => setForm({ ...form, tipo_id: e.target.value })}
                                                 >
-                                                    {TIPOS_ITEM.map((t) => (
-                                                        <MenuItem key={t.valor} value={t.valor}>
-                                                            {t.label}
+                                                    {tipos.map((t) => (
+                                                        <MenuItem key={t.id} value={String(t.id)}>
+                                                            {t.nome}
                                                         </MenuItem>
                                                     ))}
                                                 </Select>
@@ -684,22 +735,21 @@ export default function CatalogoEstoque({ usuario }) {
 
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={7}>
-                                            <Autocomplete
-                                                freeSolo
-                                                options={CATEGORIAS_SUGERIDAS}
-                                                value={form.categoria}
-                                                onInputChange={(_, novoValor) =>
-                                                    setForm((prev) => ({ ...prev, categoria: novoValor }))
-                                                }
-                                                renderInput={(params) => (
-                                                    <TextField
-                                                        {...params}
-                                                        fullWidth
-                                                        label="Categoria"
-                                                        placeholder="Ex: Automatizador, Vidro, Perfil"
-                                                    />
-                                                )}
-                                            />
+                                            <FormControl fullWidth required>
+                                                <InputLabel id="cat-item-label">Categoria</InputLabel>
+                                                <Select
+                                                    labelId="cat-item-label"
+                                                    label="Categoria"
+                                                    value={form.categoria_id}
+                                                    onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
+                                                >
+                                                    {categorias.map((c) => (
+                                                        <MenuItem key={c.id} value={String(c.id)}>
+                                                            {c.nome}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
                                         </Grid>
                                         <Grid item xs={12} sm={5}>
                                             <FormControl fullWidth required>
@@ -708,8 +758,8 @@ export default function CatalogoEstoque({ usuario }) {
                                                     labelId="unidade-medida-label"
                                                     label="Unidade"
                                                     value={
-                                                        UNIDADES_SUGERIDAS.includes(form.unidade_medida)
-                                                            ? form.unidade_medida
+                                                        UNIDADES_SUGERIDAS.includes(form.unidade_medida?.toUpperCase())
+                                                            ? form.unidade_medida.toUpperCase()
                                                             : "UN"
                                                     }
                                                     onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })}
@@ -736,13 +786,13 @@ export default function CatalogoEstoque({ usuario }) {
                                     <Chip
                                         size="small"
                                         color={
-                                            Number(form.quantidade_estoque) <= Number(form.estoque_minimo)
+                                            Number(form.quantidade_atual) <= Number(form.estoque_minimo)
                                                 ? "warning"
                                                 : "success"
                                         }
                                         variant="outlined"
                                         label={
-                                            Number(form.quantidade_estoque) <= Number(form.estoque_minimo)
+                                            Number(form.quantidade_atual) <= Number(form.estoque_minimo)
                                                 ? "Nasce em alerta de reposição"
                                                 : "Saldo regular"
                                         }
@@ -773,9 +823,9 @@ export default function CatalogoEstoque({ usuario }) {
                                             type="number"
                                             inputProps={{ min: 0, step: "0.01" }}
                                             label={modoEdicao ? "Saldo Atual" : "Saldo Inicial"}
-                                            value={form.quantidade_estoque}
+                                            value={form.quantidade_atual}
                                             onChange={(e) =>
-                                                setForm({ ...form, quantidade_estoque: e.target.value })
+                                                setForm({ ...form, quantidade_atual: e.target.value })
                                             }
                                             InputProps={{
                                                 endAdornment: (
@@ -822,7 +872,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </form>
             </Dialog>
 
-            {/* Modal Entrada / Baixa Rápida de Estoque */}
             <Dialog open={Boolean(itemMov)} onClose={() => setItemMov(null)} maxWidth="xs" fullWidth>
                 <form onSubmit={confirmarMovimentacao}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -904,7 +953,6 @@ export default function CatalogoEstoque({ usuario }) {
                 </form>
             </Dialog>
 
-            {/* Confirmação de Exclusão */}
             <Dialog open={Boolean(itemExcluir)} onClose={() => setItemExcluir(null)} maxWidth="xs" fullWidth>
                 <DialogTitle>Confirmar Exclusão</DialogTitle>
                 <DialogContent dividers>

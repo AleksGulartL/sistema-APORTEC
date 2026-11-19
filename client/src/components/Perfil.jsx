@@ -30,7 +30,6 @@ export default function Perfil() {
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState("");
 
-    // Alteração da própria senha
     const [senhaAtual, setSenhaAtual] = useState("");
     const [novaSenha, setNovaSenha] = useState("");
     const [confirmacaoSenha, setConfirmacaoSenha] = useState("");
@@ -133,7 +132,7 @@ export default function Perfil() {
                         </Avatar>
 
                         <Typography variant="h5" fontWeight="bold">
-                            {perfil?.nome_completo || perfil?.nome || "Usuário APORTEC"}
+                            {perfil?.nome_completo || "Usuário APORTEC"}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                             {perfil?.email}
@@ -155,7 +154,7 @@ export default function Perfil() {
                                     ID do Usuário
                                 </Typography>
                                 <Typography variant="body1" fontWeight="medium">
-                                    #{perfil?.id_usuario || perfil?.id || "-"}
+                                    #{perfil?.id || "-"}
                                 </Typography>
                             </Grid>
 
@@ -168,14 +167,12 @@ export default function Perfil() {
                                 </Typography>
                             </Grid>
 
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12}>
                                 <Typography variant="caption" color="text.secondary">
                                     E-mail de Acesso
                                 </Typography>
                                 <Typography variant="body1">{perfil?.email || "-"}</Typography>
                             </Grid>
-
-
 
                             {dadosCliente && (
                                 <>
@@ -203,7 +200,6 @@ export default function Perfil() {
                     </CardContent>
                 </Card>
 
-                {/* Card Alterar Senha */}
                 <Card elevation={2} sx={{ borderRadius: 3 }}>
                     <CardContent>
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>

@@ -1,6 +1,6 @@
 export function obterPerfilUsuario(usuario) {
     if (!usuario) return "";
-    const bruto = String(usuario.perfil || usuario.role || "")
+    const bruto = String(usuario.perfil || "")
         .trim()
         .toUpperCase()
         .normalize("NFD")
@@ -23,6 +23,41 @@ export function usuarioEhFuncionario(usuario) {
 
 export function usuarioEhCliente(usuario) {
     return obterPerfilUsuario(usuario) === "CLIENTE";
+}
+
+export function calcularSubtotalItem(item) {
+    return Number((Number(item?.quantidade || 0) * Number(item?.valor_unitario || 0)).toFixed(2));
+}
+
+export function calcularValorTotalPedido(pedido) {
+    const custo = Number(pedido?.custo_total || 0);
+    const acrescimo = Number(pedido?.percentual_acrescimo || 0);
+    return Number((custo * (1 + acrescimo / 100)).toFixed(2));
+}
+
+export function ordenarLista(lista = [], campo, direcao = "asc", extratores = {}) {
+    if (!Array.isArray(lista) || !campo) return lista;
+    const extrair = extratores[campo] || ((item) => item?.[campo]);
+    const fator = direcao === "desc" ? -1 : 1;
+
+    return [...lista].sort((a, b) => {
+        const valA = extrair(a);
+        const valB = extrair(b);
+
+        if (valA === null || valA === undefined || valA === "") return 1;
+        if (valB === null || valB === undefined || valB === "") return -1;
+
+        if (typeof valA === "number" && typeof valB === "number") {
+            return (valA - valB) * fator;
+        }
+
+        return (
+            String(valA).localeCompare(String(valB), "pt-BR", {
+                numeric: true,
+                sensitivity: "base",
+            }) * fator
+        );
+    });
 }
 
 // Converte DATEONLY ("YYYY-MM-DD") ou TIMESTAMPTZ em chave local "YYYY-MM-DD" sem deslocamento de fuso

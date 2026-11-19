@@ -17,67 +17,55 @@ import {
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import LoginIcon from "@mui/icons-material/Login";
+import ClearAllIcon from "@mui/icons-material/ClearAll";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import api from "../services/api";
 
 export default function Login({ onLogin }) {
-    const [username, setUsername] = useState("");
-    const [passwd, setPasswd] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState("");
+    const [senha, setSenha] = useState("");
+    const [mostrarSenha, setMostrarSenha] = useState(false);
 
-    const [messageText, setMessageText] = useState("");
-    const [messageSeverity, setMessageSeverity] = useState("info");
-    const [loading, setLoading] = useState(false);
+    const [mensagem, setMensagem] = useState("");
+    const [severidade, setSeveridade] = useState("info");
+    const [carregando, setCarregando] = useState(false);
 
     async function enviaLogin(event) {
         event.preventDefault();
-        setMessageText("");
-        setLoading(true);
+        setMensagem("");
+        setCarregando(true);
 
         try {
             const response = await api.post("/auth/login", {
-                email: username,
-                username: username,
-                senha: passwd,
-                password: passwd,
+                email: email.trim(),
+                senha,
             });
 
-            if (response.status >= 200 && response.status < 300) {
-                const token = response.data.token;
-                const usuario = response.data.usuario || { email: username };
+            const token = response.data.token;
+            const usuario = response.data.usuario || { email: email.trim() };
 
-                localStorage.setItem("token", token);
-                localStorage.setItem("usuario", JSON.stringify(usuario));
+            localStorage.setItem("token", token);
+            localStorage.setItem("usuario", JSON.stringify(usuario));
 
-                setMessageText("Login realizado com sucesso!");
-                setMessageSeverity("success");
+            setMensagem("Login realizado com sucesso!");
+            setSeveridade("success");
 
-                if (onLogin) {
-                    onLogin(usuario);
-                }
-            } else {
-                setMessageText("Falha na autenticação!");
-                setMessageSeverity("error");
-            }
+            onLogin?.(usuario);
         } catch (error) {
             console.error("Erro no login:", error);
-            const msg =
-                error.response?.data?.erro ||
-                error.response?.data?.message ||
-                "Falha ao conectar com o servidor!";
-            setMessageText(msg);
-            setMessageSeverity("error");
+            setMensagem(error.response?.data?.erro || "Falha ao autenticar no servidor.");
+            setSeveridade("error");
         } finally {
-            setLoading(false);
+            setCarregando(false);
         }
     }
 
     function limparFormulario() {
-        setUsername("");
-        setPasswd("");
-        setMessageText("Formulário limpo!");
-        setMessageSeverity("warning");
+        setEmail("");
+        setSenha("");
+        setMensagem("");
     }
 
     return (
@@ -95,9 +83,9 @@ export default function Login({ onLogin }) {
                         Sistema de Gestão Operacional &amp; Produtiva
                     </Typography>
 
-                    {messageText && (
-                        <Alert severity={messageSeverity} sx={{ width: "100%", mb: 2 }}>
-                            {messageText}
+                    {mensagem && (
+                        <Alert severity={severidade} sx={{ width: "100%", mb: 2 }}>
+                            {mensagem}
                         </Alert>
                     )}
 
@@ -106,13 +94,13 @@ export default function Login({ onLogin }) {
                             margin="normal"
                             required
                             fullWidth
-                            id="username-input"
+                            id="email-input"
                             label="E-mail"
-                            name="username"
-                            autoComplete="username"
+                            name="email"
+                            autoComplete="email"
                             autoFocus
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
@@ -126,13 +114,13 @@ export default function Login({ onLogin }) {
                             margin="normal"
                             required
                             fullWidth
-                            name="passwd"
+                            name="senha"
                             label="Senha"
-                            type={showPassword ? "text" : "password"}
-                            id="passwd-input"
+                            type={mostrarSenha ? "text" : "password"}
+                            id="senha-input"
                             autoComplete="current-password"
-                            value={passwd}
-                            onChange={(e) => setPasswd(e.target.value)}
+                            value={senha}
+                            onChange={(e) => setSenha(e.target.value)}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
@@ -143,10 +131,10 @@ export default function Login({ onLogin }) {
                                     <InputAdornment position="end">
                                         <IconButton
                                             aria-label="alternar visibilidade da senha"
-                                            onClick={() => setShowPassword(!showPassword)}
+                                            onClick={() => setMostrarSenha(!mostrarSenha)}
                                             edge="end"
                                         >
-                                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                                            {mostrarSenha ? <VisibilityOff /> : <Visibility />}
                                         </IconButton>
                                     </InputAdornment>
                                 ),
@@ -158,27 +146,34 @@ export default function Login({ onLogin }) {
                                 type="submit"
                                 fullWidth
                                 variant="contained"
-                                disabled={loading}
+                                color="primary"
+                                disabled={carregando}
+                                startIcon={
+                                    carregando ? <CircularProgress size={20} color="inherit" /> : <LoginIcon />
+                                }
                                 sx={{ py: 1.2, fontWeight: "bold" }}
                             >
-                                {loading ? <CircularProgress size={24} color="inherit" /> : "Entrar"}
+                                {carregando ? "Entrando..." : "Entrar"}
                             </Button>
+
                             <Button
                                 type="button"
                                 fullWidth
                                 variant="outlined"
                                 color="secondary"
                                 onClick={limparFormulario}
-                                disabled={loading}
+                                disabled={carregando}
+                                startIcon={<ClearAllIcon />}
+                                sx={{ py: 1.2 }}
                             >
                                 Limpar
                             </Button>
                         </Stack>
                     </Box>
 
-                    <Divider sx={{ width: "100%", my: 1.5 }} />
+                    <Divider sx={{ width: "100%", my: 1 }} />
                     <Typography variant="caption" color="text.secondary" align="center">
-                        Acesso restrito a usuários cadastrados. Novos acessos são criados pelo administrador.
+                        Acesso restrito a colaboradores e clientes cadastrados pela administração APORTEC
                     </Typography>
                 </CardContent>
             </Card>

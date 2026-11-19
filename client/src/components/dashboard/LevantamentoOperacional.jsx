@@ -50,7 +50,7 @@ export default function LevantamentoOperacional({
     onSelecionarEvento,
 }) {
     const [filtroEtapa, setFiltroEtapa] = useState("TODAS");
-    const [abaEstoque, setAbaEstoque] = useState(0); // 0: Alertas Críticos, 1: Catálogo Geral
+    const [abaEstoque, setAbaEstoque] = useState(0);
 
     const pedidosAtivos = useMemo(
         () => pedidos.filter((p) => !["Concluido", "Cancelado"].includes(p.status)),
@@ -80,7 +80,6 @@ export default function LevantamentoOperacional({
 
     return (
         <Grid container spacing={2}>
-            {/* BLOCO 1: PEDIDOS EM ANDAMENTO POR ETAPA */}
             <Grid item xs={12} lg={7}>
                 <Card elevation={2} sx={{ borderRadius: 2, height: "100%" }}>
                     <CardContent>
@@ -148,7 +147,7 @@ export default function LevantamentoOperacional({
                                                     spacing={1}
                                                 >
                                                     <Typography variant="body2" fontWeight="bold">
-                                                        #{p.codigo_proposta || p.id} — {nomeCliente}
+                                                        Pedido #{p.id} — {nomeCliente}
                                                     </Typography>
                                                     <Stack direction="row" spacing={0.75} alignItems="center">
                                                         {p.bloqueio_fabricacao && (
@@ -199,7 +198,6 @@ export default function LevantamentoOperacional({
                 </Card>
             </Grid>
 
-            {/* BLOCO 2: ESTOQUE & ALERTAS MÍNIMOS */}
             <Grid item xs={12} lg={5}>
                 <Card elevation={2} sx={{ borderRadius: 2, height: "100%" }}>
                     <CardContent>
@@ -259,7 +257,8 @@ export default function LevantamentoOperacional({
                                                         {item.descricao}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary">
-                                                        {item.tipo} • Mínimo: {item.estoque_minimo} {item.unidade_medida}
+                                                        {item.tipo?.nome || "-"} • Mínimo: {item.estoque_minimo}{" "}
+                                                        {item.unidade_medida}
                                                     </Typography>
                                                 </Box>
                                             </Stack>
@@ -277,7 +276,6 @@ export default function LevantamentoOperacional({
                 </Card>
             </Grid>
 
-            {/* BLOCO 3: ORDENS DE SERVIÇO EM ABERTO */}
             <Grid item xs={12}>
                 <Card elevation={2} sx={{ borderRadius: 2 }}>
                     <CardContent>
@@ -297,7 +295,8 @@ export default function LevantamentoOperacional({
                         ) : (
                             <Grid container spacing={1.5}>
                                 {osAbertas.slice(0, 6).map((os) => {
-                                    const nomeCliente = os.cliente?.usuario?.nome_completo || `Cliente #${os.cliente_id}`;
+                                    const nomeCliente =
+                                        os.pedido?.cliente?.usuario?.nome_completo || `Pedido #${os.pedido_id}`;
                                     const nomeTecnico =
                                         os.tecnico_responsavel?.nome_completo ||
                                         (os.tecnico_responsavel_id

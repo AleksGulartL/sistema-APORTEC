@@ -1,5 +1,3 @@
-// Script idempotente para garantir perfis iniciais de acesso (ADM e TECNICO) no banco.
-// Uso: yarn seed
 require("dotenv").config();
 const bcrypt = require("bcrypt");
 const db = require("./models");
@@ -8,15 +6,15 @@ const SALT_ROUNDS = 10;
 
 const USUARIOS_INICIAIS = [
     {
-        nome_completo: "Teste Admin",
-        email: "admin@aportec.com",
-        senha_plana: "admin123",
+        nome_completo: "Ana Administradora",
+        email: "admin@gmail.com",
+        senha_plana: "senha123",
         perfil: "ADM",
     },
     {
-        nome_completo: "Técnico Operacional",
-        email: "tecnico@aportec.com",
-        senha_plana: "tecnico123",
+        nome_completo: "Tiago Técnico",
+        email: "tecnico@gmail.com",
+        senha_plana: "senha123",
         perfil: "TECNICO",
     },
 ];

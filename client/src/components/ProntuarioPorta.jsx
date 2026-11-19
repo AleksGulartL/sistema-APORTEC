@@ -38,6 +38,8 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import api from "../services/api";
 import {
     calcularSituacaoGarantia,
+    calcularSubtotalItem,
+    calcularValorTotalPedido,
     formatarDataBr,
     formatarDataHoraBr,
     formatarMoedaBr,
@@ -106,7 +108,7 @@ export default function ProntuarioPorta({
                 resOs.status === "fulfilled" && Array.isArray(resOs.value.data) ? resOs.value.data : []
             );
 
-            if (listaPedidos.some((p) => Boolean(p.numero_serie_porta)) && !buscaInicial) {
+            if (listaPedidos.some((p) => Boolean(p.numero_serie)) && !buscaInicial) {
                 setSomenteComSerie(true);
             }
         } catch (err) {
@@ -127,7 +129,7 @@ export default function ProntuarioPorta({
         setSomenteComSerie(false);
         const encontrada = pedidos.find(
             (p) =>
-                String(p.numero_serie_porta || "").toLowerCase() === String(buscaInicial).trim().toLowerCase()
+                String(p.numero_serie || "").toLowerCase() === String(buscaInicial).trim().toLowerCase()
         );
         if (encontrada) {
             setPortaSelecionadaId(encontrada.id);
@@ -135,21 +137,20 @@ export default function ProntuarioPorta({
     }, [buscaInicial, pedidos]);
 
     const totalComSerie = useMemo(
-        () => pedidos.filter((p) => Boolean(p.numero_serie_porta)).length,
+        () => pedidos.filter((p) => Boolean(p.numero_serie)).length,
         [pedidos]
     );
 
     const portasFiltradas = useMemo(() => {
         const termo = busca.trim().toLowerCase();
         return pedidos.filter((p) => {
-            if (somenteComSerie && !p.numero_serie_porta) return false;
+            if (somenteComSerie && !p.numero_serie) return false;
             if (clienteIdFiltro !== "TODOS" && Number(p.cliente_id) !== Number(clienteIdFiltro)) return false;
             if (!termo) return true;
             const nomeCli = String(p.cliente?.usuario?.nome_completo || "").toLowerCase();
             const cnpjCli = String(p.cliente?.cnpj_cpf || "").toLowerCase();
             return (
-                String(p.numero_serie_porta || "").toLowerCase().includes(termo) ||
-                String(p.codigo_proposta || "").toLowerCase().includes(termo) ||
+                String(p.numero_serie || "").toLowerCase().includes(termo) ||
                 nomeCli.includes(termo) ||
                 cnpjCli.includes(termo) ||
                 String(p.id) === termo
@@ -173,7 +174,7 @@ export default function ProntuarioPorta({
         if (!portaSelecionada) return [];
         return ordensServico.filter(
             (os) =>
-                Number(os.cliente_id) === Number(portaSelecionada.cliente_id) &&
+                Number(os.pedido?.cliente_id) === Number(portaSelecionada.cliente_id) &&
                 Number(os.pedido_id || 0) !== Number(portaSelecionada.id)
         );
     }, [ordensServico, portaSelecionada]);
@@ -189,7 +190,6 @@ export default function ProntuarioPorta({
         );
     }
 
-    // Visualização da Ficha Consolidada da Porta selecionada
     if (portaSelecionada) {
         const garantia = calcularSituacaoGarantia(portaSelecionada.fim_garantia);
         const checklist = portaSelecionada.checklist_medicao;
@@ -219,10 +219,10 @@ export default function ProntuarioPorta({
                         </Button>
                         <Box>
                             <Typography variant="h5" fontWeight="bold">
-                                Prontuário: {portaSelecionada.numero_serie_porta || `Pedido #${portaSelecionada.id}`}
+                                Prontuário: {portaSelecionada.numero_serie || `Pedido #${portaSelecionada.id}`}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                Cliente: {nomeCliente} • Proposta #{portaSelecionada.codigo_proposta || portaSelecionada.id}
+                                Cliente: {nomeCliente} • Pedido #{portaSelecionada.id}
                             </Typography>
                         </Box>
                     </Stack>
@@ -260,7 +260,6 @@ export default function ProntuarioPorta({
                     </Stack>
                 </Stack>
 
-                {/* Status de Garantia */}
                 <Alert
                     severity={!garantia.possui ? "info" : garantia.vigente ? "success" : "error"}
                     icon={!garantia.possui ? <QrCode2Icon /> : garantia.vigente ? <VerifiedUserIcon /> : <WarningAmberIcon />}
@@ -270,7 +269,6 @@ export default function ProntuarioPorta({
                 </Alert>
 
                 <Stack spacing={3}>
-                    {/* 1. Dados da Instalação & Cliente */}
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
                         <CardContent>
                             <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -280,11 +278,11 @@ export default function ProntuarioPorta({
                             <Grid container spacing={2}>
                                 <CampoFicha
                                     label="Nº de Série da Porta"
-                                    valor={portaSelecionada.numero_serie_porta || "Ainda não emitido"}
+                                    valor={portaSelecionada.numero_serie || "Ainda não emitido"}
                                 />
                                 <CampoFicha
-                                    label="Proposta / Pedido"
-                                    valor={`#${portaSelecionada.codigo_proposta || portaSelecionada.id} (${portaSelecionada.status})`}
+                                    label="Pedido"
+                                    valor={`#${portaSelecionada.id} (${portaSelecionada.status})`}
                                 />
                                 <CampoFicha label="Tipo do Pedido" valor={portaSelecionada.tipo_pedido} />
                                 <CampoFicha label="Cliente" valor={nomeCliente} />
@@ -324,7 +322,6 @@ export default function ProntuarioPorta({
                         </CardContent>
                     </Card>
 
-                    {/* 2. Medidas Originais e Especificação Técnica (checklist_medicao) */}
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
                         <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -404,7 +401,6 @@ export default function ProntuarioPorta({
                         </CardContent>
                     </Card>
 
-                    {/* 3. Peças e Insumos Usados (itens) */}
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
                         <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -414,7 +410,7 @@ export default function ProntuarioPorta({
                                 <Chip
                                     size="small"
                                     color="primary"
-                                    label={`Total: ${formatarMoedaBr(portaSelecionada.valor_total)}`}
+                                    label={`Total: ${formatarMoedaBr(calcularValorTotalPedido(portaSelecionada))}`}
                                 />
                             </Stack>
                             <Divider sx={{ mb: 2 }} />
@@ -444,15 +440,15 @@ export default function ProntuarioPorta({
                                                         {it.item_catalogo?.descricao || `Item #${it.item_id}`}
                                                     </TableCell>
                                                     <TableCell>
-                                                        {it.item_catalogo?.tipo || "-"} /{" "}
-                                                        {it.item_catalogo?.categoria || "-"}
+                                                        {it.item_catalogo?.tipo?.nome || "-"} /{" "}
+                                                        {it.item_catalogo?.categoria?.nome || "-"}
                                                     </TableCell>
                                                     <TableCell>
                                                         {it.quantidade} {it.item_catalogo?.unidade_medida || ""}
                                                     </TableCell>
                                                     <TableCell>{formatarMoedaBr(it.valor_unitario)}</TableCell>
                                                     <TableCell sx={{ fontWeight: "bold" }}>
-                                                        {formatarMoedaBr(it.valor_total)}
+                                                        {formatarMoedaBr(calcularSubtotalItem(it))}
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -463,7 +459,6 @@ export default function ProntuarioPorta({
                         </CardContent>
                     </Card>
 
-                    {/* 4. Histórico de Ordens de Serviço */}
                     <Card elevation={2} sx={{ borderRadius: 2 }}>
                         <CardContent>
                             <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -553,7 +548,7 @@ export default function ProntuarioPorta({
                             {outrasOsCliente.length > 0 && (
                                 <Alert severity="info" sx={{ mt: 2 }}>
                                     Este cliente possui outras <strong>{outrasOsCliente.length}</strong> OS registrada(s)
-                                    em outros pedidos ou chamados avulsos.
+                                    em outros pedidos.
                                 </Alert>
                             )}
                         </CardContent>
@@ -563,7 +558,6 @@ export default function ProntuarioPorta({
         );
     }
 
-    // Tela de Busca e Seleção de Porta
     return (
         <Box sx={{ py: 3 }}>
             <Stack
@@ -597,14 +591,13 @@ export default function ProntuarioPorta({
                 </Alert>
             )}
 
-            {/* Barra de Busca */}
             <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} md={5}>
                         <TextField
                             fullWidth
                             size="small"
-                            placeholder="Buscar por Nº de Série (ex: APORTEC-2026-0001), proposta ou cliente..."
+                            placeholder="Buscar por Nº de Série (ex: APORTEC-2026-0001), #pedido ou cliente..."
                             value={busca}
                             onChange={(e) => setBusca(e.target.value)}
                             InputProps={{
@@ -627,8 +620,8 @@ export default function ProntuarioPorta({
                             >
                                 <MenuItem value="TODOS">Todos os Clientes</MenuItem>
                                 {clientes.map((c) => (
-                                    <MenuItem key={c.id} value={String(c.id)}>
-                                        {c.usuario?.nome_completo || `Cliente #${c.id}`} ({c.cnpj_cpf})
+                                    <MenuItem key={c.usuario_id} value={String(c.usuario_id)}>
+                                        {c.usuario?.nome_completo || `Cliente #${c.usuario_id}`} ({c.cnpj_cpf})
                                     </MenuItem>
                                 ))}
                             </Select>
@@ -656,7 +649,6 @@ export default function ProntuarioPorta({
                 </Grid>
             </Card>
 
-            {/* Resultados */}
             {carregando ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
                     <CircularProgress />
@@ -690,7 +682,7 @@ export default function ProntuarioPorta({
                                         display: "flex",
                                         flexDirection: "column",
                                         borderTop: 4,
-                                        borderColor: p.numero_serie_porta
+                                        borderColor: p.numero_serie
                                             ? gar.vigente
                                                 ? "success.main"
                                                 : "error.main"
@@ -702,8 +694,8 @@ export default function ProntuarioPorta({
                                             <Chip
                                                 size="small"
                                                 icon={<QrCode2Icon />}
-                                                color={p.numero_serie_porta ? "primary" : "default"}
-                                                label={p.numero_serie_porta || "Série Pendente"}
+                                                color={p.numero_serie ? "primary" : "default"}
+                                                label={p.numero_serie || "Série Pendente"}
                                             />
                                             <Chip size="small" variant="outlined" label={p.status} />
                                         </Stack>
@@ -712,8 +704,7 @@ export default function ProntuarioPorta({
                                             {nomeCli}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary" display="block">
-                                            Proposta #{p.codigo_proposta || p.id} •{" "}
-                                            {p.endereco_instalacao || p.cliente?.endereco || "-"}
+                                            Pedido #{p.id} • {p.endereco_instalacao || p.cliente?.endereco || "-"}
                                         </Typography>
 
                                         <Divider sx={{ my: 1.5 }} />

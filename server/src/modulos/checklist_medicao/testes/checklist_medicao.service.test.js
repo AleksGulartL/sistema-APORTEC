@@ -10,12 +10,12 @@ describe("ChecklistMedicaoService - Testes Unitários (RF07 e RF08)", () => {
 
     test("RF07 & RF08: Deve criar checklist aprovado quando viga_ok, piso_ok e ponto_eletrico_ok forem true", async () => {
         checklistMedicaoRepository.criar.mockImplementation(async (dados) => ({
-            id_medicao: 1,
+            id: 1,
             ...dados,
         }));
 
         const resultado = await checklistMedicaoService.criar({
-            id_pedido: 105,
+            pedido_id: 105,
             medidas_vao: "2400x2100mm",
             quantidade_folhas: 2,
             tipo_vidro: "Temperado 10mm",
@@ -34,7 +34,7 @@ describe("ChecklistMedicaoService - Testes Unitários (RF07 e RF08)", () => {
     test("RF08: Deve impedir aprovação do checklist quando houver pendência de infraestrutura (viga, piso ou ponto elétrico)", async () => {
         await expect(
             checklistMedicaoService.criar({
-                id_pedido: 107,
+                pedido_id: 107,
                 medidas_vao: "3000x2200mm",
                 viga_ok: false,
                 piso_ok: true,
@@ -50,11 +50,11 @@ describe("ChecklistMedicaoService - Testes Unitários (RF07 e RF08)", () => {
         expect(checklistMedicaoRepository.criar).not.toHaveBeenCalled();
     });
 
-    test("Deve lançar erro 400 se id_pedido não for informado", async () => {
+    test("Deve lançar erro 400 se pedido_id não for informado", async () => {
         await expect(
             checklistMedicaoService.criar({ medidas_vao: "2000x2100mm" })
         ).rejects.toMatchObject({
-            message: "O campo 'id_pedido' é obrigatório e deve ser um número inteiro válido.",
+            message: "O campo 'pedido_id' é obrigatório e deve ser um número inteiro válido.",
             status: 400,
         });
     });

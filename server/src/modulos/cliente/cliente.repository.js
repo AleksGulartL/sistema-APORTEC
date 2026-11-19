@@ -34,7 +34,7 @@ async function buscarPorId(id) {
 async function criar(dados) {
     const transaction = sequelize?.transaction ? await sequelize.transaction() : null;
     try {
-        let usuarioId = dados.usuario_id || dados.id_usuario;
+        let usuarioId = dados.usuario_id;
 
         if (!usuarioId && usuario) {
             const senhaDefinida = dados.senha && String(dados.senha).trim() ? String(dados.senha).trim() : null;

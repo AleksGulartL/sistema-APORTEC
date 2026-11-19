@@ -11,14 +11,13 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
     test("RF12: Deve gerar automaticamente o checklist de pré-saída ao avançar status para 'Pronto para Instalacao'", async () => {
         pedidoRepository.buscarPorId.mockResolvedValue({
             id: 10,
-            id_pedido: 10,
             status: "Testes",
+            status_aprovacao: "Aprovado",
             bloqueio_fabricacao: false,
         });
         pedidoRepository.atualizar.mockResolvedValue({
             id: 10,
             status: "Pronto para Instalacao",
-            status_fluxo: "Pronto para Instalacao",
         });
         pedidoRepository.gerarChecklistPreSaida.mockResolvedValue({
             pedido_id: 10,
@@ -34,12 +33,11 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
         });
 
         const resultado = await pedidoService.atualizarStatusEtapa(10, {
-            status_fluxo: "Pronto para Instalacao",
+            status: "Pronto para Instalacao",
         });
 
         expect(pedidoRepository.atualizar).toHaveBeenCalledWith(10, {
             status: "Pronto para Instalacao",
-            status_fluxo: "Pronto para Instalacao",
         });
         expect(pedidoRepository.gerarChecklistPreSaida).toHaveBeenCalledWith(10);
         expect(resultado.checklist_pre_saida).toBeDefined();
@@ -49,8 +47,8 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
     test("RF08: Deve bloquear avanço para etapa de fabricação se bloqueio_fabricacao for true", async () => {
         pedidoRepository.buscarPorId.mockResolvedValue({
             id: 12,
-            id_pedido: 12,
             status: "Aguardando",
+            status_aprovacao: "Aprovado",
             bloqueio_fabricacao: true,
             motivo_bloqueio: "Bloqueado: pendência de viga.",
         });
@@ -65,10 +63,9 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
         expect(pedidoRepository.atualizar).not.toHaveBeenCalled();
     });
 
-    test("RF13 & RF15: Deve coletar assinatura digital de aceite, concluir o pedido e gravar numero_serie_porta e fim_garantia no próprio pedido", async () => {
+    test("RF13 & RF15: Deve coletar assinatura digital de aceite, concluir o pedido e gravar numero_serie e fim_garantia no próprio pedido", async () => {
         pedidoRepository.buscarPorId.mockResolvedValue({
             id: 10,
-            id_pedido: 10,
             cliente_id: 3,
             status: "Pronto para Instalacao",
         });
@@ -85,11 +82,11 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
             10,
             expect.objectContaining({
                 assinatura_cliente_instalacao: "ASSINATURA_DIGITAL_BASE64_CLIENTE",
-                numero_serie_porta: expect.stringMatching(/^APORTEC-\d{4}-0010$/),
+                numero_serie: expect.stringMatching(/^APORTEC-\d{4}-0010$/),
                 status: "Concluido",
             })
         );
-        expect(resultado.pedido.numero_serie_porta).toMatch(/^APORTEC-\d{4}-0010$/);
+        expect(resultado.pedido.numero_serie).toMatch(/^APORTEC-\d{4}-0010$/);
         expect(resultado.pedido.fim_garantia).toBeDefined();
     });
 

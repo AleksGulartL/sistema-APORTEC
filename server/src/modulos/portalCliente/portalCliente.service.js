@@ -3,8 +3,8 @@ const portalClienteRepository = require("./portalCliente.repository");
 const TIPOS_SOLICITACAO_CLIENTE = ["Manutencao Corretiva", "Manutencao Preventiva"];
 
 async function obterClienteVinculado(usuarioLogado) {
-    const usuarioId = Number(usuarioLogado?.id_usuario ?? usuarioLogado?.id);
-    if (!Number.isInteger(usuarioId) || usuarioId <= 0) { 
+    const usuarioId = Number(usuarioLogado?.id);
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
         const erro = new Error("Usuário não autenticado.");
         erro.status = 401;
         throw erro;
@@ -110,9 +110,8 @@ async function abrirSolicitacaoManutencao(usuarioLogado, dados = {}) {
 
     const clienteReg = await obterClienteVinculado(usuarioLogado);
 
-    const pedidoIdRaw = dados.pedido_id;
-    const pedidoIdNum = Number(pedidoIdRaw);
-    if (!pedidoIdRaw || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
+    const pedidoIdNum = Number(dados.pedido_id);
+    if (!dados.pedido_id || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
         const erro = new Error("Selecione o pedido / porta instalada para a qual deseja abrir assistência.");
         erro.status = 400;
         throw erro;

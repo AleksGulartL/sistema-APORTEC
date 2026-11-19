@@ -57,7 +57,7 @@ async function listarOrdensServicoDoCliente(clienteId) {
                 as: "pedido",
                 where: { cliente_id: clienteId },
                 required: true,
-                attributes: ["id", "codigo_proposta", "numero_serie", "status", "fim_garantia"],
+                attributes: ["id", "numero_serie", "status", "fim_garantia"],
             },
             {
                 model: usuario,

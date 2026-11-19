@@ -49,7 +49,7 @@ function gerarSenhaSugerida() {
 }
 
 const FORM_INICIAL = {
-    id: null,
+    usuario_id: null,
     nome_completo: "",
     cnpj_cpf: "",
     telefone: "",
@@ -69,11 +69,9 @@ export default function Clientes({ usuario }) {
     const [sucessoMsg, setSucessoMsg] = useState("");
     const [carregando, setCarregando] = useState(false);
 
-    // Credenciais criadas/atualizadas para facilitar envio ao cliente
     const [credenciaisProntas, setCredenciaisProntas] = useState(null);
     const [copiado, setCopiado] = useState(false);
 
-    // Modal Criar / Editar
     const [modalAberto, setModalAberto] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
@@ -82,7 +80,6 @@ export default function Clientes({ usuario }) {
     const [erroModal, setErroModal] = useState("");
     const [salvando, setSalvando] = useState(false);
 
-    // Confirmação de exclusão
     const [clienteExcluir, setClienteExcluir] = useState(null);
     const [excluindo, setExcluindo] = useState(false);
 
@@ -92,8 +89,7 @@ export default function Clientes({ usuario }) {
         setErro("");
         try {
             const response = await api.get("/cliente");
-            const lista = Array.isArray(response.data) ? response.data : response.data.clientes || [];
-            setClientes(lista);
+            setClientes(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error("Erro ao buscar clientes:", error);
             setErro(error.response?.data?.erro || "Erro ao carregar a lista de clientes.");
@@ -112,11 +108,11 @@ export default function Clientes({ usuario }) {
         const termo = busca.trim().toLowerCase();
         if (!termo) return clientes;
         return clientes.filter((c) => {
-            const id = String(c.id_cliente || c.id || "");
-            const nome = String(c.usuario?.nome_completo || c.nome_completo || "").toLowerCase();
+            const id = String(c.usuario_id || "");
+            const nome = String(c.usuario?.nome_completo || "").toLowerCase();
             const doc = String(c.cnpj_cpf || "").toLowerCase();
             const tel = String(c.telefone || "").toLowerCase();
-            const email = String(c.usuario?.email || c.email || "").toLowerCase();
+            const email = String(c.usuario?.email || "").toLowerCase();
             return (
                 id === termo ||
                 nome.includes(termo) ||
@@ -140,11 +136,11 @@ export default function Clientes({ usuario }) {
     }
 
     function abrirEdicao(item) {
-        const emailAtual = item.usuario?.email || item.email || "";
+        const emailAtual = item.usuario?.email || "";
         setModoEdicao(true);
         setForm({
-            id: item.id ?? item.id_cliente,
-            nome_completo: item.usuario?.nome_completo || item.nome_completo || "",
+            usuario_id: item.usuario_id,
+            nome_completo: item.usuario?.nome_completo || "",
             cnpj_cpf: item.cnpj_cpf || "",
             telefone: item.telefone || "",
             email: emailAtual,
@@ -190,7 +186,7 @@ export default function Clientes({ usuario }) {
         setSalvando(true);
         try {
             if (modoEdicao) {
-                await api.put(`/cliente/${form.id}`, payload);
+                await api.put(`/cliente/${form.usuario_id}`, payload);
                 setSucessoMsg("Dados do cliente atualizados com sucesso!");
                 if (payload.senha) {
                     setCredenciaisProntas({
@@ -228,11 +224,11 @@ export default function Clientes({ usuario }) {
         if (!clienteExcluir) return;
         setExcluindo(true);
         try {
-            const id = clienteExcluir.id ?? clienteExcluir.id_cliente;
+            const id = clienteExcluir.usuario_id;
             await api.delete(`/cliente/${id}`);
             setSucessoMsg("Cliente removido com sucesso.");
             setClienteExcluir(null);
-            if (clienteSelecionado && (clienteSelecionado.id ?? clienteSelecionado.id_cliente) === id) {
+            if (clienteSelecionado && clienteSelecionado.usuario_id === id) {
                 setClienteSelecionado(null);
             }
             buscarTodosClientes();
@@ -240,7 +236,7 @@ export default function Clientes({ usuario }) {
             console.error("Erro ao excluir cliente:", error);
             setErro(
                 error.response?.data?.erro ||
-                    "Não foi possível excluir este cliente (pode possuir pedidos ou OS vinculados)."
+                    "Não foi possível excluir este cliente (pode possuir pedidos vinculados)."
             );
             setClienteExcluir(null);
         } finally {
@@ -269,7 +265,6 @@ export default function Clientes({ usuario }) {
 
     return (
         <Box sx={{ py: 3 }}>
-            {/* Cabeçalho */}
             <Stack
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
@@ -313,7 +308,6 @@ export default function Clientes({ usuario }) {
                 </Alert>
             )}
 
-            {/* Ficha individual do cliente */}
             {clienteSelecionado ? (
                 <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
                     <CardHeader
@@ -324,14 +318,10 @@ export default function Clientes({ usuario }) {
                         }
                         title={
                             <Typography variant="h6" fontWeight="bold">
-                                {clienteSelecionado.usuario?.nome_completo ||
-                                    clienteSelecionado.nome_completo ||
-                                    clienteSelecionado.nome}
+                                {clienteSelecionado.usuario?.nome_completo}
                             </Typography>
                         }
-                        subheader={`ID do Cliente: ${clienteSelecionado.id_cliente || clienteSelecionado.id} | Usuário Vinculado: #${
-                            clienteSelecionado.usuario_id || clienteSelecionado.usuario?.id || "-"
-                        }`}
+                        subheader={`ID do Cliente (Usuário Vinculado): #${clienteSelecionado.usuario_id}`}
                         action={
                             <Stack direction="row" spacing={1}>
                                 {ehAdm && (
@@ -370,7 +360,7 @@ export default function Clientes({ usuario }) {
                                     E-mail de Acesso (Portal)
                                 </Typography>
                                 <Typography variant="body1" fontWeight="medium">
-                                    {clienteSelecionado.usuario?.email || clienteSelecionado.email || "-"}
+                                    {clienteSelecionado.usuario?.email || "-"}
                                 </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
@@ -394,7 +384,6 @@ export default function Clientes({ usuario }) {
                 </Card>
             ) : (
                 <>
-                    {/* Barra de Busca Instantânea */}
                     <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                         <Stack
                             direction={{ xs: "column", sm: "row" }}
@@ -417,7 +406,8 @@ export default function Clientes({ usuario }) {
                                 }}
                             />
                             <Typography variant="caption" color="text.secondary">
-                                Exibindo {clientesFiltrados.length} de {clientes.length} cliente(s)
+                                Exibindo {clientesFiltrados.length} de {clientes.length} cliente(s) • Clique nos
+                                cabeçalhos para ordenar
                             </Typography>
                         </Stack>
                     </Card>
@@ -437,7 +427,6 @@ export default function Clientes({ usuario }) {
                 </>
             )}
 
-            {/* Modal Criar / Editar Cliente + Senha do Portal */}
             <Dialog open={modalAberto} onClose={() => setModalAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={salvarCliente}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -579,7 +568,6 @@ export default function Clientes({ usuario }) {
                 </form>
             </Dialog>
 
-            {/* Dialog com Credenciais Geradas (facilita repassar ao cliente) */}
             <Dialog
                 open={Boolean(credenciaisProntas)}
                 onClose={() => setCredenciaisProntas(null)}
@@ -588,11 +576,11 @@ export default function Clientes({ usuario }) {
             >
                 <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <VpnKeyIcon color="success" />
-                    Credenciais do Cliente
+                    Credenciais do Portal do Cliente
                 </DialogTitle>
                 <DialogContent dividers>
                     <Stack spacing={1.5}>
-                        <Alert severity="success">{credenciaisProntas?.acao}!</Alert>
+                        <Alert severity="success">{credenciaisProntas?.acao}</Alert>
                         <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
                             <Typography variant="caption" color="text.secondary">
                                 Cliente
@@ -613,13 +601,16 @@ export default function Clientes({ usuario }) {
                                 {credenciaisProntas?.senha}
                             </Typography>
                         </Paper>
+                        <Typography variant="caption" color="text.secondary">
+                            Repasse estas credenciais ao cliente. Ele poderá alterar a senha a qualquer momento
+                            clicando no próprio nome na barra superior.
+                        </Typography>
                     </Stack>
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button
                         variant="outlined"
                         startIcon={<ContentCopyIcon />}
-                        color={copiado ? "success" : "primary"}
                         onClick={copiarCredenciais}
                     >
                         {copiado ? "Copiado!" : "Copiar Acesso"}
@@ -630,16 +621,12 @@ export default function Clientes({ usuario }) {
                 </DialogActions>
             </Dialog>
 
-            {/* Confirmação de Exclusão */}
             <Dialog open={Boolean(clienteExcluir)} onClose={() => setClienteExcluir(null)} maxWidth="xs" fullWidth>
                 <DialogTitle>Confirmar Exclusão</DialogTitle>
                 <DialogContent dividers>
                     <Typography variant="body2">
                         Deseja realmente remover o cliente{" "}
-                        <strong>
-                            {clienteExcluir?.usuario?.nome_completo || clienteExcluir?.nome_completo}
-                        </strong>
-                        ?
+                        <strong>{clienteExcluir?.usuario?.nome_completo}</strong> ({clienteExcluir?.cnpj_cpf})?
                     </Typography>
                 </DialogContent>
                 <DialogActions>

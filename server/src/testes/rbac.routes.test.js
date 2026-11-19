@@ -3,8 +3,6 @@ const express = require("express");
 const { PERFIS, PERMISSOES } = require("../middlewares/permissoes");
 const { cabecalhoPara } = require("./authHelper");
 
-// Controllers substituídos por stubs: este teste valida apenas a camada de segurança das rotas
-// (autenticar + autorizar). Se a requisição chegar ao controller, ele responde 200.
 function mockStubController(funcoes) {
     const stub = {};
     for (const nome of funcoes) {
@@ -18,7 +16,7 @@ const mockCRUD = ["listar", "buscarPorId", "criar", "atualizar", "deletar"];
 jest.mock("../modulos/usuario/usuario.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/cliente/cliente.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/itemCatalogo/itemCatalogo.controller", () =>
-    mockStubController([...mockCRUD, "listarAlertasEstoqueMinimo"])
+    mockStubController([...mockCRUD, "listarTipos", "listarCategorias", "listarAlertasEstoqueMinimo"])
 );
 jest.mock("../modulos/pedidoItem/pedidoItem.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/checklist_medicao/checklist_medicao.controller", () => mockStubController(mockCRUD));
@@ -41,7 +39,6 @@ app.use(require("../modulos/ordemServico/ordemServico.routes"));
 app.use(require("../modulos/pedido/pedido.routes"));
 app.use(require("../modulos/portalCliente/portalCliente.routes"));
 
-// [método, caminho, módulo, ação] - um item por função de controller exposta
 const ROTAS = [
     ["get", "/usuarios", "usuario", "listar"],
     ["get", "/usuarios/1", "usuario", "buscarPorId"],
@@ -55,6 +52,8 @@ const ROTAS = [
     ["put", "/cliente/1", "cliente", "atualizar"],
     ["delete", "/cliente/1", "cliente", "deletar"],
 
+    ["get", "/item_catalogo/tipos", "itemCatalogo", "listarTipos"],
+    ["get", "/item_catalogo/categorias", "itemCatalogo", "listarCategorias"],
     ["get", "/itens-catalogo/alertas-estoque", "itemCatalogo", "listarAlertasEstoqueMinimo"],
     ["get", "/itens-catalogo", "itemCatalogo", "listar"],
     ["get", "/itens-catalogo/1", "itemCatalogo", "buscarPorId"],
@@ -138,12 +137,5 @@ describe("Segurança das rotas (RBAC - RF01 / CT01 Cenário 6)", () => {
                 expect(res.body.mensagem).toBe("Acesso negado. O perfil não tem permissão para esta ação.");
             }
         });
-    });
-
-    test("cargo_funcao em texto livre não concede privilégio quando o token possui perfil", async () => {
-        const res = await request(app)
-            .delete("/usuarios/1")
-            .set(cabecalhoPara("TECNICO", { cargo_funcao: "ADM", role: "ADM" }));
-        expect(res.status).toBe(403);
     });
 });

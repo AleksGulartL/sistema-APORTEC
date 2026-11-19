@@ -34,7 +34,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         });
 
         test("Deve falhar se a senha não for informada", async () => {
-            const res = await authService.autenticarUsuario("user@aportec.com", "");
+            const res = await authService.autenticarUsuario("user@gmail.com", "");
             expect(res.sucesso).toBe(false);
             expect(res.mensagem).toBe("E-mail e senha são obrigatórios.");
         });
@@ -42,7 +42,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         test("Deve retornar credenciais inválidas se o usuário não for encontrado", async () => {
             authRepository.buscarPorEmail.mockResolvedValue(null);
 
-            const res = await authService.autenticarUsuario("inexistente@aportec.com", "123456");
+            const res = await authService.autenticarUsuario("inexistente@gmail.com", "123456");
             expect(res.sucesso).toBe(false);
             expect(res.mensagem).toBe("Credenciais inválidas.");
         });
@@ -50,22 +50,15 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         test("Deve retornar credenciais inválidas se a senha estiver incorreta", async () => {
             const senhaCorretaHash = await bcrypt.hash("senhaCorreta", 10);
             authRepository.buscarPorEmail.mockResolvedValue({
-                id_usuario: 1,
+                id: 1,
                 nome_completo: "Carlos Silva",
-                email: "carlos@aportec.com",
-                senha_hash: senhaCorretaHash,
-                            authRepository.buscarPorEmail.mockResolvedValue({
-                id_usuario: 1,
-                nome_completo: "Carlos Silva",
-                email: "carlos@aportec.com",
+                email: "carlos@gmail.com",
                 senha_hash: senhaCorretaHash,
                 perfil: "ADM",
                 ativo: true,
-            });,
-                ativo: true,
             });
 
-            const res = await authService.autenticarUsuario("carlos@aportec.com", "senhaIncorreta");
+            const res = await authService.autenticarUsuario("carlos@gmail.com", "senhaIncorreta");
             expect(res.sucesso).toBe(false);
             expect(res.mensagem).toBe("Credenciais inválidas.");
         });
@@ -73,15 +66,15 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         test("Deve falhar se o usuário estiver inativo", async () => {
             const senhaCorretaHash = await bcrypt.hash("senha123", 10);
             authRepository.buscarPorEmail.mockResolvedValue({
-                id_usuario: 1,
+                id: 1,
                 nome_completo: "Carlos Silva",
-                email: "carlos@aportec.com",
+                email: "carlos@gmail.com",
                 senha_hash: senhaCorretaHash,
-                cargo_funcao: "Operador",
+                perfil: "TECNICO",
                 ativo: false,
             });
 
-            const res = await authService.autenticarUsuario("carlos@aportec.com", "senha123");
+            const res = await authService.autenticarUsuario("carlos@gmail.com", "senha123");
             expect(res.sucesso).toBe(false);
             expect(res.mensagem).toBe("Usuário inativo. Contate o administrador.");
         });
@@ -89,28 +82,28 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         test("Deve autenticar com sucesso quando as credenciais estiverem corretas", async () => {
             const senhaCorretaHash = await bcrypt.hash("senha123", 10);
             authRepository.buscarPorEmail.mockResolvedValue({
-                id_usuario: 10,
+                id: 10,
                 nome_completo: "Mariana Souza",
-                email: "mariana@aportec.com",
+                email: "mariana@gmail.com",
                 senha_hash: senhaCorretaHash,
-                cargo_funcao: "Gerente",
+                perfil: "ADM",
                 ativo: true,
             });
 
-            const res = await authService.autenticarUsuario("mariana@aportec.com", "senha123");
+            const res = await authService.autenticarUsuario("mariana@gmail.com", "senha123");
             expect(res.sucesso).toBe(true);
             expect(res.usuario).toEqual({
-                id_usuario: 10,
+                id: 10,
                 nome_completo: "Mariana Souza",
-                email: "mariana@aportec.com",
-                cargo_funcao: "Gerente",
+                email: "mariana@gmail.com",
+                perfil: "ADM",
                 ativo: true,
             });
         });
     });
 
     describe("criarNovoUsuario", () => {
-        const solicitanteAdm = { id_usuario: 1, perfil: "ADM" };
+        const solicitanteAdm = { id: 1, perfil: "ADM" };
 
         test("Deve lançar erro 401 se solicitante não for informado (cadastro público bloqueado)", async () => {
             await expect(
@@ -133,7 +126,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                         email: "teste@gmail.com",
                         senha: "123",
                     },
-                    { id_usuario: 2, perfil: "TECNICO" }
+                    { id: 2, perfil: "TECNICO" }
                 )
             ).rejects.toMatchObject({
                 message: "Apenas administradores têm permissão para cadastrar novos usuários.",
@@ -183,7 +176,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         });
 
         test("Deve lançar erro 409 se e-mail já estiver cadastrado", async () => {
-            authRepository.buscarPorEmail.mockResolvedValue({ id_usuario: 1 });
+            authRepository.buscarPorEmail.mockResolvedValue({ id: 1 });
 
             await expect(
                 authService.criarNovoUsuario(
@@ -203,7 +196,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
         test("Deve criar usuário com senha criptografada em senha_hash quando solicitado por ADM", async () => {
             authRepository.buscarPorEmail.mockResolvedValue(null);
             authRepository.criar.mockImplementation(async (dados) => ({
-                id_usuario: 5,
+                id: 5,
                 ...dados,
             }));
 
@@ -212,16 +205,16 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                     nome_completo: "Ana Paula",
                     email: "  Ana@Gmail.COM ",
                     senha: "senhaSegura123",
-                    cargo_funcao: "Engenheira",
+                    perfil: "ADM",
                 },
                 solicitanteAdm
             );
 
             expect(resultado).toEqual({
-                id_usuario: 5,
+                id: 5,
                 nome_completo: "Ana Paula",
                 email: "ana@gmail.com",
-                cargo_funcao: "Engenheira",
+                perfil: "ADM",
             });
 
             expect(authRepository.criar).toHaveBeenCalledTimes(1);
@@ -233,7 +226,7 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
 
         test("Cadastro feito por ADM autenticado deve respeitar o perfil informado", async () => {
             authRepository.buscarPorEmail.mockResolvedValue(null);
-            authRepository.criar.mockImplementation(async (dados) => ({ id_usuario: 8, ...dados }));
+            authRepository.criar.mockImplementation(async (dados) => ({ id: 8, ...dados }));
 
             await authService.criarNovoUsuario(
                 {
@@ -271,17 +264,10 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
     describe("gerarToken e verificarToken", () => {
         test("Deve gerar token JWT e decodificá-lo com sucesso", () => {
             const usuarioMock = {
-                id_usuario: 1,
+                id: 1,
                 nome_completo: "Roberto",
-                email: "roberto@aportec.com",
-                            authRepository.buscarPorEmail.mockResolvedValue({
-                id_usuario: 1,
-                nome_completo: "Carlos Silva",
-                email: "carlos@aportec.com",
-                senha_hash: senhaCorretaHash,
+                email: "roberto@gmail.com",
                 perfil: "ADM",
-                ativo: true,
-            });,
             };
 
             const token = authService.gerarToken(usuarioMock);
@@ -289,10 +275,9 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             expect(token.split(".").length).toBe(3);
 
             const decoded = authService.verificarToken(token);
-            expect(decoded.id_usuario).toBe(1);
-            expect(decoded.email).toBe("roberto@aportec.com");
-            expect(decoded.cargo_funcao).toBe("Administrador");
-            expect(decoded.role).toBe("Administrador");
+            expect(decoded.id).toBe(1);
+            expect(decoded.email).toBe("roberto@gmail.com");
+            expect(decoded.perfil).toBe("ADM");
         });
     });
 });

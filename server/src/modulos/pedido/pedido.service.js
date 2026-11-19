@@ -1,6 +1,6 @@
 const pedidoRepository = require("./pedido.repository");
 
-const STATUS_FLUXO_VALIDOS = [
+const STATUS_VALIDOS = [
     "Rascunho",
     "Pendente",
     "Aguardando",
@@ -13,32 +13,24 @@ const STATUS_FLUXO_VALIDOS = [
     "Cancelado",
 ];
 
+const TIPOS_VALIDOS = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 const ETAPAS_FABRICACAO = ["Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao", "Concluido"];
 
 function validarPedido(dados, isUpdate = false) {
-    const idCliente = dados.cliente_id ?? dados.id_cliente;
-    const temCliente = idCliente !== undefined && idCliente !== null;
-
-    if (!isUpdate && !temCliente) {
-        const idOrcamentoNum = Number(dados.id_orcamento);
-        if (!dados.id_orcamento || !Number.isInteger(idOrcamentoNum) || idOrcamentoNum <= 0) {
-            const erro = new Error("O campo 'cliente_id' (ou 'id_orcamento') é obrigatório e deve ser um número inteiro válido.");
-            erro.status = 400;
-            throw erro;
-        }
-    } else if (temCliente) {
-        const idClienteNum = Number(idCliente);
-        if (!Number.isInteger(idClienteNum) || idClienteNum <= 0) {
-            const erro = new Error("O campo 'cliente_id' deve ser um número inteiro válido.");
+    if (!isUpdate || dados.cliente_id !== undefined) {
+        const idClienteNum = Number(dados.cliente_id);
+        if (!dados.cliente_id || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {
+            const erro = new Error("O campo 'cliente_id' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
     }
 
     if (dados.tipo_pedido !== undefined && dados.tipo_pedido !== null) {
-        const TIPOS_VALIDOS = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
         if (!TIPOS_VALIDOS.includes(dados.tipo_pedido)) {
-            const erro = new Error("O campo 'tipo_pedido' deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'.");
+            const erro = new Error(
+                "O campo 'tipo_pedido' deve ser 'Instalacao', 'Manutencao Preventiva' ou 'Manutencao Corretiva'."
+            );
             erro.status = 400;
             throw erro;
         }
@@ -62,12 +54,9 @@ function validarPedido(dados, isUpdate = false) {
         }
     }
 
-    const statusInformado = dados.status || dados.status_fluxo;
-    if (statusInformado !== undefined && statusInformado !== null) {
-        if (!STATUS_FLUXO_VALIDOS.includes(statusInformado)) {
-            const erro = new Error(
-                "O campo 'status' deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
-            );
+    if (dados.status !== undefined && dados.status !== null) {
+        if (!STATUS_VALIDOS.includes(dados.status)) {
+            const erro = new Error(`O campo 'status' deve ser um dos valores válidos: ${STATUS_VALIDOS.join(", ")}.`);
             erro.status = 400;
             throw erro;
         }
@@ -105,29 +94,20 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    validarPedido(dados);
-    const dadosFormatados = { ...dados };
+    validarPedido(dados, false);
+    const dadosFormatados = {
+        ...dados,
+        cliente_id: Number(dados.cliente_id),
+    };
 
-    if (dados.id_orcamento !== undefined) {
-        dadosFormatados.id_orcamento = Number(dados.id_orcamento);
+    if (dados.usuario_criador_id !== undefined && dados.usuario_criador_id !== null) {
+        dadosFormatados.usuario_criador_id = Number(dados.usuario_criador_id);
     }
-    if (dados.id_cliente !== undefined || dados.cliente_id !== undefined) {
-        dadosFormatados.cliente_id = Number(dados.cliente_id ?? dados.id_cliente);
-    }
-    if (dados.id_usuario_criador !== undefined || dados.usuario_criador_id !== undefined) {
-        dadosFormatados.usuario_criador_id = Number(dados.usuario_criador_id ?? dados.id_usuario_criador);
-    }
-    if (dados.status_fluxo) {
-        dadosFormatados.status = dados.status_fluxo;
-    }
-    if (dados.numero_serie_porta && !dadosFormatados.numero_serie) {
-        dadosFormatados.numero_serie = dados.numero_serie_porta;
+    if (dados.responsavel_producao_id !== undefined && dados.responsavel_producao_id !== null) {
+        dadosFormatados.responsavel_producao_id = Number(dados.responsavel_producao_id);
     }
 
-    delete dadosFormatados.id_pedido;
     delete dadosFormatados.id;
-    delete dadosFormatados.numero_serie_porta;
-    delete dadosFormatados.valor_total;
     return pedidoRepository.criar(dadosFormatados);
 }
 
@@ -142,23 +122,14 @@ async function atualizar(id, dados) {
     validarPedido(dados, true);
     const dadosFormatados = { ...dados };
 
-    if (dadosFormatados.id_orcamento !== undefined) {
-        dadosFormatados.id_orcamento = Number(dadosFormatados.id_orcamento);
+    if (dadosFormatados.cliente_id !== undefined) {
+        dadosFormatados.cliente_id = Number(dadosFormatados.cliente_id);
     }
-    if (dadosFormatados.id_cliente !== undefined || dadosFormatados.cliente_id !== undefined) {
-        dadosFormatados.cliente_id = Number(dadosFormatados.cliente_id ?? dadosFormatados.id_cliente);
-    }
-    if (dadosFormatados.status_fluxo) {
-        dadosFormatados.status = dadosFormatados.status_fluxo;
-    }
-    if (dados.numero_serie_porta && !dadosFormatados.numero_serie) {
-        dadosFormatados.numero_serie = dados.numero_serie_porta;
+    if (dadosFormatados.responsavel_producao_id !== undefined && dadosFormatados.responsavel_producao_id !== null) {
+        dadosFormatados.responsavel_producao_id = Number(dadosFormatados.responsavel_producao_id);
     }
 
-    delete dadosFormatados.id_pedido;
     delete dadosFormatados.id;
-    delete dadosFormatados.numero_serie_porta;
-    delete dadosFormatados.valor_total;
     return pedidoRepository.atualizar(idNum, dadosFormatados);
 }
 
@@ -171,11 +142,9 @@ async function atualizarStatusEtapa(id, dados = {}) {
         throw erro;
     }
 
-    const novoStatus = dados.status || dados.status_fluxo;
-    if (!novoStatus || !STATUS_FLUXO_VALIDOS.includes(novoStatus)) {
-        const erro = new Error(
-            "O campo 'status' é obrigatório e deve ser 'Aguardando', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao' ou 'Concluido'."
-        );
+    const novoStatus = dados.status;
+    if (!novoStatus || !STATUS_VALIDOS.includes(novoStatus)) {
+        const erro = new Error(`O campo 'status' é obrigatório e deve ser um dos valores: ${STATUS_VALIDOS.join(", ")}.`);
         erro.status = 400;
         throw erro;
     }
@@ -183,7 +152,10 @@ async function atualizarStatusEtapa(id, dados = {}) {
     const existente = await pedidoRepository.buscarPorId(idNum);
     if (!existente) return null;
 
-    if (ETAPAS_FABRICACAO.includes(novoStatus) && (existente.bloqueio_fabricacao === true || existente.status_aprovacao !== "Aprovado")) {
+    if (
+        ETAPAS_FABRICACAO.includes(novoStatus) &&
+        (existente.bloqueio_fabricacao === true || existente.status_aprovacao !== "Aprovado")
+    ) {
         const erro = new Error(
             existente.motivo_bloqueio ||
                 "Bloqueio de fabricação ativo: verifique a aprovação do orçamento e o checklist técnico de medição."
@@ -192,10 +164,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
         throw erro;
     }
 
-    const payloadAtualizacao = {
-        status: novoStatus,
-        status_fluxo: novoStatus,
-    };
+    const payloadAtualizacao = { status: novoStatus };
     if (novoStatus === "Concluido") {
         payloadAtualizacao.data_conclusao = new Date();
     }
@@ -238,7 +207,6 @@ async function coletarAssinaturaAceite(id, dados = {}) {
 
     const numeroSerie =
         dados.numero_serie ||
-        dados.numero_serie_porta ||
         existente.numero_serie ||
         `APORTEC-${agora.getFullYear()}-${String(idNum).padStart(4, "0")}`;
 

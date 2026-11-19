@@ -10,7 +10,6 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Divider,
     FormControl,
     Grid,
     IconButton,
@@ -37,16 +36,18 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
+import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
 import api from "../services/api";
 import {
     calcularSituacaoGarantia,
     formatarDataHoraBr,
     formatarParaInputDateTimeLocal,
     obterPerfilUsuario,
+    ordenarLista,
     usuarioEhAdm,
     usuarioEhFuncionario,
 } from "../utils/permissoes";
-import AssinaturaDigital, { VisualizarAssinatura } from "./comum/AssinaturaDigital";
+import AssinaturaDigital from "./comum/AssinaturaDigital";
 
 const TIPOS_SERVICO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 const COBERTURAS = ["Garantia", "Contrato", "Avulso"];
@@ -61,7 +62,7 @@ const COR_STATUS_OS = {
 
 const FORM_INICIAL = {
     id: null,
-    cliente_id: "",
+    cliente_id_filtro: "",
     pedido_id: "",
     tecnico_responsavel_id: "",
     tipo_servico: "Manutencao Corretiva",
@@ -69,6 +70,16 @@ const FORM_INICIAL = {
     status_os: "Aberta",
     data_agendamento: "",
     descricao_problema: "",
+};
+
+const EXTRATORES_OS = {
+    id: (os) => Number(os.id || 0),
+    cliente: (os) => os.pedido?.cliente?.usuario?.nome_completo || "",
+    pedido_id: (os) => Number(os.pedido_id || 0),
+    tipo_servico: (os) => os.tipo_servico || "",
+    tecnico: (os) => os.tecnico_responsavel?.nome_completo || "",
+    data_agendamento: (os) => os.data_agendamento || "",
+    status_os: (os) => os.status_os || "",
 };
 
 export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimparContexto }) {
@@ -87,15 +98,14 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
     const [busca, setBusca] = useState("");
     const [filtroStatus, setFiltroStatus] = useState("TODAS");
     const [filtroTipo, setFiltroTipo] = useState("TODOS");
+    const [ordenacao, setOrdenacao] = useState({ campo: "id", direcao: "asc" });
 
-    // Modal Criar / Editar
     const [modalAberto, setModalAberto] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
     const [erroModal, setErroModal] = useState("");
     const [salvando, setSalvando] = useState(false);
 
-    // Modal Atendimento / Finalização (Parecer + Assinatura)
     const [osAtender, setOsAtender] = useState(null);
     const [statusAtender, setStatusAtender] = useState("Finalizada");
     const [parecerAtender, setParecerAtender] = useState("");
@@ -103,7 +113,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
     const [erroAtender, setErroAtender] = useState("");
     const [salvandoAtender, setSalvandoAtender] = useState(false);
 
-    // Exclusão
     const [osExcluir, setOsExcluir] = useState(null);
     const [excluindo, setExcluindo] = useState(false);
 
@@ -152,14 +161,14 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
             if (u.perfil === "CLIENTE") return;
             mapa.set(Number(u.id), {
                 id: Number(u.id),
-                nome_completo: u.nome_completo || u.nome || `Usuário #${u.id}`,
+                nome_completo: u.nome_completo || `Usuário #${u.id}`,
                 perfil: u.perfil || "TECNICO",
             });
         };
 
         if (usuario) {
             add({
-                id: usuario.id_usuario ?? usuario.id,
+                id: usuario.id,
                 nome_completo: usuario.nome_completo,
                 perfil: obterPerfilUsuario(usuario),
             });
@@ -180,9 +189,9 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         setModoEdicao(false);
         setForm({
             ...FORM_INICIAL,
-            cliente_id: pedidoParaNovaOs.cliente_id ? String(pedidoParaNovaOs.cliente_id) : "",
+            cliente_id_filtro: pedidoParaNovaOs.cliente_id ? String(pedidoParaNovaOs.cliente_id) : "",
             pedido_id: pedidoParaNovaOs.id ? String(pedidoParaNovaOs.id) : "",
-            tecnico_responsavel_id: String(usuario?.id_usuario ?? usuario?.id ?? ""),
+            tecnico_responsavel_id: String(usuario?.id ?? ""),
             tipo_servico: pedidoParaNovaOs.status === "Pronto para Instalacao" ? "Instalacao" : "Manutencao Corretiva",
             origem_cobertura: gar.vigente ? "Garantia" : "Avulso",
         });
@@ -191,10 +200,10 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         onLimparContexto?.();
     }, [pedidoParaNovaOs, usuario, onLimparContexto]);
 
-    const pedidosDoClienteSelecionado = useMemo(() => {
-        if (!form.cliente_id) return pedidos;
-        return pedidos.filter((p) => Number(p.cliente_id) === Number(form.cliente_id));
-    }, [pedidos, form.cliente_id]);
+    const pedidosDisponiveisForm = useMemo(() => {
+        if (!form.cliente_id_filtro) return pedidos;
+        return pedidos.filter((p) => Number(p.cliente_id) === Number(form.cliente_id_filtro));
+    }, [pedidos, form.cliente_id_filtro]);
 
     const pedidoVinculadoForm = useMemo(
         () => pedidos.find((p) => Number(p.id) === Number(form.pedido_id)) || null,
@@ -203,30 +212,31 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
 
     const ordensFiltradas = useMemo(() => {
         const termo = busca.trim().toLowerCase();
-        return ordens.filter((os) => {
+        const filtradas = ordens.filter((os) => {
             if (filtroStatus !== "TODAS" && os.status_os !== filtroStatus) return false;
             if (filtroTipo !== "TODOS" && os.tipo_servico !== filtroTipo) return false;
             if (!termo) return true;
-            const nomeCli = String(os.cliente?.usuario?.nome_completo || "").toLowerCase();
+            const nomeCli = String(os.pedido?.cliente?.usuario?.nome_completo || "").toLowerCase();
             const nomeTec = String(os.tecnico_responsavel?.nome_completo || "").toLowerCase();
-            const serie = String(os.pedido?.numero_serie_porta || "").toLowerCase();
-            const prop = String(os.pedido?.codigo_proposta || "").toLowerCase();
+            const serie = String(os.pedido?.numero_serie || "").toLowerCase();
             return (
                 String(os.id).includes(termo) ||
+                String(os.pedido_id || "").includes(termo) ||
                 nomeCli.includes(termo) ||
                 nomeTec.includes(termo) ||
                 serie.includes(termo) ||
-                prop.includes(termo) ||
                 String(os.descricao_problema || "").toLowerCase().includes(termo)
             );
         });
-    }, [ordens, busca, filtroStatus, filtroTipo]);
+        return ordenarLista(filtradas, ordenacao.campo, ordenacao.direcao, EXTRATORES_OS);
+    }, [ordens, busca, filtroStatus, filtroTipo, ordenacao]);
 
     function abrirNovaOs() {
         setModoEdicao(false);
         setForm({
             ...FORM_INICIAL,
-            tecnico_responsavel_id: String(usuario?.id_usuario ?? usuario?.id ?? ""),
+            pedido_id: pedidos[0]?.id ? String(pedidos[0].id) : "",
+            tecnico_responsavel_id: String(usuario?.id ?? ""),
         });
         setErroModal("");
         setModalAberto(true);
@@ -236,7 +246,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         setModoEdicao(true);
         setForm({
             id: os.id,
-            cliente_id: os.cliente_id ? String(os.cliente_id) : "",
+            cliente_id_filtro: os.pedido?.cliente_id ? String(os.pedido.cliente_id) : "",
             pedido_id: os.pedido_id ? String(os.pedido_id) : "",
             tecnico_responsavel_id: os.tecnico_responsavel_id ? String(os.tecnico_responsavel_id) : "",
             tipo_servico: os.tipo_servico || "Manutencao Corretiva",
@@ -253,29 +263,20 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         event.preventDefault();
         setErroModal("");
 
-        if (!form.cliente_id) {
-            setErroModal("Selecione o cliente da Ordem de Serviço.");
-            return;
-        }
-        if (!form.tecnico_responsavel_id) {
-            setErroModal("Selecione o técnico responsável.");
+        if (!form.pedido_id) {
+            setErroModal("Selecione o pedido / porta vinculada à Ordem de Serviço.");
             return;
         }
 
         const payload = {
-            cliente_id: Number(form.cliente_id),
-            tecnico_responsavel_id: Number(form.tecnico_responsavel_id),
+            pedido_id: Number(form.pedido_id),
+            tecnico_responsavel_id: form.tecnico_responsavel_id ? Number(form.tecnico_responsavel_id) : null,
             tipo_servico: form.tipo_servico,
             origem_cobertura: form.origem_cobertura || null,
             status_os: form.status_os,
             descricao_problema: form.descricao_problema.trim() || null,
             data_agendamento: form.data_agendamento ? new Date(form.data_agendamento).toISOString() : null,
         };
-
-        // Só envia pedido_id quando preenchido para evitar Number(null) === 0 no backend
-        if (form.pedido_id && Number(form.pedido_id) > 0) {
-            payload.pedido_id = Number(form.pedido_id);
-        }
 
         if (form.status_os === "Finalizada") {
             payload.data_conclusao = new Date().toISOString();
@@ -377,7 +378,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
 
     return (
         <Box sx={{ py: 3 }}>
-            {/* Cabeçalho */}
             <Stack
                 direction={{ xs: "column", sm: "row" }}
                 justifyContent="space-between"
@@ -419,7 +419,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 </Alert>
             )}
 
-            {/* Filtros */}
             <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                 <Stack spacing={2}>
                     <Stack
@@ -486,7 +485,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 </Stack>
             </Card>
 
-            {/* Tabela de OS */}
             {carregando ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
                     <CircularProgress />
@@ -502,13 +500,48 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                     <Table sx={{ minWidth: 820 }}>
                         <TableHead sx={{ bgcolor: "primary.main" }}>
                             <TableRow>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>OS</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Cliente</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Pedido / Porta</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Serviço / Cobertura</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Técnico</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Agendamento</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Status</TableCell>
+                                <CabecalhoOrdenavel
+                                    campo="id"
+                                    rotulo="OS"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="cliente"
+                                    rotulo="Cliente"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="pedido_id"
+                                    rotulo="Pedido / Porta"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="tipo_servico"
+                                    rotulo="Serviço / Cobertura"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="tecnico"
+                                    rotulo="Técnico"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="data_agendamento"
+                                    rotulo="Agendamento"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
+                                <CabecalhoOrdenavel
+                                    campo="status_os"
+                                    rotulo="Status"
+                                    ordenacao={ordenacao}
+                                    onOrdenar={setOrdenacao}
+                                />
                                 <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                     Ações
                                 </TableCell>
@@ -516,7 +549,9 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                         </TableHead>
                         <TableBody>
                             {ordensFiltradas.map((os) => {
-                                const nomeCli = os.cliente?.usuario?.nome_completo || `Cliente #${os.cliente_id}`;
+                                const nomeCli =
+                                    os.pedido?.cliente?.usuario?.nome_completo ||
+                                    (os.pedido?.cliente_id ? `Cliente #${os.pedido.cliente_id}` : "-");
                                 const nomeTec =
                                     os.tecnico_responsavel?.nome_completo ||
                                     (os.tecnico_responsavel_id
@@ -531,19 +566,13 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                         <TableCell sx={{ fontWeight: "bold" }}>#{os.id}</TableCell>
                                         <TableCell>{nomeCli}</TableCell>
                                         <TableCell>
-                                            {os.pedido ? (
-                                                <>
-                                                    <Typography variant="body2" fontWeight="medium">
-                                                        #{os.pedido.codigo_proposta || os.pedido.id}
-                                                    </Typography>
-                                                    {os.pedido.numero_serie_porta && (
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            Série: {os.pedido.numero_serie_porta}
-                                                        </Typography>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                "-"
+                                            <Typography variant="body2" fontWeight="medium">
+                                                Pedido #{os.pedido_id}
+                                            </Typography>
+                                            {os.pedido?.numero_serie && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Série: {os.pedido.numero_serie}
+                                                </Typography>
                                             )}
                                         </TableCell>
                                         <TableCell>
@@ -615,7 +644,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 </TableContainer>
             )}
 
-            {/* Modal Criar / Editar OS */}
             <Dialog open={modalAberto} onClose={() => setModalAberto(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={salvarOs}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -626,27 +654,30 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                         <Stack spacing={2} sx={{ pt: 1 }}>
                             {erroModal && <Alert severity="error">{erroModal}</Alert>}
 
-                            <FormControl fullWidth required>
-                                <InputLabel id="os-cliente-label">Cliente</InputLabel>
+                            <FormControl fullWidth>
+                                <InputLabel id="os-cliente-label">Filtrar por Cliente (opcional)</InputLabel>
                                 <Select
                                     labelId="os-cliente-label"
-                                    label="Cliente"
-                                    value={form.cliente_id}
-                                    onChange={(e) => setForm({ ...form, cliente_id: e.target.value, pedido_id: "" })}
+                                    label="Filtrar por Cliente (opcional)"
+                                    value={form.cliente_id_filtro}
+                                    onChange={(e) =>
+                                        setForm({ ...form, cliente_id_filtro: e.target.value, pedido_id: "" })
+                                    }
                                 >
+                                    <MenuItem value="">Todos os Clientes</MenuItem>
                                     {clientes.map((c) => (
-                                        <MenuItem key={c.id} value={String(c.id)}>
-                                            {c.usuario?.nome_completo || `Cliente #${c.id}`} ({c.cnpj_cpf})
+                                        <MenuItem key={c.usuario_id} value={String(c.usuario_id)}>
+                                            {c.usuario?.nome_completo || `Cliente #${c.usuario_id}`} ({c.cnpj_cpf})
                                         </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
 
-                            <FormControl fullWidth>
-                                <InputLabel id="os-pedido-label">Pedido / Porta Vinculada (opcional)</InputLabel>
+                            <FormControl fullWidth required>
+                                <InputLabel id="os-pedido-label">Pedido / Porta Vinculada</InputLabel>
                                 <Select
                                     labelId="os-pedido-label"
-                                    label="Pedido / Porta Vinculada (opcional)"
+                                    label="Pedido / Porta Vinculada"
                                     value={form.pedido_id}
                                     onChange={(e) => {
                                         const pedId = e.target.value;
@@ -659,12 +690,11 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                         });
                                     }}
                                 >
-                                    <MenuItem value="">Sem pedido vinculado (chamado avulso)</MenuItem>
-                                    {pedidosDoClienteSelecionado.map((p) => (
+                                    {pedidosDisponiveisForm.map((p) => (
                                         <MenuItem key={p.id} value={String(p.id)}>
-                                            #{p.codigo_proposta || p.id}
-                                            {p.numero_serie_porta ? ` • Série: ${p.numero_serie_porta}` : ""} (
-                                            {p.status})
+                                            Pedido #{p.id} —{" "}
+                                            {p.cliente?.usuario?.nome_completo || `Cliente #${p.cliente_id}`}
+                                            {p.numero_serie ? ` • Série: ${p.numero_serie}` : ""} ({p.status})
                                         </MenuItem>
                                     ))}
                                 </Select>
@@ -722,7 +752,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
 
                             <Grid container spacing={2}>
                                 <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth required>
+                                    <FormControl fullWidth>
                                         <InputLabel id="os-tecnico-label">Técnico Responsável</InputLabel>
                                         <Select
                                             labelId="os-tecnico-label"
@@ -732,6 +762,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                                 setForm({ ...form, tecnico_responsavel_id: e.target.value })
                                             }
                                         >
+                                            <MenuItem value="">Aguardando atribuição</MenuItem>
                                             {tecnicosDisponiveis.map((t) => (
                                                 <MenuItem key={t.id} value={String(t.id)}>
                                                     {t.nome_completo} ({t.perfil})
@@ -790,7 +821,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 </form>
             </Dialog>
 
-            {/* Modal Atender / Finalizar OS (Parecer + Assinatura Digital) */}
             <Dialog open={Boolean(osAtender)} onClose={() => setOsAtender(null)} maxWidth="sm" fullWidth>
                 <form onSubmit={salvarAtendimento}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -801,30 +831,11 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                         <Stack spacing={2} sx={{ pt: 1 }}>
                             {erroAtender && <Alert severity="error">{erroAtender}</Alert>}
 
-                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: "grey.50" }}>
-                                <Typography variant="subtitle2" fontWeight="bold">
-                                    {osAtender?.cliente?.usuario?.nome_completo || `Cliente #${osAtender?.cliente_id}`} —{" "}
-                                    {osAtender?.tipo_servico}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                    Cobertura: {osAtender?.origem_cobertura || "-"} • Técnico:{" "}
-                                    {osAtender?.tecnico_responsavel?.nome_completo ||
-                                        (osAtender?.tecnico_responsavel_id
-                                            ? `#${osAtender.tecnico_responsavel_id}`
-                                            : "Aguardando atribuição")}
-                                </Typography>
-                                {osAtender?.descricao_problema && (
-                                    <Typography variant="body2" sx={{ mt: 0.75 }}>
-                                        <strong>Problema:</strong> {osAtender.descricao_problema}
-                                    </Typography>
-                                )}
-                            </Paper>
-
-                            <FormControl fullWidth required>
-                                <InputLabel id="atender-status-label">Status do Atendimento</InputLabel>
+                            <FormControl fullWidth>
+                                <InputLabel id="atender-status-label">Novo Status da OS</InputLabel>
                                 <Select
                                     labelId="atender-status-label"
-                                    label="Status do Atendimento"
+                                    label="Novo Status da OS"
                                     value={statusAtender}
                                     onChange={(e) => setStatusAtender(e.target.value)}
                                 >
@@ -841,26 +852,16 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                 fullWidth
                                 multiline
                                 rows={3}
-                                label="Parecer Técnico"
-                                placeholder="Descreva os procedimentos realizados, peças substituídas e estado final..."
+                                label="Parecer Técnico do Atendimento"
+                                placeholder="Descreva a causa diagnosticada, peças substituídas e ajustes realizados..."
                                 value={parecerAtender}
                                 onChange={(e) => setParecerAtender(e.target.value)}
                             />
 
-                            <Divider />
-
-                            {osAtender?.assinatura_cliente_digital && (
-                                <VisualizarAssinatura
-                                    valor={osAtender.assinatura_cliente_digital}
-                                    titulo="Assinatura Registrada Anteriormente"
-                                />
-                            )}
-
                             <AssinaturaDigital
                                 valor={assinaturaAtender}
                                 onChange={setAssinaturaAtender}
-                                label="Assinatura Digital do Cliente (Aceite da OS)"
-                                altura={135}
+                                label="Assinatura Digital do Cliente (Comprovante de Atendimento)"
                             />
                         </Stack>
                     </DialogContent>
@@ -869,13 +870,16 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                             Cancelar
                         </Button>
                         <Button type="submit" variant="contained" color="success" disabled={salvandoAtender}>
-                            {salvandoAtender ? <CircularProgress size={20} color="inherit" /> : "Salvar Atendimento"}
+                            {salvandoAtender ? (
+                                <CircularProgress size={20} color="inherit" />
+                            ) : (
+                                "Registrar Parecer e Salvar"
+                            )}
                         </Button>
                     </DialogActions>
                 </form>
             </Dialog>
 
-            {/* Confirmação de Exclusão */}
             <Dialog open={Boolean(osExcluir)} onClose={() => setOsExcluir(null)} maxWidth="xs" fullWidth>
                 <DialogTitle>Confirmar Exclusão</DialogTitle>
                 <DialogContent dividers>

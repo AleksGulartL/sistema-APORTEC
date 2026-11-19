@@ -17,8 +17,8 @@ function limparAcentosUpper(texto) {
         .replace(/[\u0300-\u036f]/g, "");
 }
 
-function normalizarPerfil(cargo, estrito = false) {
-    if (!cargo) {
+function normalizarPerfil(perfil, estrito = false) {
+    if (!perfil) {
         if (estrito) {
             const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
             erro.status = 400;
@@ -26,13 +26,9 @@ function normalizarPerfil(cargo, estrito = false) {
         }
         return "TECNICO";
     }
-    const upper = limparAcentosUpper(cargo);
+    const upper = limparAcentosUpper(perfil);
     if (PERFIS_VALIDOS.includes(upper)) return upper;
-    if (upper.includes("ADM") || upper.includes("ADMIN") || upper.includes("ADMINISTRADOR") || upper.includes("GERENTE")) {
-        return "ADM";
-    }
-    if (upper.includes("TECNIC")) return "TECNICO";
-    if (upper.includes("CLIENT")) return "CLIENTE";
+    if (upper === "ADMIN" || upper === "ADMINISTRADOR") return "ADM";
 
     if (estrito) {
         const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
@@ -58,23 +54,22 @@ async function verificarSenha(senha, hash) {
     try {
         return await bcrypt.compare(senha, hash);
     } catch {
-        return senha === hash;
+        return false;
     }
 }
 
-async function autenticarUsuario(id, senha) {
-    const loginUser = (id || "").trim();
-    const loginPass = senha || "";
+async function autenticarUsuario(emailInput, senhaInput) {
+    const loginEmail = (emailInput || "").trim();
+    const loginSenha = senhaInput || "";
 
-    if (!loginUser || !loginPass) {
+    if (!loginEmail || !loginSenha) {
         return { sucesso: false, mensagem: "E-mail e senha são obrigatórios." };
     }
 
-    const usuarioEncontrado = await authRepository.buscarPorEmail(loginUser);
+    const usuarioEncontrado = await authRepository.buscarPorEmail(loginEmail);
 
-    // Comparação com tempo constante para mitigar enumeração de contas
     const hashParaComparar = usuarioEncontrado?.senha_hash || HASH_FICTICIO;
-    const senhaValida = await verificarSenha(loginPass, hashParaComparar);
+    const senhaValida = await verificarSenha(loginSenha, hashParaComparar);
 
     if (!usuarioEncontrado || !senhaValida) {
         return { sucesso: false, mensagem: "Credenciais inválidas." };
@@ -84,24 +79,20 @@ async function autenticarUsuario(id, senha) {
         return { sucesso: false, mensagem: "Usuário inativo. Contate o administrador." };
     }
 
-    const idUsuario = usuarioEncontrado.id_usuario || usuarioEncontrado.id;
-    const usuarioPayload = {
-        id_usuario: idUsuario,
-        nome_completo: usuarioEncontrado.nome_completo,
-        email: usuarioEncontrado.email,
-        perfil: usuarioEncontrado.perfil,
-        ativo: usuarioEncontrado.ativo,
-    };
-
     return {
         sucesso: true,
-        usuario: usuarioPayload,
+        usuario: {
+            id: usuarioEncontrado.id,
+            nome_completo: usuarioEncontrado.nome_completo,
+            email: usuarioEncontrado.email,
+            perfil: usuarioEncontrado.perfil,
+            ativo: usuarioEncontrado.ativo,
+        },
     };
 }
 
 function solicitanteAdm(solicitante) {
     if (!solicitante) return false;
-    // Apenas verifica o campo `perfil`
     const papel = String(solicitante.perfil || "").trim().toUpperCase();
     return papel === "ADM" || papel === "ADMIN" || papel === "ADMINISTRADOR";
 }
@@ -119,10 +110,9 @@ async function criarNovoUsuario(dados, solicitante = null) {
         throw erro;
     }
 
-    const nome = (dados.nome_completo || dados.nome || "").trim();
-    const emailBruto = dados.email || dados.username || "";
-    const senha = dados.senha || dados.password || dados.senha_hash || "";
-    const perfil = normalizarPerfil(dados.perfil || dados.role, true);
+    const nome = (dados.nome_completo || "").trim();
+    const senha = dados.senha || "";
+    const perfil = dados.perfil ? normalizarPerfil(dados.perfil, true) : "TECNICO";
 
     if (!nome) {
         const erro = new Error("O campo 'nome_completo' é obrigatório.");
@@ -130,7 +120,7 @@ async function criarNovoUsuario(dados, solicitante = null) {
         throw erro;
     }
 
-    const email = validarGmail(emailBruto, "O campo 'email' é obrigatório.");
+    const email = validarGmail(dados.email, "O campo 'email' é obrigatório.");
 
     if (!senha) {
         const erro = new Error("O campo 'senha' é obrigatório.");
@@ -156,9 +146,8 @@ async function criarNovoUsuario(dados, solicitante = null) {
         ativo: true,
     });
 
-    const idCriado = novoUsuario.id_usuario || novoUsuario.id;
     return {
-        id_usuario: idCriado,
+        id: novoUsuario.id,
         nome_completo: novoUsuario.nome_completo,
         email: novoUsuario.email,
         perfil: novoUsuario.perfil,
@@ -166,10 +155,8 @@ async function criarNovoUsuario(dados, solicitante = null) {
 }
 
 function gerarToken(usuario) {
-    const id = usuario.id_usuario || usuario.id;
     const payload = {
-        id,
-        id_usuario: id,
+        id: usuario.id,
         email: usuario.email,
         nome_completo: usuario.nome_completo,
         perfil: usuario.perfil || "CLIENTE",

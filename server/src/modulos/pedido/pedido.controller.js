@@ -1,4 +1,5 @@
 const pedidoService = require("./pedido.service");
+const { responderErroController } = require("../../utils/tratarErroController");
 
 async function listar(req, res) {
     try {
@@ -6,7 +7,7 @@ async function listar(req, res) {
         return res.status(200).json(pedidos);
     } catch (erro) {
         console.error("Erro ao buscar pedidos:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro);
     }
 }
 
@@ -19,7 +20,7 @@ async function buscarPorId(req, res) {
         return res.status(200).json(pedido);
     } catch (erro) {
         console.error("Erro ao buscar pedido:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro);
     }
 }
 
@@ -29,10 +30,11 @@ async function criar(req, res) {
         return res.status(201).json(pedido);
     } catch (erro) {
         console.error("Erro ao criar pedido:", erro);
-        if (erro.code === "23503") {
-            return res.status(400).json({ erro: "id_pedido informado não existe" });
-        }
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemDuplicado: "Já existe um pedido cadastrado com este número de série.",
+            mensagemVinculo: "Cliente ou usuário responsável informado não existe.",
+        });
     }
 }
 
@@ -45,10 +47,11 @@ async function atualizar(req, res) {
         return res.status(200).json(pedido);
     } catch (erro) {
         console.error("Erro ao atualizar pedido:", erro);
-        if (erro.code === "23503") {
-            return res.status(400).json({ erro: "Pedido informado não existe." });
-        }
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemDuplicado: "Já existe um pedido cadastrado com este número de série.",
+            mensagemVinculo: "Cliente ou usuário responsável informado não existe.",
+        });
     }
 }
 
@@ -61,7 +64,7 @@ async function atualizarStatusEtapa(req, res) {
         return res.status(200).json(resultado);
     } catch (erro) {
         console.error("Erro ao atualizar status da etapa do pedido:", erro);
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, { statusPadrao: 400 });
     }
 }
 
@@ -74,7 +77,10 @@ async function coletarAssinaturaAceite(req, res) {
         return res.status(200).json(resultado);
     } catch (erro) {
         console.error("Erro ao coletar assinatura de aceite do pedido:", erro);
-        return res.status(erro.status || 400).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemDuplicado: "Já existe outra porta registrada com este número de série.",
+        });
     }
 }
 
@@ -87,7 +93,10 @@ async function deletar(req, res) {
         return res.status(200).json({ mensagem: "Pedido removido com sucesso.", pedido });
     } catch (erro) {
         console.error("Erro ao excluir pedido:", erro);
-        return res.status(erro.status || 500).json({ erro: erro.message });
+        return responderErroController(res, erro, {
+            mensagemVinculo:
+                "Não é possível excluir este pedido pois ele possui Ordens de Serviço vinculadas.",
+        });
     }
 }
 

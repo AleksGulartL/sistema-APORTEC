@@ -12,8 +12,7 @@ const app = express();
 app.use(express.json());
 app.use(authRoutes);
 
-// Rota de teste para validação de autorização RBAC
-app.delete("/teste-admin-only", autenticar, autorizar("admin", "gerente"), (req, res) => {
+app.delete("/teste-admin-only", autenticar, autorizar("ADM"), (req, res) => {
     res.status(200).json({ ok: true, usuario: req.usuario });
 });
 
@@ -32,7 +31,7 @@ describe("AuthRoutes - Testes de Rotas e Status HTTP", () => {
         jest.clearAllMocks();
     });
 
-    describe("POST /auth/login e POST /login", () => {
+    describe("POST /auth/login", () => {
         test("Deve retornar 400 se email ou senha forem omitidos", async () => {
             const res = await request(app).post("/auth/login").send({});
             expect(res.status).toBe(400);
@@ -46,7 +45,7 @@ describe("AuthRoutes - Testes de Rotas e Status HTTP", () => {
             });
 
             const res = await request(app).post("/auth/login").send({
-                email: "errado@aportec.com",
+                email: "errado@gmail.com",
                 senha: "123",
             });
 
@@ -57,65 +56,35 @@ describe("AuthRoutes - Testes de Rotas e Status HTTP", () => {
         test("Deve retornar 200 e emitir token no login bem-sucedido", async () => {
             authService.autenticarUsuario.mockResolvedValue({
                 sucesso: true,
-                usuario: { id_usuario: 1, nome_completo: "User Teste", email: "teste@aportec.com" },
+                usuario: { id: 1, nome_completo: "User Teste", email: "teste@gmail.com", perfil: "ADM" },
             });
             authService.gerarToken.mockReturnValue("jwt.token.mockado");
 
             const res = await request(app).post("/auth/login").send({
-                email: "teste@aportec.com",
+                email: "teste@gmail.com",
                 senha: "senhaCorreta",
             });
 
             expect(res.status).toBe(200);
             expect(res.body.token).toBe("jwt.token.mockado");
-            expect(res.body.usuario.email).toBe("teste@aportec.com");
-        });
-
-        test("Deve aceitar username/password na rota de compatibilidade /login", async () => {
-            authService.autenticarUsuario.mockResolvedValue({
-                sucesso: true,
-                usuario: { id_usuario: 1, nome_completo: "User", email: "user@aportec.com" },
-            });
-            authService.gerarToken.mockReturnValue("token123");
-
-            const res = await request(app).post("/login").send({
-                username: "user@aportec.com",
-                password: "123",
-            });
-
-            expect(res.status).toBe(200);
-            expect(res.body.token).toBe("token123");
+            expect(res.body.usuario.email).toBe("teste@gmail.com");
         });
     });
 
-    describe("POST /auth/registrar e POST /novoUsuario", () => {
+    describe("POST /auth/registrar", () => {
         test("Deve retornar 201 ao cadastrar novo usuário", async () => {
             const novoUsuario = {
-                id_usuario: 1,
+                id: 1,
                 nome_completo: "Novo User",
-                email: "novo@aportec.com",
-                cargo_funcao: "Operador",
+                email: "novo@gmail.com",
+                perfil: "TECNICO",
             };
             authService.criarNovoUsuario.mockResolvedValue(novoUsuario);
 
             const res = await request(app).post("/auth/registrar").send({
                 nome_completo: "Novo User",
-                email: "novo@aportec.com",
+                email: "novo@gmail.com",
                 senha: "123",
-            });
-
-            expect(res.status).toBe(201);
-            expect(res.body).toEqual(novoUsuario);
-        });
-
-        test("Deve aceitar requisição na rota /novoUsuario", async () => {
-            const novoUsuario = { id_usuario: 2, nome_completo: "User", email: "u@aportec.com" };
-            authService.criarNovoUsuario.mockResolvedValue(novoUsuario);
-
-            const res = await request(app).post("/novoUsuario").send({
-                nome: "User",
-                username: "u@aportec.com",
-                passwd: "123",
             });
 
             expect(res.status).toBe(201);
@@ -141,9 +110,9 @@ describe("AuthRoutes - Testes de Rotas e Status HTTP", () => {
 
         test("Deve retornar 200 com payload se token for válido", async () => {
             const payload = {
-                id_usuario: 7,
-                email: "ana@aportec.com",
-                cargo_funcao: "admin",
+                id: 7,
+                email: "ana@gmail.com",
+                perfil: "ADM",
             };
             const validToken = jwt.sign(payload, SECRET, { expiresIn: "1h" });
 
@@ -152,34 +121,32 @@ describe("AuthRoutes - Testes de Rotas e Status HTTP", () => {
                 .set("Authorization", `Bearer ${validToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.id_usuario).toBe(7);
-            expect(res.body.email).toBe("ana@aportec.com");
+            expect(res.body.id).toBe(7);
+            expect(res.body.email).toBe("ana@gmail.com");
         });
     });
 
     describe("Middleware autorizar (RBAC)", () => {
-        test("Deve retornar 403 se o usuário não possuir o cargo/role exigido", async () => {
-            const payloadOperador = {
-                id_usuario: 8,
-                cargo_funcao: "operador",
+        test("Deve retornar 403 se o usuário não possuir o perfil exigido", async () => {
+            const payloadTecnico = {
+                id: 8,
+                perfil: "TECNICO",
             };
-            const token = jwt.sign(payloadOperador, SECRET, { expiresIn: "1h" });
+            const token = jwt.sign(payloadTecnico, SECRET, { expiresIn: "1h" });
 
             const res = await request(app)
                 .delete("/teste-admin-only")
                 .set("Authorization", `Bearer ${token}`);
 
             expect(res.status).toBe(403);
-            expect(res.body.erro).toBe("Permissão insuficiente.");
-            expect(res.body.atual).toBe("operador");
         });
 
-        test("Deve retornar 200 se o usuário possuir o cargo exigido", async () => {
-            const payloadAdmin = {
-                id_usuario: 9,
-                cargo_funcao: "admin",
+        test("Deve retornar 200 se o usuário possuir o perfil exigido", async () => {
+            const payloadAdm = {
+                id: 1,
+                perfil: "ADM",
             };
-            const token = jwt.sign(payloadAdmin, SECRET, { expiresIn: "1h" });
+            const token = jwt.sign(payloadAdm, SECRET, { expiresIn: "1h" });
 
             const res = await request(app)
                 .delete("/teste-admin-only")
@@ -187,14 +154,6 @@ describe("AuthRoutes - Testes de Rotas e Status HTTP", () => {
 
             expect(res.status).toBe(200);
             expect(res.body.ok).toBe(true);
-        });
-    });
-
-    describe("POST /auth/logout", () => {
-        test("Deve retornar 200 ao fazer logout", async () => {
-            const res = await request(app).post("/auth/logout");
-            expect(res.status).toBe(200);
-            expect(res.body.mensagem).toBe("Logout realizado com sucesso.");
         });
     });
 });

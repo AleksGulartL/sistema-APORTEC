@@ -1,34 +1,23 @@
 const pedidoItemRepository = require("./pedidoItem.repository");
 
-function extrairPedidoId(dados) {
-    return dados.pedido_id ?? dados.id_pedido ?? dados.id_orcamento;
-}
-
-function extrairItemId(dados) {
-    return dados.item_id ?? dados.id_item_catalogo ?? dados.id_item;
-}
-
 function validarPedidoItem(dados, isUpdate = false) {
-    const pedidoIdRaw = extrairPedidoId(dados);
-    const itemIdRaw = extrairItemId(dados);
-
     if (!isUpdate) {
-        const pedidoIdNum = Number(pedidoIdRaw);
-        if (!pedidoIdRaw || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
+        const pedidoIdNum = Number(dados.pedido_id);
+        if (!dados.pedido_id || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
             const erro = new Error("O campo 'pedido_id' é obrigatório e deve ser um número inteiro válido.");
             erro.status = 400;
             throw erro;
         }
 
-        const itemIdNum = Number(itemIdRaw);
-        if (!itemIdRaw || !Number.isInteger(itemIdNum) || itemIdNum <= 0) {
+        const itemIdNum = Number(dados.item_id);
+        if (!dados.item_id || !Number.isInteger(itemIdNum) || itemIdNum <= 0) {
             const erro = new Error("O campo 'item_id' é obrigatório e deve ser um número inteiro maior que zero.");
             erro.status = 400;
             throw erro;
         }
     } else {
-        if (pedidoIdRaw !== undefined) {
-            const pedidoIdNum = Number(pedidoIdRaw);
+        if (dados.pedido_id !== undefined) {
+            const pedidoIdNum = Number(dados.pedido_id);
             if (!Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
                 const erro = new Error("O campo 'pedido_id' deve ser um número inteiro válido.");
                 erro.status = 400;
@@ -36,8 +25,8 @@ function validarPedidoItem(dados, isUpdate = false) {
             }
         }
 
-        if (itemIdRaw !== undefined) {
-            const itemIdNum = Number(itemIdRaw);
+        if (dados.item_id !== undefined) {
+            const itemIdNum = Number(dados.item_id);
             if (!Number.isInteger(itemIdNum) || itemIdNum <= 0) {
                 const erro = new Error("O campo 'item_id' deve ser um número inteiro maior que zero.");
                 erro.status = 400;
@@ -63,15 +52,6 @@ function validarPedidoItem(dados, isUpdate = false) {
             throw erro;
         }
     }
-
-    if (dados.valor_total !== undefined && dados.valor_total !== null) {
-        const valorTotalNum = Number(dados.valor_total);
-        if (isNaN(valorTotalNum) || valorTotalNum < 0) {
-            const erro = new Error("O 'valor_total' deve ser um número maior ou igual a zero.");
-            erro.status = 400;
-            throw erro;
-        }
-    }
 }
 
 async function listar() {
@@ -89,9 +69,9 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    validarPedidoItem(dados);
-    const pedidoId = Number(extrairPedidoId(dados));
-    const itemId = Number(extrairItemId(dados));
+    validarPedidoItem(dados, false);
+    const pedidoId = Number(dados.pedido_id);
+    const itemId = Number(dados.item_id);
     const quantidade = dados.quantidade !== undefined ? Number(dados.quantidade) : 1;
 
     let valorUnitario = dados.valor_unitario !== undefined ? Number(dados.valor_unitario) : undefined;
@@ -102,21 +82,12 @@ async function criar(dados) {
         }
     }
 
-    let valorTotal = dados.valor_total !== undefined ? Number(dados.valor_total) : undefined;
-    if (valorTotal === undefined && valorUnitario !== undefined) {
-        valorTotal = Number((quantidade * valorUnitario).toFixed(2));
-    } else if (valorUnitario === undefined && valorTotal !== undefined && quantidade > 0) {
-        valorUnitario = Number((valorTotal / quantidade).toFixed(2));
-    }
-
-    const dadosFormatados = {
+    return pedidoItemRepository.criar({
         pedido_id: pedidoId,
         item_id: itemId,
         quantidade,
         valor_unitario: valorUnitario ?? 0,
-    };
-
-    return pedidoItemRepository.criar(dadosFormatados);
+    });
 }
 
 async function atualizar(id, dados) {
@@ -130,23 +101,18 @@ async function atualizar(id, dados) {
     validarPedidoItem(dados, true);
     const dadosFormatados = {};
 
-    const pedidoIdRaw = extrairPedidoId(dados);
-    if (pedidoIdRaw !== undefined) {
-        dadosFormatados.pedido_id = Number(pedidoIdRaw);
+    if (dados.pedido_id !== undefined) {
+        dadosFormatados.pedido_id = Number(dados.pedido_id);
     }
-
-    const itemIdRaw = extrairItemId(dados);
-    if (itemIdRaw !== undefined) {
-        dadosFormatados.item_id = Number(itemIdRaw);
+    if (dados.item_id !== undefined) {
+        dadosFormatados.item_id = Number(dados.item_id);
     }
-
     if (dados.quantidade !== undefined) {
         dadosFormatados.quantidade = Number(dados.quantidade);
     }
     if (dados.valor_unitario !== undefined) {
         dadosFormatados.valor_unitario = Number(dados.valor_unitario);
     }
-
 
     return pedidoItemRepository.atualizar(idNum, dadosFormatados);
 }
