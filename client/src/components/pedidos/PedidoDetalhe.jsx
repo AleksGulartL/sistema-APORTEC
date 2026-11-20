@@ -48,6 +48,7 @@ import QrCode2Icon from "@mui/icons-material/QrCode2";
 import SaveIcon from "@mui/icons-material/Save";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import PagamentoFields from "../comum/PagamentoFields";
 import api from "../../services/api";
 import {
     calcularSubtotalItem,
@@ -150,6 +151,7 @@ export default function PedidoDetalhe({
             status_aprovacao: pedido.status_aprovacao || "Pendente",
             percentual_acrescimo: String(pedido.percentual_acrescimo ?? 0),
             endereco_instalacao: pedido.endereco_instalacao || "",
+            forma_pagamento: pedido.forma_pagamento || "",
             condicoes_pagamento: pedido.condicoes_pagamento || "",
             data_previsao_fim: extrairChaveDataLocal(pedido.data_previsao_fim) || "",
         });
@@ -217,6 +219,7 @@ export default function PedidoDetalhe({
             status_aprovacao: novoStatusAprovacao,
             percentual_acrescimo: percNum,
             endereco_instalacao: formComercial.endereco_instalacao.trim() || null,
+            forma_pagamento: formComercial.forma_pagamento.trim() || null,
             condicoes_pagamento: formComercial.condicoes_pagamento.trim() || null,
             data_previsao_fim: formComercial.data_previsao_fim || null,
             bloqueio_fabricacao: bloqueado,
@@ -739,19 +742,10 @@ export default function PedidoDetalhe({
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="Condições de Pagamento"
-                                            placeholder="Ex: 50% entrada + 50% na entrega"
-                                            disabled={!ehAdm}
-                                            value={formComercial.condicoes_pagamento || ""}
-                                            onChange={(e) =>
-                                                setFormComercial({
-                                                    ...formComercial,
-                                                    condicoes_pagamento: e.target.value,
-                                                })
-                                            }
-                                        />
+                                        <PagamentoFields forma={formComercial.forma_pagamento || ""} condicoes={formComercial.condicoes_pagamento || ""}
+                                disabled={!ehAdm}
+                                onForma={(value) => setFormComercial((form) => ({ ...form, forma_pagamento: value }))}
+                                onCondicoes={(value) => setFormComercial((form) => ({ ...form, condicoes_pagamento: value }))} />
                                     </Grid>
                                 </Grid>
 

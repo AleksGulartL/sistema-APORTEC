@@ -138,6 +138,7 @@ CREATE TABLE pedido (
     motivo_bloqueio TEXT,
     custo_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     percentual_acrescimo NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
+    forma_pagamento TEXT,
     condicoes_pagamento TEXT,
     numero_serie VARCHAR(100) UNIQUE,
     fim_garantia DATE NULL,

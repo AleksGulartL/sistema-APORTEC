@@ -20,6 +20,11 @@ const TIPOS_VALIDOS = ["Instalacao", "Manutencao Preventiva", "Manutencao Corret
 const ETAPAS_FABRICACAO = ["Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao", "Concluido"];
 
 function validarPedido(dados, isUpdate = false) {
+    for (const campo of ["forma_pagamento", "condicoes_pagamento"]) {
+        if (dados[campo] != null && (typeof dados[campo] !== "string" || dados[campo].length > 1000)) {
+            throw Object.assign(new Error(`${campo} deve ser um texto de até 1000 caracteres.`), { status: 400 });
+        }
+    }
     if (!isUpdate || dados.cliente_id !== undefined) {
         const idClienteNum = Number(dados.cliente_id);
         if (!dados.cliente_id || !Number.isInteger(idClienteNum) || idClienteNum <= 0) {

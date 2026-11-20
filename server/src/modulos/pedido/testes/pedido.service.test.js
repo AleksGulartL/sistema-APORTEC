@@ -110,3 +110,11 @@ test("novo orçamento sempre começa em rascunho, sem aprovação nem custo arbi
 test("não permite escolher uma etapa operacional na criação", async () => {
     await expect(pedidoService.criar({ cliente_id: 3, status: "Concluido" })).rejects.toMatchObject({ status: 400 });
 });
+
+test("aceita formas e condições personalizadas e rejeita valores que não são texto", async () => {
+    await pedidoService.criar({ cliente_id: 3, forma_pagamento: "Pagamento combinado", condicoes_pagamento: "30% agora e restante em 45 dias" });
+    expect(pedidoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
+        forma_pagamento: "Pagamento combinado", condicoes_pagamento: "30% agora e restante em 45 dias",
+    }));
+    await expect(pedidoService.criar({ cliente_id: 3, forma_pagamento: 123 })).rejects.toMatchObject({ status: 400 });
+});

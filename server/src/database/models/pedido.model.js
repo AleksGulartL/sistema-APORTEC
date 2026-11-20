@@ -106,6 +106,7 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("percentual_acrescimo"));
             },
         },
+        forma_pagamento: { type: DataTypes.TEXT, allowNull: true },
         condicoes_pagamento: {
             type: DataTypes.TEXT,
             allowNull: true,

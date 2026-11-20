@@ -38,6 +38,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
+import PagamentoFields from "./comum/PagamentoFields";
 import api from "../services/api";
 import {
     calcularValorTotalPedido,
@@ -61,6 +62,7 @@ const FORM_INICIAL = {
     status_aprovacao: "Pendente",
     percentual_acrescimo: "0",
     endereco_instalacao: "",
+    forma_pagamento: "",
     condicoes_pagamento: "",
     data_previsao_fim: "",
 };
@@ -223,6 +225,7 @@ export default function Pedidos({
             status_aprovacao: formNovo.status_aprovacao,
             percentual_acrescimo: percNum,
             endereco_instalacao: formNovo.endereco_instalacao.trim() || null,
+            forma_pagamento: formNovo.forma_pagamento.trim() || null,
             condicoes_pagamento: formNovo.condicoes_pagamento.trim() || null,
             data_previsao_fim: formNovo.data_previsao_fim || null,
             bloqueio_fabricacao: true,
@@ -684,15 +687,10 @@ export default function Pedidos({
                                 }
                             />
 
-                            <TextField
-                                fullWidth
-                                label="Condições de Pagamento"
-                                placeholder="Ex: 50% na aprovação + 50% após instalação"
-                                value={formNovo.condicoes_pagamento}
-                                onChange={(e) =>
-                                    setFormNovo({ ...formNovo, condicoes_pagamento: e.target.value })
-                                }
-                            />
+                            <PagamentoFields forma={formNovo.forma_pagamento || ""} condicoes={formNovo.condicoes_pagamento || ""}
+                                
+                                onForma={(value) => setFormNovo((form) => ({ ...form, forma_pagamento: value }))}
+                                onCondicoes={(value) => setFormNovo((form) => ({ ...form, condicoes_pagamento: value }))} />
                         </Stack>
                     </DialogContent>
                     <DialogActions sx={{ p: 2 }}>
