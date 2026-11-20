@@ -18,7 +18,8 @@
         "dev": "nodemon main.js",
         "start": "node main.js",
         "seed": "node src/database/seed.js",
-        "test": "jest --runInBand --detectOpenHandles"
+        "test": "jest --runInBand --detectOpenHandles",
+        "db:migrate": "node src/database/migrate.js"
     },
     "devDependencies": {
         "jest": "^30.5.2",

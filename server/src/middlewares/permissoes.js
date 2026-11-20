@@ -83,6 +83,7 @@ const PERMISSOES = Object.freeze({
     // Portal do Cliente (escopo isolado aos registros do próprio cliente autenticado)
     portalCliente: {
         obterResumo: [CLIENTE],
+        criarSolicitacao: [CLIENTE],
         responderAprovacao: [CLIENTE],
         abrirSolicitacao: [CLIENTE],
     },

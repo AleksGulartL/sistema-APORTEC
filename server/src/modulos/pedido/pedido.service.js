@@ -1,6 +1,8 @@
 const pedidoRepository = require("./pedido.repository");
 
 const STATUS_VALIDOS = [
+    "Recebida",
+    "Em Avaliacao",
     "Rascunho",
     "Pendente",
     "Aguardando",

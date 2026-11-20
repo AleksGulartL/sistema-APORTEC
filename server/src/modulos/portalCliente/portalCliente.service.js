@@ -143,7 +143,43 @@ async function abrirSolicitacaoManutencao(usuarioLogado, dados = {}) {
     });
 }
 
+// O mesmo registro acompanha a solicitação, o orçamento e a execução.
+async function criarSolicitacao(usuarioLogado, dados = {}) {
+    const cliente = await obterClienteVinculado(usuarioLogado);
+    const tipos = ["Instalacao", ...TIPOS_SOLICITACAO_CLIENTE];
+    if (!tipos.includes(dados.tipo_servico)) {
+        throw Object.assign(new Error("Selecione um tipo de serviço válido."), { status: 400 });
+    }
+    const descricao = typeof dados.descricao_problema === "string" ? dados.descricao_problema.trim() : "";
+    const endereco = typeof dados.endereco === "string" ? dados.endereco.trim() : "";
+    if (!descricao || !endereco) {
+        throw Object.assign(new Error("Informe a descrição do serviço e o endereço de atendimento."), { status: 400 });
+    }
+    let origem = null;
+    if (dados.pedido_origem_id != null && dados.pedido_origem_id !== "") {
+        const id = Number(dados.pedido_origem_id);
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            throw Object.assign(new Error("Porta / Pedido de origem inválido."), { status: 400 });
+        }
+        origem = await portalClienteRepository.buscarPedidoDoClientePorId(id, cliente.usuario_id);
+        if (!origem) throw Object.assign(new Error("Porta / Pedido selecionado não pertence a este cliente."), { status: 404 });
+    }
+    return portalClienteRepository.criarSolicitacao({
+        cliente_id: cliente.usuario_id,
+        usuario_criador_id: Number(usuarioLogado.id),
+        tipo_pedido: dados.tipo_servico,
+        descricao_solicitacao: descricao,
+        endereco_instalacao: endereco,
+        pedido_origem_id: origem?.id || null,
+        status: "Recebida",
+        status_aprovacao: "Pendente",
+        bloqueio_fabricacao: true,
+        motivo_bloqueio: "Solicitação recebida; aguardando avaliação técnica e orçamento.",
+    });
+}
+
 module.exports = {
+    criarSolicitacao,
     obterResumo,
     responderAprovacaoOrcamento,
     abrirSolicitacaoManutencao,

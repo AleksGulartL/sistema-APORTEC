@@ -39,6 +39,8 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("responsavel_producao_id"));
             },
         },
+        descricao_solicitacao: { type: DataTypes.TEXT, allowNull: true },
+        pedido_origem_id: { type: DataTypes.BIGINT, allowNull: true },
         endereco_instalacao: {
             type: DataTypes.TEXT,
             allowNull: true,
@@ -58,6 +60,8 @@ const pedido = sequelize.define(
         },
         status: {
             type: DataTypes.ENUM(
+                "Recebida",
+                "Em Avaliacao",
                 "Rascunho",
                 "Pendente",
                 "Aguardando",

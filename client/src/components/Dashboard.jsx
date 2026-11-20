@@ -192,6 +192,18 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                 </Box>
             ) : (
                 <>
+                    {pedidos.some((p) => ["Recebida", "Em Avaliacao"].includes(p.status)) && (
+                        <Stack spacing={1} sx={{ mb: 3 }}>
+                            <Typography variant="h6">Solicitações de serviço</Typography>
+                            {pedidos.filter((p) => ["Recebida", "Em Avaliacao"].includes(p.status)).map((p) => (
+                                <Alert key={p.id} severity={p.responsavel_producao_id ? "info" : "warning"}
+                                    action={<Button onClick={() => onAbrirPedido?.(p.id)}>Ver solicitação</Button>}>
+                                    #{p.id} — {p.cliente?.usuario?.nome_completo} — {p.tipo_pedido}: {p.descricao_solicitacao || "Sem descrição"}
+                                    {p.responsavel_producao_id ? ` • Técnico: ${p.responsavel_producao?.nome_completo}` : " • Aguardando atribuição de técnico"}
+                                </Alert>
+                            ))}
+                        </Stack>
+                    )}
                     <DashboardKpis
                         totalPedidosAndamento={pedidosEmAndamento.length}
                         totalPedidosTotal={pedidos.length}

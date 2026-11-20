@@ -88,6 +88,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
         pedido_id: "",
         tipo_servico: "Manutencao Corretiva",
         descricao_problema: "",
+        endereco: "",
     });
     const [erroOs, setErroOs] = useState("");
     const [salvandoOs, setSalvandoOs] = useState(false);
@@ -166,12 +167,14 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     }
 
     function abrirNovaSolicitacao(pedidoPreSelecionado = null) {
-        const pedidoPadrao = pedidoPreSelecionado || pedidos[0] || null;
+        const pedidoPadrao = pedidoPreSelecionado;
         setFormOs({
             pedido_id: pedidoPadrao ? String(pedidoPadrao.id) : "",
             tipo_servico: "Manutencao Corretiva",
             descricao_problema: "",
+        endereco: "",
         });
+        setFormOs((form) => ({ ...form, endereco: pedidoPadrao?.endereco_instalacao || dadosCliente?.endereco || "" }));
         setErroOs("");
         setModalOsAberto(true);
     }
@@ -180,10 +183,6 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
         event.preventDefault();
         setErroOs("");
 
-        if (!formOs.pedido_id) {
-            setErroOs("Selecione o pedido / porta para a qual deseja solicitar assistência.");
-            return;
-        }
         if (!formOs.descricao_problema.trim()) {
             setErroOs("Descreva o problema ou o serviço desejado.");
             return;
@@ -191,8 +190,9 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
 
         setSalvandoOs(true);
         try {
-            await api.post("/portal-cliente/ordens-servico", {
-                pedido_id: Number(formOs.pedido_id),
+            await api.post("/portal-cliente/solicitacoes", {
+                pedido_origem_id: formOs.pedido_id ? Number(formOs.pedido_id) : null,
+                endereco: formOs.endereco.trim(),
                 tipo_servico: formOs.tipo_servico,
                 descricao_problema: formOs.descricao_problema.trim(),
             });
@@ -245,6 +245,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => abrirNovaSolicitacao()}>Solicitar serviço</Button>
                     <Button variant="outlined" startIcon={<RefreshIcon />} onClick={carregarResumo}>
                         Atualizar
                     </Button>
@@ -794,20 +795,21 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 <form onSubmit={enviarSolicitacaoOs}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <BuildIcon color="secondary" />
-                        Solicitar Atendimento / Manutenção
+                        Solicitar serviço
                     </DialogTitle>
                     <DialogContent dividers>
                         <Stack spacing={2} sx={{ pt: 0.5 }}>
                             {erroOs && <Alert severity="error">{erroOs}</Alert>}
 
-                            <FormControl fullWidth required>
-                                <InputLabel id="cli-os-porta-label">Porta / Pedido Relacionado</InputLabel>
+                            <FormControl fullWidth>
+                                <InputLabel id="cli-os-porta-label">Porta / Pedido Relacionado (opcional)</InputLabel>
                                 <Select
                                     labelId="cli-os-porta-label"
-                                    label="Porta / Pedido Relacionado"
+                                    label="Porta / Pedido Relacionado (opcional)"
                                     value={formOs.pedido_id}
                                     onChange={(e) => setFormOs({ ...formOs, pedido_id: e.target.value })}
                                 >
+                                    <MenuItem value="">Novo serviço / sem pedido anterior</MenuItem>
                                     {pedidos.map((p) => (
                                         <MenuItem key={p.id} value={String(p.id)}>
                                             {p.numero_serie
@@ -826,11 +828,14 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                     value={formOs.tipo_servico}
                                     onChange={(e) => setFormOs({ ...formOs, tipo_servico: e.target.value })}
                                 >
+                                    <MenuItem value="Instalacao">Nova instalação</MenuItem>
                                     <MenuItem value="Manutencao Corretiva">Manutenção Corretiva (Problema / Defeito)</MenuItem>
                                     <MenuItem value="Manutencao Preventiva">Manutenção Preventiva (Revisão)</MenuItem>
                                 </Select>
                             </FormControl>
 
+                            <TextField required fullWidth label="Endereço de atendimento" value={formOs.endereco}
+                                onChange={(e) => setFormOs({ ...formOs, endereco: e.target.value })} />
                             <TextField
                                 required
                                 fullWidth

@@ -563,7 +563,13 @@ export default function PedidoDetalhe({
                 </Tabs>
 
                 <Box sx={{ p: 3 }}>
-                    {aba === 0 && (
+                    {pedido.descricao_solicitacao && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    Solicitação: {pedido.descricao_solicitacao}
+                    {pedido.pedido_origem_id && ` • Referente ao pedido #${pedido.pedido_origem_id}`}
+                </Alert>
+            )}
+            {aba === 0 && (
                         <form onSubmit={salvarDadosComerciais}>
                             <Stack spacing={2.5}>
                                 <Stack

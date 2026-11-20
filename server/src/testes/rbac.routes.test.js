@@ -25,7 +25,7 @@ jest.mock("../modulos/pedido/pedido.controller", () =>
     mockStubController([...mockCRUD, "atualizarStatusEtapa", "coletarAssinaturaAceite"])
 );
 jest.mock("../modulos/portalCliente/portalCliente.controller", () =>
-    mockStubController(["obterResumo", "responderAprovacao", "abrirSolicitacao"])
+    mockStubController(["obterResumo", "responderAprovacao", "abrirSolicitacao", "criarSolicitacao"])
 );
 
 const app = express();
@@ -40,6 +40,7 @@ app.use(require("../modulos/pedido/pedido.routes"));
 app.use(require("../modulos/portalCliente/portalCliente.routes"));
 
 const ROTAS = [
+    ["post", "/portal-cliente/solicitacoes", "portalCliente", "criarSolicitacao"],
     ["get", "/usuarios", "usuario", "listar"],
     ["get", "/usuarios/1", "usuario", "buscarPorId"],
     ["post", "/usuarios", "usuario", "criar"],

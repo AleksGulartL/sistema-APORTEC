@@ -38,7 +38,16 @@ async function abrirSolicitacao(req, res) {
     }
 }
 
+async function criarSolicitacao(req, res) {
+    try {
+        return res.status(201).json(await portalClienteService.criarSolicitacao(req.usuario, req.body || {}));
+    } catch (erro) {
+        return responderErroController(res, erro, { statusPadrao: 400 });
+    }
+}
+
 module.exports = {
+    criarSolicitacao,
     obterResumo,
     responderAprovacao,
     abrirSolicitacao,

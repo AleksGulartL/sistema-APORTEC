@@ -32,7 +32,7 @@ DROP TYPE IF EXISTS status_ordem_servico;
 CREATE TYPE perfil_usuario AS ENUM ('ADM', 'TECNICO', 'CLIENTE');
 CREATE TYPE status_aprovacao AS ENUM ('Pendente', 'Aprovado', 'Reprovado');
 CREATE TYPE status_pedido AS ENUM (
-    'Rascunho', 'Pendente', 'Aguardando', 'Planejada', 'Em Fabricacao',
+    'Recebida', 'Em Avaliacao', 'Rascunho', 'Pendente', 'Aguardando', 'Planejada', 'Em Fabricacao',
     'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido', 'Cancelado'
 );
 CREATE TYPE tipo_servico AS ENUM ('Instalacao', 'Manutencao Preventiva', 'Manutencao Corretiva');
@@ -128,6 +128,8 @@ CREATE TABLE pedido (
     cliente_id BIGINT NOT NULL,
     usuario_criador_id BIGINT NOT NULL,
     responsavel_producao_id BIGINT NULL,
+    descricao_solicitacao TEXT,
+    pedido_origem_id BIGINT REFERENCES pedido (id) ON DELETE RESTRICT,
     endereco_instalacao TEXT,
     tipo_pedido tipo_servico NOT NULL DEFAULT 'Instalacao',
     status_aprovacao status_aprovacao NOT NULL DEFAULT 'Pendente',

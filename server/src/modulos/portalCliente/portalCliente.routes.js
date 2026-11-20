@@ -9,4 +9,6 @@ router.get("/portal-cliente/resumo", proteger("portalCliente", "obterResumo"), p
 router.patch("/portal-cliente/pedidos/:id/aprovacao", proteger("portalCliente", "responderAprovacao"), portalClienteController.responderAprovacao);
 router.post("/portal-cliente/ordens-servico", proteger("portalCliente", "abrirSolicitacao"), portalClienteController.abrirSolicitacao);
 
+router.post("/portal-cliente/solicitacoes", proteger("portalCliente", "criarSolicitacao"), portalClienteController.criarSolicitacao);
+
 module.exports = router;

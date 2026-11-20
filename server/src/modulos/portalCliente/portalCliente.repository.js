@@ -83,7 +83,12 @@ async function criarOrdemServicoCliente(dados) {
     return ordem_servico.create(dados);
 }
 
+async function criarSolicitacao(dados) {
+    return pedido.create(dados);
+}
+
 module.exports = {
+    criarSolicitacao,
     buscarClientePorUsuarioId,
     listarPedidosDoCliente,
     listarOrdensServicoDoCliente,

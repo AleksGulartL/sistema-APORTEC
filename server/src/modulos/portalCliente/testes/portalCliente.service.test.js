@@ -83,3 +83,31 @@ describe("PortalClienteService - Testes Unitários", () => {
         });
     });
 });
+
+describe("Solicitações de novos serviços", () => {
+    beforeEach(() => jest.clearAllMocks());
+    test("cria instalação sem pedido anterior e ignora campos de aprovação enviados pelo cliente", async () => {
+        portalClienteRepository.buscarClientePorUsuarioId.mockResolvedValue({ usuario_id: 15 });
+        portalClienteRepository.criarSolicitacao.mockImplementation(async (dados) => dados);
+        const result = await portalClienteService.criarSolicitacao({ id: 15 }, {
+            tipo_servico: "Instalacao", descricao_problema: "Porta nova", endereco: "Rua A, 10",
+            cliente_id: 99, status: "Concluido", status_aprovacao: "Aprovado", custo_total: 1,
+        });
+        expect(result).toMatchObject({ cliente_id: 15, usuario_criador_id: 15, status: "Recebida",
+            status_aprovacao: "Pendente", pedido_origem_id: null, bloqueio_fabricacao: true });
+        expect(result.custo_total).toBeUndefined();
+    });
+    test("não permite vincular a porta de outro cliente", async () => {
+        portalClienteRepository.buscarClientePorUsuarioId.mockResolvedValue({ usuario_id: 15 });
+        portalClienteRepository.buscarPedidoDoClientePorId.mockResolvedValue(null);
+        await expect(portalClienteService.criarSolicitacao({ id: 15 }, {
+            tipo_servico: "Manutencao Corretiva", descricao_problema: "Sensor", endereco: "Rua A", pedido_origem_id: 99,
+        })).rejects.toMatchObject({ status: 404 });
+        expect(portalClienteRepository.criarSolicitacao).not.toHaveBeenCalled();
+    });
+    test("exige descrição e endereço", async () => {
+        portalClienteRepository.buscarClientePorUsuarioId.mockResolvedValue({ usuario_id: 15 });
+        await expect(portalClienteService.criarSolicitacao({ id: 15 }, { tipo_servico: "Instalacao" }))
+            .rejects.toMatchObject({ status: 400 });
+    });
+});
