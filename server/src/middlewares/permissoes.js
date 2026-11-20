@@ -45,6 +45,9 @@ const PERMISSOES = Object.freeze({
 
     // RF04/RF05/RF06/RF12/RF13 - Pedido (ciclo unificado Orçamento -> Pedido)
     pedido: {
+        registrarAvaliacao: [TECNICO],
+        enviarOrcamento: [ADM],
+        reabrirOrcamento: [ADM],
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
         criar: [ADM],

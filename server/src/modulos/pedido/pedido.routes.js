@@ -15,4 +15,10 @@ router.patch("/pedido/:id/status", proteger("pedido", "atualizarStatusEtapa"), p
 router.post("/pedido/:id/aceite-instalacao", proteger("pedido", "coletarAssinaturaAceite"), pedidoController.coletarAssinaturaAceite);
 router.delete("/pedido/:id", proteger("pedido", "deletar"), pedidoController.deletar);
 
+router.patch("/pedido/:id/avaliacao", proteger("pedido", "registrarAvaliacao"), pedidoController.registrarAvaliacao);
+
+router.patch("/pedido/:id/enviar-orcamento", proteger("pedido", "enviarOrcamento"), pedidoController.enviarOrcamento);
+
+router.patch("/pedido/:id/reabrir-orcamento", proteger("pedido", "reabrirOrcamento"), pedidoController.reabrirOrcamento);
+
 module.exports = router;

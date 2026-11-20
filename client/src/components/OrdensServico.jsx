@@ -161,14 +161,14 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
 
     useEffect(() => {
         if (!pedidoParaNovaOs) return;
-        const gar = calcularSituacaoGarantia(pedidoParaNovaOs.fim_garantia);
+        const gar = calcularSituacaoGarantia(pedidoParaNovaOs.pedido_origem?.fim_garantia || pedidoParaNovaOs.fim_garantia);
         setModoEdicao(false);
         setForm({
             ...FORM_INICIAL,
             cliente_id_filtro: pedidoParaNovaOs.cliente_id ? String(pedidoParaNovaOs.cliente_id) : "",
             pedido_id: pedidoParaNovaOs.id ? String(pedidoParaNovaOs.id) : "",
             tecnico_responsavel_id: usuario?.perfil === "TECNICO" ? String(usuario.id) : "",
-            tipo_servico: pedidoParaNovaOs.status === "Pronto para Instalacao" ? "Instalacao" : "Manutencao Corretiva",
+            tipo_servico: pedidoParaNovaOs.tipo_pedido,
             origem_cobertura: gar.vigente ? "Garantia" : "Avulso",
         });
         setErroModal("");
@@ -658,10 +658,11 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                     onChange={(e) => {
                                         const pedId = e.target.value;
                                         const ped = pedidos.find((p) => Number(p.id) === Number(pedId));
-                                        const gar = ped ? calcularSituacaoGarantia(ped.fim_garantia) : null;
+                                        const gar = ped ? calcularSituacaoGarantia(ped.pedido_origem?.fim_garantia || ped.fim_garantia) : null;
                                         setForm({
                                             ...form,
                                             pedido_id: pedId,
+                                            tipo_servico: ped?.tipo_pedido || form.tipo_servico,
                                             origem_cobertura: gar?.vigente ? "Garantia" : form.origem_cobertura,
                                         });
                                     }}

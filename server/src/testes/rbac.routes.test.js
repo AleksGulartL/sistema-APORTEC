@@ -22,7 +22,7 @@ jest.mock("../modulos/pedidoItem/pedidoItem.controller", () => mockStubControlle
 jest.mock("../modulos/checklist_medicao/checklist_medicao.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/ordemServico/ordemServico.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/pedido/pedido.controller", () =>
-    mockStubController([...mockCRUD, "atualizarStatusEtapa", "coletarAssinaturaAceite"])
+    mockStubController([...mockCRUD, "atualizarStatusEtapa", "coletarAssinaturaAceite", "registrarAvaliacao", "enviarOrcamento", "reabrirOrcamento"])
 );
 jest.mock("../modulos/portalCliente/portalCliente.controller", () =>
     mockStubController(["obterResumo", "responderAprovacao", "abrirSolicitacao", "criarSolicitacao"])
@@ -40,6 +40,9 @@ app.use(require("../modulos/pedido/pedido.routes"));
 app.use(require("../modulos/portalCliente/portalCliente.routes"));
 
 const ROTAS = [
+    ["patch", "/pedido/1/avaliacao", "pedido", "registrarAvaliacao"],
+    ["patch", "/pedido/1/enviar-orcamento", "pedido", "enviarOrcamento"],
+    ["patch", "/pedido/1/reabrir-orcamento", "pedido", "reabrirOrcamento"],
     ["get", "/tecnicos", "usuario", "listarTecnicos"],
     ["post", "/portal-cliente/solicitacoes", "portalCliente", "criarSolicitacao"],
     ["get", "/usuarios", "usuario", "listar"],

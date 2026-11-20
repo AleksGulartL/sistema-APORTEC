@@ -57,6 +57,9 @@ import {
 import { VisualizarAssinatura } from "./comum/AssinaturaDigital";
 
 const ETAPAS_CLIENTE = [
+    "Recebida",
+    "Em Avaliacao",
+    "Rascunho",
     "Pendente",
     "Aguardando",
     "Planejada",
@@ -117,7 +120,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     }, [carregarResumo]);
 
     const orcamentosPendentes = useMemo(
-        () => pedidos.filter((p) => p.status_aprovacao === "Pendente" && p.status !== "Cancelado"),
+        () => pedidos.filter((p) => p.orcamento_enviado && p.status_aprovacao === "Pendente" && p.status !== "Cancelado"),
         [pedidos]
     );
 
@@ -127,7 +130,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     );
 
     const portasInstaladas = useMemo(
-        () => pedidos.filter((p) => Boolean(p.numero_serie) || p.status === "Concluido"),
+        () => pedidos.filter((p) => p.tipo_pedido === "Instalacao" && (Boolean(p.numero_serie) || p.status === "Concluido")),
         [pedidos]
     );
 
@@ -252,14 +255,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                     <Button variant="outlined" startIcon={<RefreshIcon />} onClick={carregarResumo}>
                         Atualizar
                     </Button>
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        startIcon={<AddIcon />}
-                        onClick={() => abrirNovaSolicitacao()}
-                    >
-                        Solicitar Manutenção
-                    </Button>
+
                 </Stack>
             </Stack>
 
@@ -406,7 +402,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                     sx={{ p: 1.5, borderRadius: 1.5, width: "100%", textAlign: "left", cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}>
                                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                         <Typography variant="body2" fontWeight="bold">
-                                                            Pedido #{p.id} — {p.tipo_pedido}
+                                                            Solicitação / Pedido #{p.id} — {p.tipo_pedido}
                                                         </Typography>
                                                         <Chip size="small" color="primary" label={p.status} />
                                                     </Stack>
@@ -486,7 +482,8 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         </Paper>
                     ) : (
                         pedidos.map((p) => {
-                            const etapaIdx = Math.max(0, ETAPAS_CLIENTE.indexOf(p.status));
+                            const etapas = p.tipo_pedido === "Instalacao" ? ETAPAS_CLIENTE : ["Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Em Atendimento", "Concluido"];
+                            const etapaIdx = Math.max(0, etapas.indexOf(p.status));
                             const cm = p.checklist_medicao;
                             const pendenciasLocal = [];
                             if (cm?.viga_ok === false) pendenciasLocal.push("Viga/estrutura");
@@ -505,7 +502,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         >
                                             <Box>
                                                 <Typography variant="h6" fontWeight="bold">
-                                                    Pedido #{p.id} — {p.tipo_pedido}
+                                                    Solicitação / Pedido #{p.id} — {p.tipo_pedido}
                                                 </Typography>
                                                 <Button size="small" variant="outlined" onClick={() => setPedidoDetalheId(p.id)}>Ver detalhes</Button>
                                                 <Typography variant="caption" color="text.secondary">
@@ -535,13 +532,14 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                             </Stack>
                                         </Stack>
 
+                                        {!p.orcamento_enviado && <Alert severity="info" sx={{ mb: 2 }}>Solicitação em avaliação. O orçamento será disponibilizado pelo administrador após a análise técnica.</Alert>}
                                         {p.status === "Cancelado" ? (
                                             <Alert severity="error" sx={{ mb: 2 }}>
                                                 Este pedido foi cancelado.
                                             </Alert>
                                         ) : (
                                             <Stepper activeStep={etapaIdx} alternativeLabel sx={{ py: 1.5, mb: 2 }}>
-                                                {ETAPAS_CLIENTE.map((et) => (
+                                                {etapas.map((et) => (
                                                     <Step key={et}>
                                                         <StepLabel>{et}</StepLabel>
                                                     </Step>
@@ -549,7 +547,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                             </Stepper>
                                         )}
 
-                                        {p.status_aprovacao === "Pendente" && p.status !== "Cancelado" && (
+                                        {p.orcamento_enviado && p.status_aprovacao === "Pendente" && p.status !== "Cancelado" && (
                                             <Alert
                                                 severity="info"
                                                 sx={{ mb: 2 }}
@@ -704,10 +702,15 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
 
             {secao === "cliente_os" && (
                 <Stack spacing={2}>
+                    {pedidos.filter((p) => p.tipo_pedido !== "Instalacao").map((p) => (
+                        <Alert key={p.id} severity="info" action={<Button onClick={() => setPedidoDetalheId(p.id)}>Ver detalhes</Button>}>
+                            Solicitação #{p.id} — {p.tipo_pedido} • {p.status} • {p.descricao_solicitacao || "Manutenção"}
+                        </Alert>
+                    ))}
                     {ordensServico.length === 0 ? (
                         <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
                             <Typography variant="body1" color="text.secondary" gutterBottom>
-                                Você ainda não possui chamados de assistência técnica.
+                                Ainda não há ordens de serviço de execução. Suas solicitações aparecem acima.
                             </Typography>
                             <Button
                                 variant="contained"
@@ -770,7 +773,8 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Stack>
             )}
 
-            <PedidoClienteDetalhe pedido={pedidos.find((p) => p.id === pedidoDetalheId)} onClose={() => setPedidoDetalheId(null)} />
+            <PedidoClienteDetalhe pedido={pedidos.find((p) => p.id === pedidoDetalheId)} onClose={() => setPedidoDetalheId(null)}
+                onDecisao={(pedido, decisao) => { setPedidoDetalheId(null); setDecisaoOrcamento({ pedido, decisao }); }} />
             <Dialog
                 open={Boolean(decisaoOrcamento)}
                 onClose={() => setDecisaoOrcamento(null)}
@@ -856,7 +860,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                 fullWidth
                                 multiline
                                 rows={3}
-                                label="Descreva o ocorrido"
+                                label="Descreva o serviço desejado"
                                 placeholder="Ex: A porta está abrindo devagar ou o sensor não detecta aproximação..."
                                 value={formOs.descricao_problema}
                                 onChange={(e) => setFormOs({ ...formOs, descricao_problema: e.target.value })}

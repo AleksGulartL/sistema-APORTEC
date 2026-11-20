@@ -32,7 +32,7 @@ DROP TYPE IF EXISTS status_ordem_servico;
 CREATE TYPE perfil_usuario AS ENUM ('ADM', 'TECNICO', 'CLIENTE');
 CREATE TYPE status_aprovacao AS ENUM ('Pendente', 'Aprovado', 'Reprovado');
 CREATE TYPE status_pedido AS ENUM (
-    'Recebida', 'Em Avaliacao', 'Rascunho', 'Pendente', 'Aguardando', 'Planejada', 'Em Fabricacao',
+    'Recebida', 'Em Avaliacao', 'Em Atendimento', 'Rascunho', 'Pendente', 'Aguardando', 'Planejada', 'Em Fabricacao',
     'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido', 'Cancelado'
 );
 CREATE TYPE tipo_servico AS ENUM ('Instalacao', 'Manutencao Preventiva', 'Manutencao Corretiva');
@@ -128,6 +128,9 @@ CREATE TABLE pedido (
     cliente_id BIGINT NOT NULL,
     usuario_criador_id BIGINT NOT NULL,
     responsavel_producao_id BIGINT NULL,
+    diagnostico_tecnico TEXT,
+    data_avaliacao TIMESTAMPTZ,
+    orcamento_enviado BOOLEAN NOT NULL DEFAULT FALSE,
     descricao_solicitacao TEXT,
     pedido_origem_id BIGINT REFERENCES pedido (id) ON DELETE RESTRICT,
     endereco_instalacao TEXT,
@@ -280,12 +283,14 @@ FOR EACH ROW EXECUTE FUNCTION validar_atribuicao_tecnico('tecnico_responsavel_id
 -- =============================================================================
 
 INSERT INTO tipo_item (nome) VALUES
+    ('Servico'),
     ('Kit'),
     ('Equipamento sob medida'),
     ('Peca'),
     ('Insumo');
 
 INSERT INTO categoria_item (nome) VALUES
+    ('Serviços técnicos'),
     ('Automatizadores'),
     ('Motores'),
     ('Centrais Eletronicas'),
@@ -308,8 +313,7 @@ INSERT INTO usuario (nome_completo, email, senha_hash, perfil, ativo) VALUES
     ('Tiago Técnico', 'tecnico@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'TECNICO', TRUE),
     ('Clara Cliente', 'clara@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'CLIENTE', TRUE);
 
-INSERT INTO cliente (usuario_id, cnpj_cpf, telefone, endereco) VALUES (
-    (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
+INSERT INTO cliente (usuario_id, cnpj_cpf, telefone, endereco) VALUES ( (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
     '123.456.789-00',
     '(49) 99999-0101',
     'Av. Fernando Machado, 1200, Centro, Chapecó - SC'
@@ -350,12 +354,12 @@ INSERT INTO item_catalogo (
 
 -- Pedido 1: Pronto para Instalação (aprovado e desbloqueado)
 INSERT INTO pedido (
-    cliente_id, usuario_criador_id, responsavel_producao_id,
+    orcamento_enviado, cliente_id, usuario_criador_id, responsavel_producao_id,
     endereco_instalacao, tipo_pedido, status_aprovacao, status,
     bloqueio_fabricacao, motivo_bloqueio, custo_total, percentual_acrescimo,
     condicoes_pagamento, numero_serie, fim_garantia, data_aprovacao, data_previsao_fim
 ) VALUES (
-    (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
+    TRUE, (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
     (SELECT id FROM usuario WHERE email = 'admin@gmail.com'),
     (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
     'Av. Fernando Machado, 1200, Centro, Chapecó - SC',
@@ -368,12 +372,12 @@ INSERT INTO pedido (
 
 -- Pedido 2: Pendente de aprovação comercial (com trava ativa)
 INSERT INTO pedido (
-    cliente_id, usuario_criador_id, responsavel_producao_id,
+    orcamento_enviado, cliente_id, usuario_criador_id, responsavel_producao_id,
     endereco_instalacao, tipo_pedido, status_aprovacao, status,
     bloqueio_fabricacao, motivo_bloqueio, custo_total, percentual_acrescimo,
     condicoes_pagamento, data_previsao_fim
 ) VALUES (
-    (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
+    TRUE, (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
     (SELECT id FROM usuario WHERE email = 'admin@gmail.com'),
     (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
     'Rua Marechal Bormann, 450, Chapecó - SC',
@@ -424,3 +428,84 @@ INSERT INTO ordem_servico (
     'Instalação completa da porta social automática bipartida e calibração dos sensores.',
     CURRENT_TIMESTAMP + INTERVAL '2 days'
 );
+
+-- Proteções de aprovação e execução
+ALTER TABLE pedido DROP CONSTRAINT IF EXISTS chk_pedido_desbloqueio_fabricacao;
+ALTER TABLE pedido ADD CONSTRAINT chk_pedido_desbloqueio_fabricacao CHECK (
+    status NOT IN ('Em Atendimento', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido')
+    OR (bloqueio_fabricacao = FALSE AND status_aprovacao = 'Aprovado' AND orcamento_enviado = TRUE)
+);
+ALTER TABLE pedido DROP CONSTRAINT IF EXISTS chk_atendimento_diagnosticado;
+ALTER TABLE pedido ADD CONSTRAINT chk_atendimento_diagnosticado CHECK (
+    status <> 'Em Atendimento' OR (tipo_pedido IN ('Manutencao Corretiva', 'Manutencao Preventiva') AND length(trim(diagnostico_tecnico)) > 0 AND diagnostico_tecnico IS NOT NULL)
+);
+CREATE OR REPLACE FUNCTION proteger_itens_orcamento() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE destino BIGINT;
+BEGIN
+    IF TG_OP = 'UPDATE' AND NEW.pedido_id <> OLD.pedido_id THEN
+        RAISE EXCEPTION 'Não é permitido transferir itens entre orçamentos.' USING ERRCODE = '23514';
+    END IF;
+    IF TG_OP = 'DELETE' THEN destino := OLD.pedido_id; ELSE destino := NEW.pedido_id; END IF;
+    PERFORM id FROM pedido WHERE id = destino FOR UPDATE;
+    IF EXISTS (SELECT 1 FROM pedido WHERE id = destino AND (orcamento_enviado OR status IN ('Cancelado', 'Concluido'))) THEN
+        RAISE EXCEPTION 'Reabra o orçamento para revisão antes de alterar seus itens.' USING ERRCODE = '23514';
+    END IF;
+    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END;
+$$;
+DROP TRIGGER IF EXISTS proteger_itens_orcamento ON pedido_item;
+CREATE TRIGGER proteger_itens_orcamento BEFORE INSERT OR UPDATE OR DELETE ON pedido_item
+FOR EACH ROW EXECUTE FUNCTION proteger_itens_orcamento();
+CREATE OR REPLACE FUNCTION proteger_execucao_os() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE orcamento pedido%ROWTYPE;
+BEGIN
+    IF NEW.status_os IN ('Em Andamento', 'Finalizada') THEN
+        SELECT * INTO orcamento FROM pedido WHERE id = NEW.pedido_id AND deleted_at IS NULL;
+        IF NOT FOUND OR orcamento.status = 'Cancelado' OR NOT orcamento.orcamento_enviado OR orcamento.status_aprovacao <> 'Aprovado' OR orcamento.bloqueio_fabricacao THEN
+            RAISE EXCEPTION 'Execução bloqueada: aguarde a aprovação do orçamento pelo cliente.' USING ERRCODE = '23514';
+        END IF;
+        IF NEW.tipo_servico <> orcamento.tipo_pedido OR (NEW.tipo_servico <> 'Instalacao' AND coalesce(length(trim(orcamento.diagnostico_tecnico)), 0) = 0) THEN
+            RAISE EXCEPTION 'Registre o diagnóstico e vincule a OS ao orçamento deste serviço.' USING ERRCODE = '23514';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS proteger_execucao_os ON ordem_servico;
+CREATE TRIGGER proteger_execucao_os BEFORE INSERT OR UPDATE ON ordem_servico
+FOR EACH ROW EXECUTE FUNCTION proteger_execucao_os();
+CREATE OR REPLACE FUNCTION proteger_dados_comerciais() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.orcamento_enviado AND (NEW.cliente_id, NEW.tipo_pedido, NEW.endereco_instalacao, NEW.forma_pagamento, NEW.condicoes_pagamento, NEW.percentual_acrescimo, NEW.diagnostico_tecnico)
+        IS DISTINCT FROM (OLD.cliente_id, OLD.tipo_pedido, OLD.endereco_instalacao, OLD.forma_pagamento, OLD.condicoes_pagamento, OLD.percentual_acrescimo, OLD.diagnostico_tecnico) THEN
+        RAISE EXCEPTION 'Reabra o orçamento antes de alterar a proposta enviada ao cliente.' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS proteger_dados_comerciais ON pedido;
+CREATE TRIGGER proteger_dados_comerciais BEFORE UPDATE ON pedido FOR EACH ROW EXECUTE FUNCTION proteger_dados_comerciais();
+
+-- Chamados antigos ainda abertos entram no mesmo fluxo sem perder seu ID nem a porta de origem.
+DO $$
+DECLARE chamado RECORD; nova_solicitacao BIGINT;
+BEGIN
+    FOR chamado IN
+        SELECT os.id, os.pedido_id, os.tipo_servico, os.tecnico_responsavel_id, os.descricao_problema,
+               p.cliente_id, p.endereco_instalacao
+        FROM ordem_servico os JOIN pedido p ON p.id = os.pedido_id
+        WHERE os.status_os = 'Aberta' AND os.deleted_at IS NULL AND p.deleted_at IS NULL
+          AND os.tipo_servico IN ('Manutencao Corretiva', 'Manutencao Preventiva')
+          AND os.tipo_servico <> p.tipo_pedido
+    LOOP
+        INSERT INTO pedido (cliente_id, usuario_criador_id, responsavel_producao_id, pedido_origem_id,
+                            tipo_pedido, descricao_solicitacao, endereco_instalacao, status, motivo_bloqueio)
+        VALUES (chamado.cliente_id, chamado.cliente_id,
+                (SELECT id FROM usuario WHERE id = chamado.tecnico_responsavel_id AND perfil = 'TECNICO' AND ativo AND deleted_at IS NULL),
+                chamado.pedido_id, chamado.tipo_servico, coalesce(chamado.descricao_problema, 'Solicitação de manutenção'),
+                chamado.endereco_instalacao, 'Recebida', 'Aguardando avaliação técnica e aprovação do orçamento de manutenção.')
+        RETURNING id INTO nova_solicitacao;
+        UPDATE ordem_servico SET pedido_id = nova_solicitacao, updated_at = CURRENT_TIMESTAMP WHERE id = chamado.id;
+    END LOOP;
+END;
+$$;

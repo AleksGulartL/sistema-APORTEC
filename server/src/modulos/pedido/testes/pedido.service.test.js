@@ -14,6 +14,7 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
             status: "Testes",
             status_aprovacao: "Aprovado",
             bloqueio_fabricacao: false,
+            orcamento_enviado: true, checklist_medicao: { status_aprovacao: "Aprovado", viga_ok: true, piso_ok: true, ponto_eletrico_ok: true },
         });
         pedidoRepository.atualizar.mockResolvedValue({
             id: 10,
@@ -68,6 +69,7 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
             id: 10,
             cliente_id: 3,
             status: "Pronto para Instalacao",
+            status_aprovacao: "Aprovado", orcamento_enviado: true, checklist_medicao: { status_aprovacao: "Aprovado", viga_ok: true, piso_ok: true, ponto_eletrico_ok: true }, bloqueio_fabricacao: false,
         });
         pedidoRepository.atualizar.mockImplementation(async (id, payload) => ({
             id,

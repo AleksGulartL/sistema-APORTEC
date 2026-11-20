@@ -100,7 +100,31 @@ async function deletar(req, res) {
     }
 }
 
+async function registrarAvaliacao(req, res) {
+    try {
+        const resultado = await pedidoService.registrarAvaliacao(req.params.id, req.body || {}, req.usuario);
+        return resultado ? res.json(resultado) : res.status(404).json({ erro: "Pedido não encontrado." });
+    } catch (erro) { return responderErroController(res, erro, { statusPadrao: 400 }); }
+}
+
+async function enviarOrcamento(req, res) {
+    try {
+        const resultado = await pedidoService.enviarOrcamento(req.params.id, req.body || {}, req.usuario);
+        return resultado ? res.json(resultado) : res.status(404).json({ erro: "Pedido não encontrado." });
+    } catch (erro) { return responderErroController(res, erro, { statusPadrao: 400 }); }
+}
+
+async function reabrirOrcamento(req, res) {
+    try {
+        const resultado = await pedidoService.reabrirOrcamento(req.params.id, req.body || {}, req.usuario);
+        return resultado ? res.json(resultado) : res.status(404).json({ erro: "Pedido não encontrado." });
+    } catch (erro) { return responderErroController(res, erro, { statusPadrao: 400 }); }
+}
+
 module.exports = {
+    reabrirOrcamento,
+    enviarOrcamento,
+    registrarAvaliacao,
     listar,
     buscarPorId,
     criar,

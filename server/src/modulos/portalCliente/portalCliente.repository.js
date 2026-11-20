@@ -26,6 +26,7 @@ async function listarPedidosDoCliente(clienteId) {
         where: { cliente_id: clienteId },
         order: [["id", "DESC"]],
         include: [
+            { model: pedido, as: "pedido_origem", attributes: ["id", "numero_serie", "fim_garantia", "endereco_instalacao"] },
             {
                 model: usuario,
                 as: "responsavel_producao",
@@ -76,7 +77,13 @@ async function buscarPedidoDoClientePorId(pedidoId, clienteId) {
 }
 
 async function atualizarPedido(regPedido, dados) {
-    return regPedido.update(dados);
+    const { Op } = require("sequelize");
+    const [alterados, registros] = await pedido.update(dados, {
+        where: { id: regPedido.id, cliente_id: regPedido.cliente_id, status_aprovacao: "Pendente", orcamento_enviado: true,
+            status: { [Op.notIn]: ["Cancelado", "Concluido"] } }, returning: true,
+    });
+    if (!alterados) throw Object.assign(new Error("Este orçamento foi atualizado. Recarregue antes de responder."), { status: 409 });
+    return registros[0];
 }
 
 async function criarOrdemServicoCliente(dados) {

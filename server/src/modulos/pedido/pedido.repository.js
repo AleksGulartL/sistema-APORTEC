@@ -11,7 +11,7 @@ const {
 } = require("../../database/models");
 
 function obterIncludes() {
-    const includes = [];
+    const includes = [{ model: pedido, as: "pedido_origem", attributes: ["id", "numero_serie", "fim_garantia", "endereco_instalacao"] }];
     if (cliente) {
         includes.push({
             model: cliente,

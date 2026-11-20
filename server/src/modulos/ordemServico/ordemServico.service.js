@@ -1,3 +1,5 @@
+const pedidoRepository = require("../pedido/pedido.repository");
+const { exigirLiberacao } = require("../../utils/fluxoPedido");
 const { validarTecnico } = require("../../utils/validarTecnico");
 const ordemServicoRepository = require("./ordemServico.repository");
 
@@ -116,6 +118,9 @@ async function criar(dados) {
     };
 
     delete dadosFormatados.id;
+    if (["Em Andamento", "Finalizada"].includes(dadosFormatados.status_os)) {
+        exigirLiberacao(await pedidoRepository.buscarPorId(dadosFormatados.pedido_id));
+    }
     return ordemServicoRepository.criar(dadosFormatados);
 }
 
@@ -142,6 +147,15 @@ async function atualizar(id, dados) {
     }
 
     delete dadosFormatados.id;
+    const atual = await ordemServicoRepository.buscarPorId(idNum);
+    if (!atual) return null;
+    if (["Em Andamento", "Finalizada"].includes(dadosFormatados.status_os || atual.status_os)) {
+        const pedido = await pedidoRepository.buscarPorId(dadosFormatados.pedido_id || atual.pedido_id);
+        exigirLiberacao(pedido);
+        if ((dadosFormatados.tipo_servico || atual.tipo_servico) !== pedido.tipo_pedido) {
+            throw Object.assign(new Error("O tipo da OS deve corresponder ao orçamento aprovado."), { status: 400 });
+        }
+    }
     return ordemServicoRepository.atualizar(idNum, dadosFormatados);
 }
 

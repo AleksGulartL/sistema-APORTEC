@@ -90,28 +90,6 @@ const SENTIDOS_ABERTURA = [
     "Outro",
 ];
 
-function calcularEstadoBloqueio(statusAprovacaoComercial, checklist) {
-    const pendencias = [];
-    if (statusAprovacaoComercial !== "Aprovado") {
-        pendencias.push("orçamento pendente de aprovação pelo cliente");
-    }
-    if (!checklist) {
-        pendencias.push("checklist técnico de medição não cadastrado");
-    } else {
-        if (checklist.viga_ok === false) pendencias.push("pendência de viga");
-        if (checklist.piso_ok === false) pendencias.push("pendência de nivelamento de piso");
-        if (checklist.ponto_eletrico_ok === false) pendencias.push("ponto elétrico ausente ou inadequado");
-        if (checklist.status_aprovacao !== "Aprovado") {
-            pendencias.push(`checklist de medição com status '${checklist.status_aprovacao}'`);
-        }
-    }
-    const bloqueado = pendencias.length > 0;
-    return {
-        bloqueado,
-        motivo: bloqueado ? `Bloqueado: ${pendencias.join("; ")}.` : null,
-    };
-}
-
 export default function PedidoDetalhe({
     pedido,
     clientes = [],
@@ -124,6 +102,9 @@ export default function PedidoDetalhe({
     onAbrirProntuario,
     onAbrirOs,
 }) {
+    const manutencao = pedido?.tipo_pedido !== "Instalacao";
+    const etapas = manutencao ? ["Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Em Atendimento", "Concluido"] : ETAPAS_STEPPER;
+    const [diagnostico, setDiagnostico] = useState("");
     const [aba, setAba] = useState(0);
     const [erro, setErro] = useState("");
     const [sucesso, setSucesso] = useState("");
@@ -144,6 +125,7 @@ export default function PedidoDetalhe({
 
     useEffect(() => {
         if (!pedido) return;
+        setDiagnostico(pedido.diagnostico_tecnico || "");
         setFormComercial({
             cliente_id: pedido.cliente_id ? String(pedido.cliente_id) : "",
             responsavel_producao_id: pedido.responsavel_producao_id ? String(pedido.responsavel_producao_id) : "",
@@ -190,11 +172,11 @@ export default function PedidoDetalhe({
     }, [itensCatalogo]);
 
     const indiceEtapaAtual = useMemo(() => {
-        const idx = ETAPAS_STEPPER.indexOf(pedido?.status);
+        const idx = etapas.indexOf(pedido?.status);
         return idx >= 0 ? idx : 0;
     }, [pedido?.status]);
 
-    async function salvarDadosComerciais(event, overrideStatusAprovacao = null) {
+    async function salvarDadosComerciais(event) {
         if (event) event.preventDefault();
         setErro("");
         setSucesso("");
@@ -202,13 +184,11 @@ export default function PedidoDetalhe({
         const percNum = Number(formComercial.percentual_acrescimo ?? 0);
         if (isNaN(percNum) || percNum < 0) {
             setErro("O percentual de acréscimo deve ser maior ou igual a zero.");
-            return;
+            return false;
         }
 
         setSalvando(true);
 
-        const novoStatusAprovacao = overrideStatusAprovacao || formComercial.status_aprovacao;
-        const { bloqueado, motivo } = calcularEstadoBloqueio(novoStatusAprovacao, checklist);
 
         const payload = {
             cliente_id: Number(formComercial.cliente_id),
@@ -216,34 +196,48 @@ export default function PedidoDetalhe({
                 ? Number(formComercial.responsavel_producao_id)
                 : null,
             tipo_pedido: formComercial.tipo_pedido,
-            status_aprovacao: novoStatusAprovacao,
             percentual_acrescimo: percNum,
             endereco_instalacao: formComercial.endereco_instalacao.trim() || null,
             forma_pagamento: formComercial.forma_pagamento.trim() || null,
             condicoes_pagamento: formComercial.condicoes_pagamento.trim() || null,
             data_previsao_fim: formComercial.data_previsao_fim || null,
-            bloqueio_fabricacao: bloqueado,
-            motivo_bloqueio: motivo,
         };
 
-        if (novoStatusAprovacao === "Aprovado" && !pedido.data_aprovacao) {
-            payload.data_aprovacao = new Date().toISOString();
-        }
 
         try {
             await api.put(`/pedido/${pedido.id}`, payload);
-            setSucesso(
-                overrideStatusAprovacao
-                    ? `Orçamento marcado como '${overrideStatusAprovacao}'.`
-                    : "Dados comerciais do pedido atualizados com sucesso!"
-            );
+            setSucesso("Dados comerciais do pedido atualizados com sucesso!");
             await onPedidoAtualizado?.(pedido.id);
+            return true;
         } catch (err) {
             console.error("Erro ao atualizar pedido:", err);
             setErro(err.response?.data?.erro || "Erro ao salvar dados comerciais do pedido.");
+            return false;
         } finally {
             setSalvando(false);
         }
+    }
+
+    async function acaoOrcamento(acao) {
+        if (acao === "enviar-orcamento" && !(await salvarDadosComerciais())) return;
+        if (acao === "reabrir-orcamento" && !window.confirm("Revisar este orçamento cancela a aprovação anterior e exige novo envio ao cliente. Continuar?")) return;
+        setSalvando(true); setErro("");
+        try {
+            await api.patch(`/pedido/${pedido.id}/${acao}`);
+            setSucesso(acao === "enviar-orcamento" ? "Orçamento enviado para aprovação do cliente." : "Orçamento reaberto para revisão.");
+            await onPedidoAtualizado?.(pedido.id);
+        } catch (err) { setErro(err.response?.data?.erro || "Não foi possível atualizar o orçamento."); }
+        finally { setSalvando(false); }
+    }
+
+    async function salvarDiagnostico() {
+        setSalvando(true); setErro("");
+        try {
+            await api.patch(`/pedido/${pedido.id}/avaliacao`, { diagnostico_tecnico: diagnostico });
+            setSucesso("Diagnóstico registrado. O administrador já pode preparar o orçamento.");
+            await onPedidoAtualizado?.(pedido.id);
+        } catch (err) { setErro(err.response?.data?.erro || "Não foi possível registrar o diagnóstico."); }
+        finally { setSalvando(false); }
     }
 
     async function adicionarItemPedido(event) {
@@ -445,7 +439,7 @@ export default function PedidoDetalhe({
         try {
             const res = await api.post(`/pedido/${pedido.id}/aceite-instalacao`, payload);
             const pedAtual = res.data?.pedido;
-            setSucesso(
+            setSucesso(manutencao ? "Aceite registrado. Atendimento concluído!" :
                 `Aceite registrado! Nº de Série: ${pedAtual?.numero_serie || "gerado"} • Garantia até ${formatarDataBr(
                     pedAtual?.fim_garantia
                 )}.`
@@ -490,7 +484,7 @@ export default function PedidoDetalhe({
                     <Chip
                         color={pedido.bloqueio_fabricacao ? "error" : "success"}
                         icon={pedido.bloqueio_fabricacao ? <LockIcon /> : <LockOpenIcon />}
-                        label={pedido.bloqueio_fabricacao ? "Fabricação Bloqueada" : "Fabricação Liberada"}
+                        label={pedido.bloqueio_fabricacao ? "Execução bloqueada" : "Execução liberada"}
                     />
                     <Chip color="primary" variant="outlined" label={`Etapa: ${pedido.status}`} />
                     {pedido.numero_serie && onAbrirProntuario && (
@@ -558,14 +552,24 @@ export default function PedidoDetalhe({
                     <Tab label="1. Proposta & Comercial" />
                     <Tab label={`2. Itens do Pedido (${itensPedido.length})`} />
                     <Tab
+                        disabled={manutencao}
                         label={`3. Medição (${checklist ? checklist.status_aprovacao : "Pendente"})`}
                         icon={<FactCheckIcon fontSize="small" />}
                         iconPosition="start"
                     />
-                    <Tab label="4. Produção, Pré-Saída & Aceite" />
+                    <Tab label={manutencao ? "4. Atendimento & Aceite" : "4. Produção, Pré-Saída & Aceite"} />
                 </Tabs>
 
                 <Box sx={{ p: 3 }}>
+                    {manutencao && <Stack spacing={1} sx={{ mb: 3 }}>
+                        <Typography variant="h6">Avaliação técnica no local</Typography>
+                        <TextField multiline minRows={3} label="Diagnóstico e serviço recomendado" value={diagnostico}
+                            disabled={usuario?.perfil !== "TECNICO" || Number(usuario.id) !== Number(pedido.responsavel_producao_id) || pedido.orcamento_enviado}
+                            onChange={(e) => setDiagnostico(e.target.value)} />
+                        {usuario?.perfil === "TECNICO" && Number(usuario.id) === Number(pedido.responsavel_producao_id) && !pedido.orcamento_enviado &&
+                            <Button disabled={salvando} onClick={salvarDiagnostico}>Salvar avaliação técnica</Button>}
+                        <Alert severity="info">O diagnóstico não autoriza a execução. Aguarde o administrador enviar o orçamento e o cliente aprovar.</Alert>
+                    </Stack>}
                     {pedido.descricao_solicitacao && (
                 <Alert severity="info" sx={{ mb: 2 }}>
                     Solicitação: {pedido.descricao_solicitacao}
@@ -584,35 +588,14 @@ export default function PedidoDetalhe({
                                     <Typography variant="h6" fontWeight="bold">
                                         Proposta Comercial e Prazos (RF03, RF05, RF06)
                                     </Typography>
-                                    {ehAdm && (
-                                        <Stack direction="row" spacing={1}>
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                color="success"
-                                                startIcon={<ThumbUpIcon />}
-                                                disabled={salvando || pedido.status_aprovacao === "Aprovado"}
-                                                onClick={() => salvarDadosComerciais(null, "Aprovado")}
-                                            >
-                                                Aprovar Orçamento
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                color="error"
-                                                startIcon={<ThumbDownIcon />}
-                                                disabled={salvando || pedido.status_aprovacao === "Reprovado"}
-                                                onClick={() => salvarDadosComerciais(null, "Reprovado")}
-                                            >
-                                                Reprovar
-                                            </Button>
-                                        </Stack>
-                                    )}
+                                    {ehAdm && <Button variant="contained" disabled={salvando} onClick={() => acaoOrcamento(pedido.orcamento_enviado ? "reabrir-orcamento" : "enviar-orcamento")}>
+                                        {pedido.orcamento_enviado ? "Revisar orçamento" : "Enviar orçamento ao cliente"}
+                                    </Button>}
                                 </Stack>
 
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={4}>
-                                        <FormControl fullWidth disabled={!ehAdm}>
+                                        <FormControl fullWidth disabled={!ehAdm || pedido.orcamento_enviado}>
                                             <InputLabel id="det-cliente-label">Cliente</InputLabel>
                                             <Select
                                                 labelId="det-cliente-label"
@@ -632,7 +615,7 @@ export default function PedidoDetalhe({
                                         </FormControl>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        <FormControl fullWidth disabled={!ehAdm}>
+                                        <FormControl fullWidth disabled={!ehAdm || pedido.orcamento_enviado}>
                                             <InputLabel id="det-tipo-label">Tipo do Pedido</InputLabel>
                                             <Select
                                                 labelId="det-tipo-label"
@@ -656,7 +639,7 @@ export default function PedidoDetalhe({
                                             type="number"
                                             inputProps={{ min: 0, step: "0.01" }}
                                             label="Acréscimo Comercial (%)"
-                                            disabled={!ehAdm}
+                                            disabled={!ehAdm || pedido.orcamento_enviado}
                                             value={formComercial.percentual_acrescimo ?? "0"}
                                             onChange={(e) =>
                                                 setFormComercial({
@@ -668,7 +651,7 @@ export default function PedidoDetalhe({
                                     </Grid>
 
                                     <Grid item xs={12} sm={4}>
-                                        <FormControl fullWidth disabled={!ehAdm}>
+                                        <FormControl fullWidth disabled>
                                             <InputLabel id="det-aprovacao-label">Aprovação Comercial</InputLabel>
                                             <Select
                                                 labelId="det-aprovacao-label"
@@ -688,11 +671,11 @@ export default function PedidoDetalhe({
                                         </FormControl>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        <FormControl fullWidth disabled={!ehAdm}>
-                                            <InputLabel id="det-resp-label">Responsável pela Produção</InputLabel>
+                                        <FormControl fullWidth disabled={!ehAdm || pedido.orcamento_enviado}>
+                                            <InputLabel id="det-resp-label">Técnico responsável</InputLabel>
                                             <Select
                                                 labelId="det-resp-label"
-                                                label="Responsável pela Produção"
+                                                label="Técnico responsável"
                                                 value={formComercial.responsavel_producao_id || ""}
                                                 onChange={(e) =>
                                                     setFormComercial({
@@ -716,7 +699,7 @@ export default function PedidoDetalhe({
                                             type="date"
                                             label="Previsão de Entrega"
                                             InputLabelProps={{ shrink: true }}
-                                            disabled={!ehAdm}
+                                            disabled={!ehAdm || pedido.orcamento_enviado}
                                             value={formComercial.data_previsao_fim || ""}
                                             onChange={(e) =>
                                                 setFormComercial({
@@ -731,7 +714,7 @@ export default function PedidoDetalhe({
                                         <TextField
                                             fullWidth
                                             label="Endereço de Instalação"
-                                            disabled={!ehAdm}
+                                            disabled={!ehAdm || pedido.orcamento_enviado}
                                             value={formComercial.endereco_instalacao || ""}
                                             onChange={(e) =>
                                                 setFormComercial({
@@ -743,7 +726,7 @@ export default function PedidoDetalhe({
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
                                         <PagamentoFields forma={formComercial.forma_pagamento || ""} condicoes={formComercial.condicoes_pagamento || ""}
-                                disabled={!ehAdm}
+                                disabled={!ehAdm || pedido.orcamento_enviado}
                                 onForma={(value) => setFormComercial((form) => ({ ...form, forma_pagamento: value }))}
                                 onCondicoes={(value) => setFormComercial((form) => ({ ...form, condicoes_pagamento: value }))} />
                                     </Grid>
@@ -778,7 +761,7 @@ export default function PedidoDetalhe({
                                     </Grid>
                                 </Grid>
 
-                                {ehAdm && (
+                                {ehAdm && !pedido.orcamento_enviado && (
                                     <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                                         <Button
                                             type="submit"
@@ -812,7 +795,7 @@ export default function PedidoDetalhe({
                                 </Stack>
                             </Stack>
 
-                            {ehAdm && (
+                            {ehAdm && !pedido.orcamento_enviado && (
                                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "grey.50" }}>
                                     <form onSubmit={adicionarItemPedido}>
                                         <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5 }}>
@@ -902,7 +885,7 @@ export default function PedidoDetalhe({
                                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Qtd.</TableCell>
                                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Valor Unit.</TableCell>
                                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Subtotal</TableCell>
-                                                {ehAdm && (
+                                                {ehAdm && !pedido.orcamento_enviado && (
                                                     <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>
                                                         Ações
                                                     </TableCell>
@@ -934,7 +917,7 @@ export default function PedidoDetalhe({
                                                         <TableCell sx={{ fontWeight: "bold" }}>
                                                             {formatarMoedaBr(calcularSubtotalItem(it))}
                                                         </TableCell>
-                                                        {ehAdm && (
+                                                        {ehAdm && !pedido.orcamento_enviado && (
                                                             <TableCell align="center">
                                                                 <Tooltip title="Editar Quantidade / Valor">
                                                                     <IconButton
@@ -1166,13 +1149,13 @@ export default function PedidoDetalhe({
                         <Stack spacing={3}>
                             <Box>
                                 <Typography variant="h6" fontWeight="bold" gutterBottom>
-                                    Etapas de Produção e Instalação (RF09, RF12)
+                                    {manutencao ? "Etapas do atendimento" : "Etapas de Produção e Instalação"}
                                 </Typography>
                                 {pedido.status === "Cancelado" ? (
                                     <Alert severity="error">Este pedido encontra-se Cancelado.</Alert>
                                 ) : (
                                     <Stepper activeStep={indiceEtapaAtual} alternativeLabel sx={{ py: 2 }}>
-                                        {ETAPAS_STEPPER.map((etapa) => (
+                                        {etapas.map((etapa) => (
                                             <Step key={etapa}>
                                                 <StepLabel>{etapa}</StepLabel>
                                             </Step>
@@ -1181,9 +1164,9 @@ export default function PedidoDetalhe({
                                 )}
 
                                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
-                                    {ETAPAS_STEPPER.map((etapa) => {
+                                    {etapas.map((etapa) => {
                                         const atual = pedido.status === etapa;
-                                        const exigeDesbloqueio = ETAPAS_FABRICACAO.includes(etapa);
+                                        const exigeDesbloqueio = (ETAPAS_FABRICACAO.includes(etapa) || etapa === "Em Atendimento");
                                         const bloqueada = exigeDesbloqueio && pedido.bloqueio_fabricacao;
 
                                         return (
@@ -1286,12 +1269,12 @@ export default function PedidoDetalhe({
 
                             <Box>
                                 <Typography variant="h6" fontWeight="bold" gutterBottom>
-                                    Aceite Digital da Instalação, Nº de Série e Garantia (RF13, RF15)
+                                    {manutencao ? "Aceite do atendimento" : "Aceite da instalação, série e garantia"}
                                 </Typography>
 
                                 {pedido.assinatura_cliente_instalacao && pedido.status === "Concluido" && (
                                     <Alert severity="success" sx={{ mb: 2 }}>
-                                        Instalação concluída em {formatarDataHoraBr(pedido.data_conclusao)} • Nº de Série:{" "}
+                                        {manutencao ? "Atendimento concluído em " : "Instalação concluída em "}{formatarDataHoraBr(pedido.data_conclusao)} • Nº de Série:{" "}
                                         <strong>{pedido.numero_serie}</strong> • Garantia até{" "}
                                         <strong>{formatarDataBr(pedido.fim_garantia)}</strong>
                                     </Alert>
@@ -1299,8 +1282,7 @@ export default function PedidoDetalhe({
 
                                 {pedido.bloqueio_fabricacao && (
                                     <Alert severity="warning" sx={{ mb: 2 }}>
-                                        Para concluir o pedido e registrar o aceite da instalação, é necessário primeiro
-                                        desbloquear a fabricação (aprovação comercial + checklist de medição aprovado).
+                                        {manutencao ? "A conclusão exige diagnóstico técnico e aprovação do orçamento pelo cliente." : "A conclusão exige aprovação comercial e checklist de medição aprovado."}
                                     </Alert>
                                 )}
 
@@ -1315,7 +1297,7 @@ export default function PedidoDetalhe({
 
                                 <form onSubmit={registrarAceiteInstalacao}>
                                     <Stack spacing={2}>
-                                        <Grid container spacing={2}>
+                                        <Grid container spacing={2} sx={{ display: manutencao ? "none" : "flex" }}>
                                             <Grid item xs={12} sm={6}>
                                                 <TextField
                                                     fullWidth
@@ -1358,7 +1340,7 @@ export default function PedidoDetalhe({
                                                 {salvando ? (
                                                     <CircularProgress size={20} color="inherit" />
                                                 ) : (
-                                                    "Registrar Aceite e Concluir Instalação"
+                                                    manutencao ? "Registrar aceite e concluir atendimento" : "Registrar Aceite e Concluir Instalação"
                                                 )}
                                             </Button>
                                         </Box>

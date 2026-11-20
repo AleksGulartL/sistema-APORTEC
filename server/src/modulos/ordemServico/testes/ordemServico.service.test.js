@@ -2,6 +2,7 @@ const ordemServicoService = require("../ordemServico.service");
 const ordemServicoRepository = require("../ordemServico.repository");
 
 jest.mock("../ordemServico.repository");
+jest.mock("../../pedido/pedido.repository");
 jest.mock("../../../utils/validarTecnico", () => ({ validarTecnico: jest.fn().mockResolvedValue(undefined) }));
 
 describe("OrdemServicoService - Testes Unitários", () => {
@@ -51,6 +52,8 @@ describe("OrdemServicoService - Testes Unitários", () => {
     });
 
     test("Deve atualizar ordem de serviço com sucesso", async () => {
+        ordemServicoRepository.buscarPorId.mockResolvedValue({ pedido_id: 10, tipo_servico: "Instalacao" });
+        require("../../pedido/pedido.repository").buscarPorId.mockResolvedValue({ tipo_pedido: "Instalacao", status_aprovacao: "Aprovado", orcamento_enviado: true, checklist_medicao: { status_aprovacao: "Aprovado", viga_ok: true, piso_ok: true, ponto_eletrico_ok: true }, bloqueio_fabricacao: false });
         ordemServicoRepository.atualizar.mockResolvedValue([1]);
 
         await ordemServicoService.atualizar(1, { status_os: "Finalizada" });

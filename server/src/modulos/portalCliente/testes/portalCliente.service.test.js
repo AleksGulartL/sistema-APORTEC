@@ -30,6 +30,7 @@ describe("PortalClienteService - Testes Unitários", () => {
             id: 20,
             cliente_id: 15,
             status: "Pendente",
+            orcamento_enviado: true,
             status_aprovacao: "Pendente",
             checklist_medicao: null,
         };
@@ -46,15 +47,16 @@ describe("PortalClienteService - Testes Unitários", () => {
         expect(atualizado.bloqueio_fabricacao).toBe(true);
     });
 
-    test("RF14: Deve permitir ao cliente abrir solicitação de manutenção em porta dentro da garantia", async () => {
+    test("RF14: assistência em porta existente também entra na fila de solicitações", async () => {
         const anoFuturo = `${new Date().getFullYear() + 1}-12-31`;
         portalClienteRepository.buscarClientePorUsuarioId.mockResolvedValue(clienteMock);
         portalClienteRepository.buscarPedidoDoClientePorId.mockResolvedValue({
             id: 25,
             cliente_id: 15,
             fim_garantia: anoFuturo,
+            endereco_instalacao: "Rua A, 10",
         });
-        portalClienteRepository.criarOrdemServicoCliente.mockImplementation(async (dados) => ({ id: 9, ...dados }));
+        portalClienteRepository.criarSolicitacao.mockImplementation(async (dados) => ({ id: 9, ...dados }));
 
         const os = await portalClienteService.abrirSolicitacaoManutencao(tokenCliente, {
             pedido_id: 25,
@@ -62,10 +64,10 @@ describe("PortalClienteService - Testes Unitários", () => {
             descricao_problema: "Sensor parou de detectar abertura.",
         });
 
-        expect(os.pedido_id).toBe(25);
-        expect(os.tecnico_responsavel_id).toBeNull();
-        expect(os.origem_cobertura).toBe("Garantia");
-        expect(os.status_os).toBe("Aberta");
+        expect(os.pedido_origem_id).toBe(25);
+        expect(os.tipo_pedido).toBe("Manutencao Corretiva");
+        expect(os.status).toBe("Recebida");
+        expect(os.bloqueio_fabricacao).toBe(true);
     });
 
     test("Deve impedir abertura de OS em pedido que não pertence ao cliente", async () => {

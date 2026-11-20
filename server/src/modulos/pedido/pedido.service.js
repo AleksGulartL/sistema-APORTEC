@@ -1,9 +1,11 @@
+const { ehManutencao, avaliacaoAprovada, exigirLiberacao } = require("../../utils/fluxoPedido");
 const { validarTecnico } = require("../../utils/validarTecnico");
 const pedidoRepository = require("./pedido.repository");
 
 const STATUS_VALIDOS = [
     "Recebida",
     "Em Avaliacao",
+    "Em Atendimento",
     "Rascunho",
     "Pendente",
     "Aguardando",
@@ -17,7 +19,7 @@ const STATUS_VALIDOS = [
 ];
 
 const TIPOS_VALIDOS = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
-const ETAPAS_FABRICACAO = ["Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao", "Concluido"];
+const ETAPAS_FABRICACAO = ["Em Atendimento", "Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao", "Concluido"];
 
 function validarPedido(dados, isUpdate = false) {
     for (const campo of ["forma_pagamento", "condicoes_pagamento"]) {
@@ -116,6 +118,8 @@ async function criar(dados) {
         status_aprovacao: "Pendente",
         bloqueio_fabricacao: true,
         custo_total: 0,
+        orcamento_enviado: false,
+        diagnostico_tecnico: null,
         cliente_id: Number(dados.cliente_id),
     };
 
@@ -140,7 +144,17 @@ async function atualizar(id, dados) {
 
     validarPedido(dados, true);
     await validarTecnico(dados.responsavel_producao_id);
-    const dadosFormatados = { ...dados };
+    const existente = await pedidoRepository.buscarPorId(idNum);
+    if (!existente) return null;
+    if (dados.status_aprovacao !== undefined && dados.status_aprovacao !== existente.status_aprovacao) {
+        throw Object.assign(new Error("A aprovação deve ser registrada pelo cliente no orçamento enviado."), { status: 400 });
+    }
+    const campos = ["cliente_id", "tipo_pedido", "endereco_instalacao", "descricao_solicitacao", "forma_pagamento", "condicoes_pagamento", "percentual_acrescimo", "responsavel_producao_id", "data_previsao_fim"];
+    const comerciais = campos.filter((campo) => !["responsavel_producao_id", "data_previsao_fim"].includes(campo));
+    if (existente.orcamento_enviado && comerciais.some((campo) => dados[campo] !== undefined && String(dados[campo] ?? "") !== String(existente[campo] ?? ""))) {
+        throw Object.assign(new Error("Reabra o orçamento para revisão antes de alterar os dados comerciais."), { status: 400 });
+    }
+    const dadosFormatados = Object.fromEntries(campos.filter((campo) => dados[campo] !== undefined).map((campo) => [campo, dados[campo]]));
 
     if (dadosFormatados.cliente_id !== undefined) {
         dadosFormatados.cliente_id = Number(dadosFormatados.cliente_id);
@@ -148,6 +162,8 @@ async function atualizar(id, dados) {
     if (dadosFormatados.responsavel_producao_id !== undefined && dadosFormatados.responsavel_producao_id !== null) {
         dadosFormatados.responsavel_producao_id = Number(dadosFormatados.responsavel_producao_id);
     }
+
+    if (dadosFormatados.responsavel_producao_id && existente.status === "Recebida") dadosFormatados.status = "Em Avaliacao";
 
     delete dadosFormatados.id;
     return pedidoRepository.atualizar(idNum, dadosFormatados);
@@ -184,6 +200,13 @@ async function atualizarStatusEtapa(id, dados = {}) {
         throw erro;
     }
 
+    if (ETAPAS_FABRICACAO.includes(novoStatus)) exigirLiberacao(existente);
+    if (novoStatus === "Em Atendimento" && !ehManutencao(existente)) {
+        throw Object.assign(new Error("Em Atendimento é uma etapa de manutenção."), { status: 400 });
+    }
+    if (ehManutencao(existente) && ["Em Fabricacao", "Montagem", "Testes", "Pronto para Instalacao"].includes(novoStatus)) {
+        throw Object.assign(new Error("Manutenções seguem a etapa Em Atendimento."), { status: 400 });
+    }
     const payloadAtualizacao = { status: novoStatus };
     if (novoStatus === "Concluido") {
         payloadAtualizacao.data_conclusao = new Date();
@@ -221,16 +244,17 @@ async function coletarAssinaturaAceite(id, dados = {}) {
     const existente = await pedidoRepository.buscarPorId(idNum);
     if (!existente) return null;
 
+    exigirLiberacao(existente);
     const agora = new Date();
     const umAnoDepois = new Date(agora);
     umAnoDepois.setFullYear(umAnoDepois.getFullYear() + 1);
 
-    const numeroSerie =
+    const numeroSerie = ehManutencao(existente) ? null :
         dados.numero_serie ||
         existente.numero_serie ||
         `APORTEC-${agora.getFullYear()}-${String(idNum).padStart(4, "0")}`;
 
-    const fimGarantia = dados.fim_garantia || umAnoDepois.toISOString().slice(0, 10);
+    const fimGarantia = ehManutencao(existente) ? null : dados.fim_garantia || umAnoDepois.toISOString().slice(0, 10);
 
     const pedidoAtualizado = await pedidoRepository.atualizar(idNum, {
         assinatura_cliente_instalacao: assinatura.trim(),
@@ -255,7 +279,47 @@ async function deletar(id) {
     return pedidoRepository.deletar(idNum);
 }
 
+async function registrarAvaliacao(id, dados, solicitante) {
+    const reg = await buscarPorId(id);
+    if (!reg) return null;
+    if (Number(reg.responsavel_producao_id) !== Number(solicitante.id)) {
+        throw Object.assign(new Error("Somente o técnico atribuído pode registrar a avaliação."), { status: 403 });
+    }
+    if (reg.orcamento_enviado || ["Cancelado", "Concluido"].includes(reg.status)) {
+        throw Object.assign(new Error("O orçamento precisa estar em preparação para registrar a avaliação."), { status: 400 });
+    }
+    const texto = typeof dados.diagnostico_tecnico === "string" ? dados.diagnostico_tecnico.trim() : "";
+    if (!texto) throw Object.assign(new Error("Informe o diagnóstico e o serviço recomendado."), { status: 400 });
+    return pedidoRepository.atualizar(Number(id), { diagnostico_tecnico: texto, data_avaliacao: new Date(), status: "Em Avaliacao" });
+}
+
+async function enviarOrcamento(id) {
+    const reg = await buscarPorId(id);
+    if (!reg) return null;
+    if (reg.orcamento_enviado || ["Cancelado", "Concluido", "Em Atendimento"].includes(reg.status)) {
+        throw Object.assign(new Error("Este orçamento não está disponível para envio."), { status: 400 });
+    }
+    await validarTecnico(reg.responsavel_producao_id);
+    if (!reg.responsavel_producao_id || (ehManutencao(reg) ? !reg.diagnostico_tecnico?.trim() : !reg.checklist_medicao)) {
+        throw Object.assign(new Error("Atribua um técnico e registre a avaliação técnica antes de enviar o orçamento."), { status: 400 });
+    }
+    if (!reg.itens?.length) throw Object.assign(new Error("Adicione os itens ou serviços ao orçamento antes de enviar."), { status: 400 });
+    return pedidoRepository.atualizar(Number(id), { orcamento_enviado: true, status: "Pendente", status_aprovacao: "Pendente",
+        bloqueio_fabricacao: true, motivo_bloqueio: "Aguardando aprovação do orçamento pelo cliente.", data_aprovacao: null });
+}
+
+async function reabrirOrcamento(id) {
+    const reg = await buscarPorId(id);
+    if (!reg) return null;
+    if (!reg.orcamento_enviado || !["Rascunho", "Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Planejada"].includes(reg.status) || reg.ordens_servico?.some((os) => ["Em Andamento", "Finalizada"].includes(os.status_os))) {
+        throw Object.assign(new Error("Não é possível revisar um orçamento em execução ou encerrado."), { status: 400 });
+    }
+    return pedidoRepository.atualizar(Number(id), { orcamento_enviado: false, status: "Rascunho", status_aprovacao: "Pendente",
+        data_aprovacao: null, bloqueio_fabricacao: true, motivo_bloqueio: "Orçamento em revisão; aguardando novo envio e aprovação." });
+}
+
 module.exports = {
+    registrarAvaliacao, enviarOrcamento, reabrirOrcamento,
     listar,
     buscarPorId,
     criar,

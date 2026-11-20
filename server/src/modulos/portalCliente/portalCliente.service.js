@@ -1,3 +1,4 @@
+const { avaliacaoAprovada } = require("../../utils/fluxoPedido");
 const portalClienteRepository = require("./portalCliente.repository");
 
 const TIPOS_SOLICITACAO_CLIENTE = ["Manutencao Corretiva", "Manutencao Preventiva"];
@@ -64,13 +65,10 @@ async function responderAprovacaoOrcamento(usuarioLogado, pedidoId, dados = {}) 
         throw erro;
     }
 
-    const checklist = regPedido.checklist_medicao;
-    const checklistAprovado =
-        checklist &&
-        checklist.status_aprovacao === "Aprovado" &&
-        checklist.viga_ok !== false &&
-        checklist.piso_ok !== false &&
-        checklist.ponto_eletrico_ok !== false;
+    if (regPedido.orcamento_enviado !== true || ["Cancelado", "Concluido"].includes(regPedido.status)) {
+        throw Object.assign(new Error("O orçamento ainda não foi enviado pelo administrador ou já foi encerrado."), { status: 400 });
+    }
+    const checklistAprovado = avaliacaoAprovada(regPedido);
 
     const payloadAtualizacao = {
         status_aprovacao: decisao,
@@ -95,52 +93,11 @@ async function responderAprovacaoOrcamento(usuarioLogado, pedidoId, dados = {}) 
 
 // RF14 - Abertura de solicitação de manutenção pelo próprio Cliente
 async function abrirSolicitacaoManutencao(usuarioLogado, dados = {}) {
-    const tipoServico = dados.tipo_servico || "Manutencao Corretiva";
-    if (!TIPOS_SOLICITACAO_CLIENTE.includes(tipoServico)) {
-        const erro = new Error("Clientes podem solicitar apenas 'Manutencao Corretiva' ou 'Manutencao Preventiva'.");
-        erro.status = 400;
-        throw erro;
-    }
-
-    if (!dados.descricao_problema || typeof dados.descricao_problema !== "string" || !dados.descricao_problema.trim()) {
-        const erro = new Error("Descreva o problema ou serviço desejado para abrir o chamado.");
-        erro.status = 400;
-        throw erro;
-    }
-
-    const clienteReg = await obterClienteVinculado(usuarioLogado);
-
-    const pedidoIdNum = Number(dados.pedido_id);
-    if (!dados.pedido_id || !Number.isInteger(pedidoIdNum) || pedidoIdNum <= 0) {
-        const erro = new Error("Selecione o pedido / porta instalada para a qual deseja abrir assistência.");
-        erro.status = 400;
-        throw erro;
-    }
-
-    const regPedido = await portalClienteRepository.buscarPedidoDoClientePorId(pedidoIdNum, clienteReg.usuario_id);
-    if (!regPedido) {
-        const erro = new Error("Porta / Pedido selecionado não pertence a este cliente.");
-        erro.status = 404;
-        throw erro;
-    }
-
-    let origemCobertura = "Avulso";
-    if (regPedido.fim_garantia) {
-        const hojeIso = new Date().toISOString().slice(0, 10);
-        if (String(regPedido.fim_garantia).slice(0, 10) >= hojeIso) {
-            origemCobertura = "Garantia";
-        }
-    }
-
-    return portalClienteRepository.criarOrdemServicoCliente({
-        pedido_id: regPedido.id,
-        tecnico_responsavel_id: null,
-        tipo_servico: tipoServico,
-        origem_cobertura: origemCobertura,
-        status_os: "Aberta",
-        descricao_problema: dados.descricao_problema.trim(),
-        data_agendamento: dados.data_agendamento || null,
-    });
+    const cliente = await obterClienteVinculado(usuarioLogado);
+    const origem = await portalClienteRepository.buscarPedidoDoClientePorId(Number(dados.pedido_id), cliente.usuario_id);
+    if (!origem) throw Object.assign(new Error("Porta / Pedido selecionado não pertence a este cliente."), { status: 404 });
+    return criarSolicitacao(usuarioLogado, { ...dados, tipo_servico: dados.tipo_servico || "Manutencao Corretiva",
+        pedido_origem_id: origem.id, endereco: dados.endereco || origem.endereco_instalacao || cliente.endereco });
 }
 
 // O mesmo registro acompanha a solicitação, o orçamento e a execução.

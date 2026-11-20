@@ -26,6 +26,9 @@ function responderErroController(res, erro, opcoes = {}) {
         return res.status(400).json({ erro: msg });
     }
 
+    if (codigoPg === "23514") {
+        return res.status(400).json({ erro: erro?.parent?.message || erro?.original?.message || erro.message });
+    }
     const status = erro?.status || statusPadrao;
     if (status >= 500) {
         return res.status(status).json({ erro: mensagemInterna });

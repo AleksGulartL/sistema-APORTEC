@@ -39,6 +39,9 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("responsavel_producao_id"));
             },
         },
+        diagnostico_tecnico: { type: DataTypes.TEXT, allowNull: true },
+        data_avaliacao: { type: DataTypes.DATE, allowNull: true },
+        orcamento_enviado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
         descricao_solicitacao: { type: DataTypes.TEXT, allowNull: true },
         pedido_origem_id: { type: DataTypes.BIGINT, allowNull: true },
         endereco_instalacao: {
@@ -62,6 +65,7 @@ const pedido = sequelize.define(
             type: DataTypes.ENUM(
                 "Recebida",
                 "Em Avaliacao",
+                "Em Atendimento",
                 "Rascunho",
                 "Pendente",
                 "Aguardando",
@@ -153,6 +157,7 @@ const pedido = sequelize.define(
 );
 
 pedido.associate = (models) => {
+    pedido.belongsTo(pedido, { foreignKey: "pedido_origem_id", as: "pedido_origem" });
     if (models.cliente) {
         pedido.belongsTo(models.cliente, {
             foreignKey: "cliente_id",

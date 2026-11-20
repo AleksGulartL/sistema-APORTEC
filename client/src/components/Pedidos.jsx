@@ -338,7 +338,7 @@ export default function Pedidos({
                                 setModalNovoAberto(true);
                             }}
                         >
-                            Novo Pedido / Orçamento
+                            Novo orçamento
                         </Button>
                     )}
                 </Stack>
@@ -449,7 +449,7 @@ export default function Pedidos({
                                     ordenacao={ordenacao}
                                     onOrdenar={setOrdenacao}
                                 />
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Medição</TableCell>
+                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Avaliação técnica</TableCell>
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Trava (RF08)</TableCell>
                                 <CabecalhoOrdenavel
                                     campo="status"
@@ -477,7 +477,7 @@ export default function Pedidos({
                         <TableBody>
                             {pedidosFiltrados.map((p) => {
                                 const nomeCli = p.cliente?.usuario?.nome_completo || `Cliente #${p.cliente_id}`;
-                                const medStatus = p.checklist_medicao?.status_aprovacao || "Não feita";
+                                const medStatus = p.tipo_pedido === "Instalacao" ? p.checklist_medicao?.status_aprovacao || "Não feita" : p.diagnostico_tecnico ? "Registrada" : "Pendente";
 
                                 return (
                                     <TableRow
@@ -660,10 +660,10 @@ export default function Pedidos({
                             <TextField fullWidth multiline label="Descrição da solicitação" required={formNovo.status === "Recebida"}
                                 value={formNovo.descricao_solicitacao} onChange={(e) => setFormNovo({ ...formNovo, descricao_solicitacao: e.target.value })} />
                             <FormControl fullWidth>
-                                <InputLabel id="novo-ped-resp-label">Responsável pela Produção (opcional)</InputLabel>
+                                <InputLabel id="novo-ped-resp-label">Técnico responsável (opcional)</InputLabel>
                                 <Select
                                     labelId="novo-ped-resp-label"
-                                    label="Responsável pela Produção (opcional)"
+                                    label="Técnico responsável (opcional)"
                                     value={formNovo.responsavel_producao_id}
                                     onChange={(e) =>
                                         setFormNovo({ ...formNovo, responsavel_producao_id: e.target.value })
@@ -698,7 +698,7 @@ export default function Pedidos({
                             Cancelar
                         </Button>
                         <Button type="submit" variant="contained" disabled={salvandoNovo}>
-                            {salvandoNovo ? <CircularProgress size={22} color="inherit" /> : "Criar Pedido"}
+                            {salvandoNovo ? <CircularProgress size={22} color="inherit" /> : formNovo.status === "Recebida" ? "Registrar solicitação" : "Criar orçamento"}
                         </Button>
                     </DialogActions>
                 </form>
