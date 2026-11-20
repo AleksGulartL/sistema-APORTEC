@@ -5,6 +5,7 @@ import {
     Button,
     Card,
     CardContent,
+    CardActionArea,
     Chip,
     CircularProgress,
     Dialog,
@@ -43,6 +44,7 @@ import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import PedidoClienteDetalhe from "./PedidoClienteDetalhe";
 import api from "../services/api";
 import {
     calcularSituacaoGarantia,
@@ -78,6 +80,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
     const [sucessoMsg, setSucessoMsg] = useState("");
     const [dadosCliente, setDadosCliente] = useState(null);
     const [pedidos, setPedidos] = useState([]);
+    const [pedidoDetalheId, setPedidoDetalheId] = useState(null);
     const [ordensServico, setOrdensServico] = useState([]);
 
     const [decisaoOrcamento, setDecisaoOrcamento] = useState(null);
@@ -302,6 +305,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6} md={3}>
                             <Card elevation={2} sx={{ borderRadius: 2 }}>
+                                <CardActionArea onClick={() => onMudarSecao?.("cliente_pedidos")}>
                                 <CardContent>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Typography variant="subtitle2" color="text.secondary">
@@ -313,11 +317,13 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         {pedidosAtivos.length}
                                     </Typography>
                                 </CardContent>
+                                </CardActionArea>
                             </Card>
                         </Grid>
 
                         <Grid item xs={12} sm={6} md={3}>
                             <Card elevation={2} sx={{ borderRadius: 2 }}>
+                                <CardActionArea onClick={() => onMudarSecao?.("cliente_pedidos")}>
                                 <CardContent>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Typography variant="subtitle2" color="text.secondary">
@@ -334,11 +340,13 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         {orcamentosPendentes.length}
                                     </Typography>
                                 </CardContent>
+                                </CardActionArea>
                             </Card>
                         </Grid>
 
                         <Grid item xs={12} sm={6} md={3}>
                             <Card elevation={2} sx={{ borderRadius: 2 }}>
+                                <CardActionArea onClick={() => onMudarSecao?.("cliente_portas")}>
                                 <CardContent>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Typography variant="subtitle2" color="text.secondary">
@@ -350,11 +358,13 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         {portasInstaladas.length}
                                     </Typography>
                                 </CardContent>
+                                </CardActionArea>
                             </Card>
                         </Grid>
 
                         <Grid item xs={12} sm={6} md={3}>
                             <Card elevation={2} sx={{ borderRadius: 2 }}>
+                                <CardActionArea onClick={() => onMudarSecao?.("cliente_os")}>
                                 <CardContent>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Typography variant="subtitle2" color="text.secondary">
@@ -366,6 +376,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         {osAbertas.length}
                                     </Typography>
                                 </CardContent>
+                                </CardActionArea>
                             </Card>
                         </Grid>
                     </Grid>
@@ -390,7 +401,9 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                     ) : (
                                         <Stack spacing={1.5}>
                                             {pedidos.slice(0, 4).map((p) => (
-                                                <Paper key={p.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1.5 }}>
+                                                <Paper key={p.id} component="button" type="button" onClick={() => setPedidoDetalheId(p.id)}
+                                                    aria-label={`Ver detalhes do pedido ${p.id}`} variant="outlined"
+                                                    sx={{ p: 1.5, borderRadius: 1.5, width: "100%", textAlign: "left", cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }}>
                                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                         <Typography variant="body2" fontWeight="bold">
                                                             Pedido #{p.id} — {p.tipo_pedido}
@@ -494,6 +507,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                                 <Typography variant="h6" fontWeight="bold">
                                                     Pedido #{p.id} — {p.tipo_pedido}
                                                 </Typography>
+                                                <Button size="small" variant="outlined" onClick={() => setPedidoDetalheId(p.id)}>Ver detalhes</Button>
                                                 <Typography variant="caption" color="text.secondary">
                                                     Local: {p.endereco_instalacao || dadosCliente?.endereco || "-"} • Previsão:{" "}
                                                     {formatarDataBr(p.data_previsao_fim)}
@@ -756,6 +770,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                 </Stack>
             )}
 
+            <PedidoClienteDetalhe pedido={pedidos.find((p) => p.id === pedidoDetalheId)} onClose={() => setPedidoDetalheId(null)} />
             <Dialog
                 open={Boolean(decisaoOrcamento)}
                 onClose={() => setDecisaoOrcamento(null)}
