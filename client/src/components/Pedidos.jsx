@@ -56,7 +56,8 @@ const FORM_INICIAL = {
     cliente_id: "",
     responsavel_producao_id: "",
     tipo_pedido: "Instalacao",
-    status: "Aguardando",
+    status: "Rascunho",
+    descricao_solicitacao: "",
     status_aprovacao: "Pendente",
     percentual_acrescimo: "0",
     endereco_instalacao: "",
@@ -239,6 +240,7 @@ export default function Pedidos({
                 ? Number(formNovo.responsavel_producao_id)
                 : null,
             tipo_pedido: formNovo.tipo_pedido,
+            descricao_solicitacao: formNovo.descricao_solicitacao.trim() || null,
             status: formNovo.status,
             status_aprovacao: formNovo.status_aprovacao,
             percentual_acrescimo: percNum,
@@ -342,6 +344,9 @@ export default function Pedidos({
                     >
                         Atualizar
                     </Button>
+                    {ehAdm && <Button variant="outlined" startIcon={<AddIcon />} onClick={() => {
+                        setFormNovo({ ...FORM_INICIAL, status: "Recebida" }); setErroNovo(""); setModalNovoAberto(true);
+                    }}>Nova solicitação</Button>}
                     {ehAdm && (
                         <Button
                             variant="contained"
@@ -588,7 +593,7 @@ export default function Pedidos({
                 <form onSubmit={criarNovoPedido}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <PrecisionManufacturingIcon color="primary" />
-                        Novo Pedido / Orçamento
+                        {formNovo.status === "Recebida" ? "Nova solicitação de serviço" : "Novo orçamento"}
                     </DialogTitle>
                     <DialogContent dividers>
                         <Stack spacing={2} sx={{ pt: 1 }}>
@@ -654,20 +659,8 @@ export default function Pedidos({
 
                             <Grid container spacing={2}>
                                 <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth>
-                                        <InputLabel id="novo-ped-status-label">Etapa Inicial</InputLabel>
-                                        <Select
-                                            labelId="novo-ped-status-label"
-                                            label="Etapa Inicial"
-                                            value={formNovo.status}
-                                            onChange={(e) => setFormNovo({ ...formNovo, status: e.target.value })}
-                                        >
-                                            <MenuItem value="Rascunho">Rascunho</MenuItem>
-                                            <MenuItem value="Pendente">Pendente (Orçamento)</MenuItem>
-                                            <MenuItem value="Aguardando">Aguardando</MenuItem>
-                                            <MenuItem value="Planejada">Planejada</MenuItem>
-                                        </Select>
-                                    </FormControl>
+                                    <TextField fullWidth label="Estado inicial" value={formNovo.status} disabled
+                                        helperText="Definido automaticamente pelo tipo de cadastro." />
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -683,6 +676,8 @@ export default function Pedidos({
                                 </Grid>
                             </Grid>
 
+                            <TextField fullWidth multiline label="Descrição da solicitação" required={formNovo.status === "Recebida"}
+                                value={formNovo.descricao_solicitacao} onChange={(e) => setFormNovo({ ...formNovo, descricao_solicitacao: e.target.value })} />
                             <FormControl fullWidth>
                                 <InputLabel id="novo-ped-resp-label">Responsável pela Produção (opcional)</InputLabel>
                                 <Select

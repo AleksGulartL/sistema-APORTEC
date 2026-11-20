@@ -26,7 +26,7 @@ async function buscarPorId(req, res) {
 
 async function criar(req, res) {
     try {
-        const pedido = await pedidoService.criar(req.body);
+        const pedido = await pedidoService.criar({ ...req.body, usuario_criador_id: req.usuario.id });
         return res.status(201).json(pedido);
     } catch (erro) {
         console.error("Erro ao criar pedido:", erro);

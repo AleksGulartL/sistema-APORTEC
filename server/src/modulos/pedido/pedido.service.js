@@ -97,8 +97,18 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarPedido(dados, false);
+    if (dados.status && !["Rascunho", "Recebida"].includes(dados.status)) {
+        throw Object.assign(new Error("O cadastro deve iniciar como Rascunho ou Recebida."), { status: 400 });
+    }
+    if (dados.status === "Recebida" && (typeof dados.descricao_solicitacao !== "string" || !dados.descricao_solicitacao.trim())) {
+        throw Object.assign(new Error("Descreva o serviço solicitado."), { status: 400 });
+    }
     const dadosFormatados = {
         ...dados,
+        status: dados.status || "Rascunho",
+        status_aprovacao: "Pendente",
+        bloqueio_fabricacao: true,
+        custo_total: 0,
         cliente_id: Number(dados.cliente_id),
     };
 
