@@ -69,7 +69,13 @@ async function deletar(req, res) {
     }
 }
 
+async function listarTecnicos(req, res) {
+    try { return res.json(await usuarioService.listarTecnicos()); }
+    catch (erro) { return responderErroController(res, erro); }
+}
+
 module.exports = {
+    listarTecnicos,
     listar,
     buscarPorId,
     criar,

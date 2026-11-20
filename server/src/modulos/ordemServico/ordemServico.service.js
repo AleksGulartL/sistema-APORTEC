@@ -1,3 +1,4 @@
+const { validarTecnico } = require("../../utils/validarTecnico");
 const ordemServicoRepository = require("./ordemServico.repository");
 
 const TIPOS_SERVICO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
@@ -101,6 +102,7 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarOrdemServico(dados, false);
+    await validarTecnico(dados.tecnico_responsavel_id);
     const idTecnicoRaw = dados.tecnico_responsavel_id;
     const idTecnico =
         idTecnicoRaw !== undefined && idTecnicoRaw !== null && String(idTecnicoRaw).trim() !== ""
@@ -126,6 +128,7 @@ async function atualizar(id, dados) {
     }
 
     validarOrdemServico(dados, true);
+    await validarTecnico(dados.tecnico_responsavel_id);
     const dadosFormatados = { ...dados };
 
     if (dadosFormatados.pedido_id !== undefined) {

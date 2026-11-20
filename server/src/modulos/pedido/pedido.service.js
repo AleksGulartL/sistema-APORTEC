@@ -1,3 +1,4 @@
+const { validarTecnico } = require("../../utils/validarTecnico");
 const pedidoRepository = require("./pedido.repository");
 
 const STATUS_VALIDOS = [
@@ -97,6 +98,7 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarPedido(dados, false);
+    await validarTecnico(dados.responsavel_producao_id);
     if (dados.status && !["Rascunho", "Recebida"].includes(dados.status)) {
         throw Object.assign(new Error("O cadastro deve iniciar como Rascunho ou Recebida."), { status: 400 });
     }
@@ -132,6 +134,7 @@ async function atualizar(id, dados) {
     }
 
     validarPedido(dados, true);
+    await validarTecnico(dados.responsavel_producao_id);
     const dadosFormatados = { ...dados };
 
     if (dadosFormatados.cliente_id !== undefined) {

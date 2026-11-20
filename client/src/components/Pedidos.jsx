@@ -127,7 +127,7 @@ export default function Pedidos({
                 api.get("/pedido"),
                 api.get("/cliente"),
                 api.get("/item_catalogo"),
-                ehAdm ? api.get("/usuarios") : Promise.resolve({ data: [] }),
+                api.get("/tecnicos"),
             ]);
 
             if (resPed.status === "rejected") {
@@ -155,32 +155,10 @@ export default function Pedidos({
         carregarDados();
     }, [carregarDados]);
 
-    const tecnicosDisponiveis = useMemo(() => {
-        const mapa = new Map();
-        const add = (u) => {
-            if (!u || !u.id) return;
-            if (u.perfil === "CLIENTE") return;
-            mapa.set(Number(u.id), {
-                id: Number(u.id),
-                nome_completo: u.nome_completo || `Usuário #${u.id}`,
-                perfil: u.perfil || "TECNICO",
-            });
-        };
-
-        if (usuario) {
-            add({
-                id: usuario.id,
-                nome_completo: usuario.nome_completo,
-                perfil: obterPerfilUsuario(usuario),
-            });
-        }
-        for (const u of usuariosSistema) add(u);
-        for (const p of pedidos) {
-            if (p.responsavel_producao) add(p.responsavel_producao);
-            if (p.usuario_criador) add(p.usuario_criador);
-        }
-        return Array.from(mapa.values());
-    }, [usuario, usuariosSistema, pedidos]);
+    const tecnicosDisponiveis = useMemo(
+        () => usuariosSistema.filter((u) => u.perfil === "TECNICO" && u.ativo === true),
+        [usuariosSistema]
+    );
 
     const pedidoSelecionado = useMemo(
         () => pedidos.find((p) => Number(p.id) === Number(pedidoSelecionadoId)) || null,

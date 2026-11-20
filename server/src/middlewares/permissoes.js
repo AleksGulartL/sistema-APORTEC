@@ -14,6 +14,7 @@ const FUNCIONARIOS = [ADM, TECNICO];
 const PERMISSOES = Object.freeze({
     // RF01 - Gestão de usuários: exclusiva do ADM
     usuario: {
+        listarTecnicos: FUNCIONARIOS,
         listar: [ADM],
         buscarPorId: [ADM],
         criar: [ADM],

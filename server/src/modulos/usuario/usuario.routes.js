@@ -11,4 +11,6 @@ router.post("/usuarios", proteger("usuario", "criar"), usuarioController.criar);
 router.put("/usuarios/:id", proteger("usuario", "atualizar"), usuarioController.atualizar);
 router.delete("/usuarios/:id", proteger("usuario", "deletar"), usuarioController.deletar);
 
+router.get("/tecnicos", proteger("usuario", "listarTecnicos"), usuarioController.listarTecnicos);
+
 module.exports = router;

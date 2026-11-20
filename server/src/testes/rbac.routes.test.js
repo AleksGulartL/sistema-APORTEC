@@ -13,7 +13,7 @@ function mockStubController(funcoes) {
 
 const mockCRUD = ["listar", "buscarPorId", "criar", "atualizar", "deletar"];
 
-jest.mock("../modulos/usuario/usuario.controller", () => mockStubController(mockCRUD));
+jest.mock("../modulos/usuario/usuario.controller", () => mockStubController([...mockCRUD, "listarTecnicos"]));
 jest.mock("../modulos/cliente/cliente.controller", () => mockStubController(mockCRUD));
 jest.mock("../modulos/itemCatalogo/itemCatalogo.controller", () =>
     mockStubController([...mockCRUD, "listarTipos", "listarCategorias", "listarAlertasEstoqueMinimo"])
@@ -40,6 +40,7 @@ app.use(require("../modulos/pedido/pedido.routes"));
 app.use(require("../modulos/portalCliente/portalCliente.routes"));
 
 const ROTAS = [
+    ["get", "/tecnicos", "usuario", "listarTecnicos"],
     ["post", "/portal-cliente/solicitacoes", "portalCliente", "criarSolicitacao"],
     ["get", "/usuarios", "usuario", "listar"],
     ["get", "/usuarios/1", "usuario", "buscarPorId"],

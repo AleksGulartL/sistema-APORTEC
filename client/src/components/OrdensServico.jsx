@@ -128,7 +128,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 api.get("/ordem_servico"),
                 api.get("/cliente"),
                 api.get("/pedido"),
-                ehAdm ? api.get("/usuarios") : Promise.resolve({ data: [] }),
+                api.get("/tecnicos"),
             ]);
 
             if (resOs.status === "rejected") {
@@ -154,34 +154,10 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         carregarDados();
     }, [carregarDados]);
 
-    const tecnicosDisponiveis = useMemo(() => {
-        const mapa = new Map();
-        const add = (u) => {
-            if (!u || !u.id) return;
-            if (u.perfil === "CLIENTE") return;
-            mapa.set(Number(u.id), {
-                id: Number(u.id),
-                nome_completo: u.nome_completo || `Usuário #${u.id}`,
-                perfil: u.perfil || "TECNICO",
-            });
-        };
-
-        if (usuario) {
-            add({
-                id: usuario.id,
-                nome_completo: usuario.nome_completo,
-                perfil: obterPerfilUsuario(usuario),
-            });
-        }
-        for (const u of usuariosSistema) add(u);
-        for (const os of ordens) {
-            if (os.tecnico_responsavel) add(os.tecnico_responsavel);
-        }
-        for (const p of pedidos) {
-            if (p.responsavel_producao) add(p.responsavel_producao);
-        }
-        return Array.from(mapa.values());
-    }, [usuario, usuariosSistema, ordens, pedidos]);
+    const tecnicosDisponiveis = useMemo(
+        () => usuariosSistema.filter((u) => u.perfil === "TECNICO" && u.ativo === true),
+        [usuariosSistema]
+    );
 
     useEffect(() => {
         if (!pedidoParaNovaOs) return;
@@ -191,7 +167,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
             ...FORM_INICIAL,
             cliente_id_filtro: pedidoParaNovaOs.cliente_id ? String(pedidoParaNovaOs.cliente_id) : "",
             pedido_id: pedidoParaNovaOs.id ? String(pedidoParaNovaOs.id) : "",
-            tecnico_responsavel_id: String(usuario?.id ?? ""),
+            tecnico_responsavel_id: usuario?.perfil === "TECNICO" ? String(usuario.id) : "",
             tipo_servico: pedidoParaNovaOs.status === "Pronto para Instalacao" ? "Instalacao" : "Manutencao Corretiva",
             origem_cobertura: gar.vigente ? "Garantia" : "Avulso",
         });
@@ -236,7 +212,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         setForm({
             ...FORM_INICIAL,
             pedido_id: pedidos[0]?.id ? String(pedidos[0].id) : "",
-            tecnico_responsavel_id: String(usuario?.id ?? ""),
+            tecnico_responsavel_id: usuario?.perfil === "TECNICO" ? String(usuario.id) : "",
         });
         setErroModal("");
         setModalAberto(true);

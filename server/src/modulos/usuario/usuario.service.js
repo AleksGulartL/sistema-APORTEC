@@ -120,7 +120,10 @@ async function deletar(id) {
     return usuarioRepository.deletar(idNum);
 }
 
+async function listarTecnicos() { return usuarioRepository.listarTecnicos(); }
+
 module.exports = {
+    listarTecnicos,
     listar,
     buscarPorId,
     criar,

@@ -2,6 +2,7 @@ const ordemServicoService = require("../ordemServico.service");
 const ordemServicoRepository = require("../ordemServico.repository");
 
 jest.mock("../ordemServico.repository");
+jest.mock("../../../utils/validarTecnico", () => ({ validarTecnico: jest.fn().mockResolvedValue(undefined) }));
 
 describe("OrdemServicoService - Testes Unitários", () => {
     afterEach(() => {

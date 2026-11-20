@@ -157,7 +157,7 @@ export default function PedidoDetalhe({
         const cm = pedido.checklist_medicao;
         setFormMedicao({
             id: cm?.id || null,
-            tecnico_id: cm?.tecnico_id ? String(cm.tecnico_id) : String(usuario?.id ?? ""),
+            tecnico_id: cm?.tecnico_id ? String(cm.tecnico_id) : (usuario?.perfil === "TECNICO" ? String(usuario.id) : ""),
             medidas_vao: cm?.medidas_vao || "",
             sentido_abertura: cm?.sentido_abertura || "Bipartida (Central)",
             quantidade_folhas: cm?.quantidade_folhas ? String(cm.quantidade_folhas) : "2",
