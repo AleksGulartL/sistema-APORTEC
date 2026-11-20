@@ -152,6 +152,7 @@ CREATE TABLE pedido (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
+    CONSTRAINT chk_instalacao_sem_pedido_origem CHECK (tipo_pedido <> 'Instalacao' OR pedido_origem_id IS NULL),
     CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id)
         REFERENCES cliente (usuario_id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_pedido_usuario_criador FOREIGN KEY (usuario_criador_id)

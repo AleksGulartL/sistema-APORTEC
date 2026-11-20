@@ -113,3 +113,15 @@ describe("Solicitações de novos serviços", () => {
             .rejects.toMatchObject({ status: 400 });
     });
 });
+
+test("nova instalação descarta vínculo residual sem consultar pedidos anteriores", async () => {
+    jest.clearAllMocks();
+    portalClienteRepository.buscarClientePorUsuarioId.mockResolvedValue({ usuario_id: 15 });
+    portalClienteRepository.criarSolicitacao.mockImplementation(async (dados) => dados);
+    const solicitacao = await portalClienteService.criarSolicitacao({ id: 15 }, {
+        tipo_servico: "Instalacao", pedido_origem_id: 99,
+        descricao_problema: "Nova porta", endereco: "Rua A, 10",
+    });
+    expect(solicitacao.pedido_origem_id).toBeNull();
+    expect(portalClienteRepository.buscarPedidoDoClientePorId).not.toHaveBeenCalled();
+});

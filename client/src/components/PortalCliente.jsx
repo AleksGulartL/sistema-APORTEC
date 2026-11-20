@@ -197,7 +197,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
         setSalvandoOs(true);
         try {
             await api.post("/portal-cliente/solicitacoes", {
-                pedido_origem_id: formOs.pedido_id ? Number(formOs.pedido_id) : null,
+                pedido_origem_id: formOs.tipo_servico !== "Instalacao" && formOs.pedido_id ? Number(formOs.pedido_id) : null,
                 endereco: formOs.endereco.trim(),
                 tipo_servico: formOs.tipo_servico,
                 descricao_problema: formOs.descricao_problema.trim(),
@@ -820,6 +820,24 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         <Stack spacing={2} sx={{ pt: 0.5 }}>
                             {erroOs && <Alert severity="error">{erroOs}</Alert>}
 
+
+
+                            <FormControl fullWidth required>
+                                <InputLabel id="cli-os-tipo-label">Tipo de Solicitação</InputLabel>
+                                <Select
+                                    labelId="cli-os-tipo-label"
+                                    label="Tipo de Solicitação"
+                                    value={formOs.tipo_servico}
+                                    onChange={(e) => setFormOs((form) => ({ ...form, tipo_servico: e.target.value,
+                                        pedido_id: e.target.value === "Instalacao" ? "" : form.pedido_id }))}
+                                >
+                                    <MenuItem value="Instalacao">Nova instalação</MenuItem>
+                                    <MenuItem value="Manutencao Corretiva">Manutenção Corretiva (Problema / Defeito)</MenuItem>
+                                    <MenuItem value="Manutencao Preventiva">Manutenção Preventiva (Revisão)</MenuItem>
+                                </Select>
+                            </FormControl>
+
+                            {formOs.tipo_servico !== "Instalacao" && (
                             <FormControl fullWidth>
                                 <InputLabel id="cli-os-porta-label">Porta / Pedido Relacionado (opcional)</InputLabel>
                                 <Select
@@ -838,20 +856,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                     ))}
                                 </Select>
                             </FormControl>
-
-                            <FormControl fullWidth required>
-                                <InputLabel id="cli-os-tipo-label">Tipo de Solicitação</InputLabel>
-                                <Select
-                                    labelId="cli-os-tipo-label"
-                                    label="Tipo de Solicitação"
-                                    value={formOs.tipo_servico}
-                                    onChange={(e) => setFormOs({ ...formOs, tipo_servico: e.target.value })}
-                                >
-                                    <MenuItem value="Instalacao">Nova instalação</MenuItem>
-                                    <MenuItem value="Manutencao Corretiva">Manutenção Corretiva (Problema / Defeito)</MenuItem>
-                                    <MenuItem value="Manutencao Preventiva">Manutenção Preventiva (Revisão)</MenuItem>
-                                </Select>
-                            </FormControl>
+                            )}
 
                             <TextField required fullWidth label="Endereço de atendimento" value={formOs.endereco}
                                 onChange={(e) => setFormOs({ ...formOs, endereco: e.target.value })} />

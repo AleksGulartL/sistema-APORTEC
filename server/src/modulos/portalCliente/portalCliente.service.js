@@ -113,7 +113,7 @@ async function criarSolicitacao(usuarioLogado, dados = {}) {
         throw Object.assign(new Error("Informe a descrição do serviço e o endereço de atendimento."), { status: 400 });
     }
     let origem = null;
-    if (dados.pedido_origem_id != null && dados.pedido_origem_id !== "") {
+    if (dados.tipo_servico !== "Instalacao" && dados.pedido_origem_id != null && dados.pedido_origem_id !== "") {
         const id = Number(dados.pedido_origem_id);
         if (!Number.isSafeInteger(id) || id <= 0) {
             throw Object.assign(new Error("Porta / Pedido de origem inválido."), { status: 400 });
