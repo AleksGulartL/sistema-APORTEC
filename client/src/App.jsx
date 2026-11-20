@@ -72,6 +72,7 @@ export default function App() {
     const [pedidoContextoId, setPedidoContextoId] = useState(null);
     const [prontuarioBuscaInicial, setProntuarioBuscaInicial] = useState("");
     const [pedidoParaNovaOs, setPedidoParaNovaOs] = useState(null);
+    const [pedidoConsultaOsId, setPedidoConsultaOsId] = useState(null);
 
     // Event listener para expiração de token tratada pelo interceptor do Axios
     useEffect(() => {
@@ -82,6 +83,7 @@ export default function App() {
             setPedidoContextoId(null);
             setProntuarioBuscaInicial("");
             setPedidoParaNovaOs(null);
+            setPedidoConsultaOsId(null);
         }
         window.addEventListener("auth:expired", onTokenExpired);
         return () => window.removeEventListener("auth:expired", onTokenExpired);
@@ -107,6 +109,7 @@ export default function App() {
         setPedidoContextoId(null);
         setProntuarioBuscaInicial("");
         setPedidoParaNovaOs(null);
+        setPedidoConsultaOsId(null);
     }
 
     function abrirPedido(idPedido) {
@@ -119,7 +122,14 @@ export default function App() {
         setAbaAtiva("prontuario");
     }
 
+    function consultarOsDoPedido(id) {
+        setPedidoParaNovaOs(null);
+        setPedidoConsultaOsId(id);
+        setAbaAtiva("ordens_servico");
+    }
+
     function abrirNovaOsParaPedido(pedido) {
+        setPedidoConsultaOsId(null);
         setPedidoParaNovaOs(pedido);
         setAbaAtiva("ordens_servico");
     }
@@ -152,6 +162,7 @@ export default function App() {
                         usuario={usuario}
                         abaAtiva={abaSegura}
                         onMudarAba={(novaAba) => {
+                            if (novaAba !== "ordens_servico") setPedidoConsultaOsId(null);
                             if (novaAba !== "pedidos") setPedidoContextoId(null);
                             if (novaAba !== "prontuario") setProntuarioBuscaInicial("");
                             setAbaAtiva(novaAba);
@@ -184,6 +195,7 @@ export default function App() {
                                         onLimparContexto={() => setPedidoContextoId(null)}
                                         onAbrirProntuario={abrirProntuario}
                                         onAbrirOs={abrirNovaOsParaPedido}
+                                        onConsultarOs={consultarOsDoPedido}
                                     />
                                 )}
                                 {abaSegura === "catalogo" && <CatalogoEstoque usuario={usuario} />}
@@ -191,6 +203,8 @@ export default function App() {
                                     <OrdensServico
                                         usuario={usuario}
                                         pedidoParaNovaOs={pedidoParaNovaOs}
+                                        pedidoConsultaId={pedidoConsultaOsId}
+                                        onLimparConsulta={() => setPedidoConsultaOsId(null)}
                                         onLimparContexto={() => setPedidoParaNovaOs(null)}
                                     />
                                 )}

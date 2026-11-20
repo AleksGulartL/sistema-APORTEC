@@ -179,6 +179,9 @@ async function atualizarStatusEtapa(id, dados = {}) {
     }
 
     const novoStatus = dados.status;
+    if (novoStatus === "Concluido") {
+        throw Object.assign(new Error("Finalize a OS com parecer e assinatura para concluir este pedido."), { status: 400 });
+    }
     if (!novoStatus || !STATUS_VALIDOS.includes(novoStatus)) {
         const erro = new Error(`O campo 'status' é obrigatório e deve ser um dos valores: ${STATUS_VALIDOS.join(", ")}.`);
         erro.status = 400;
@@ -187,6 +190,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
 
     const existente = await pedidoRepository.buscarPorId(idNum);
     if (!existente) return null;
+    if (existente.status === "Concluido") throw Object.assign(new Error("Este pedido já foi concluído."), { status: 409 });
 
     if (
         ETAPAS_FABRICACAO.includes(novoStatus) &&
@@ -226,47 +230,8 @@ async function atualizarStatusEtapa(id, dados = {}) {
 }
 
 // RF13 & RF15 - Coletar Assinatura Digital de Aceite e registrar número de série e garantia no próprio Pedido
-async function coletarAssinaturaAceite(id, dados = {}) {
-    const idNum = Number(id);
-    if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
-    }
-
-    const assinatura = dados.assinatura_cliente_instalacao;
-    if (!assinatura || typeof assinatura !== "string" || !assinatura.trim()) {
-        const erro = new Error("A assinatura digital do cliente é obrigatória para formalizar o aceite da instalação.");
-        erro.status = 400;
-        throw erro;
-    }
-
-    const existente = await pedidoRepository.buscarPorId(idNum);
-    if (!existente) return null;
-
-    exigirLiberacao(existente);
-    const agora = new Date();
-    const umAnoDepois = new Date(agora);
-    umAnoDepois.setFullYear(umAnoDepois.getFullYear() + 1);
-
-    const numeroSerie = ehManutencao(existente) ? null :
-        dados.numero_serie ||
-        existente.numero_serie ||
-        `APORTEC-${agora.getFullYear()}-${String(idNum).padStart(4, "0")}`;
-
-    const fimGarantia = ehManutencao(existente) ? null : dados.fim_garantia || umAnoDepois.toISOString().slice(0, 10);
-
-    const pedidoAtualizado = await pedidoRepository.atualizar(idNum, {
-        assinatura_cliente_instalacao: assinatura.trim(),
-        numero_serie: numeroSerie,
-        fim_garantia: fimGarantia,
-        status: "Concluido",
-        data_conclusao: agora,
-    });
-
-    return {
-        pedido: pedidoAtualizado,
-    };
+async function coletarAssinaturaAceite() {
+    throw Object.assign(new Error("O aceite agora é registrado exclusivamente na finalização da OS."), { status: 410 });
 }
 
 async function deletar(id) {

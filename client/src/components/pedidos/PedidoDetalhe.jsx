@@ -58,7 +58,7 @@ import {
     formatarDataHoraBr,
     formatarMoedaBr,
 } from "../../utils/permissoes";
-import AssinaturaDigital, { VisualizarAssinatura } from "../comum/AssinaturaDigital";
+import { VisualizarAssinatura } from "../comum/AssinaturaDigital";
 
 const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 
@@ -101,6 +101,7 @@ export default function PedidoDetalhe({
     onPedidoAtualizado,
     onAbrirProntuario,
     onAbrirOs,
+    onConsultarOs,
 }) {
     const manutencao = pedido?.tipo_pedido !== "Instalacao";
     const etapas = manutencao ? ["Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Em Atendimento", "Concluido"] : ETAPAS_STEPPER;
@@ -119,9 +120,6 @@ export default function PedidoDetalhe({
     const [valorUnitEdicao, setValorUnitEdicao] = useState("0");
     const [formMedicao, setFormMedicao] = useState({});
     const [checklistPreSaida, setChecklistPreSaida] = useState(null);
-    const [assinaturaAceite, setAssinaturaAceite] = useState("");
-    const [numeroSerieInput, setNumeroSerieInput] = useState("");
-    const [fimGarantiaInput, setFimGarantiaInput] = useState("");
 
     useEffect(() => {
         if (!pedido) return;
@@ -153,9 +151,6 @@ export default function PedidoDetalhe({
             status_aprovacao: cm?.status_aprovacao || "Pendente",
         });
 
-        setAssinaturaAceite(pedido.assinatura_cliente_instalacao || "");
-        setNumeroSerieInput(pedido.numero_serie || "");
-        setFimGarantiaInput(extrairChaveDataLocal(pedido.fim_garantia) || "");
     }, [pedido, usuario]);
 
     const itensPedido = pedido?.itens || [];
@@ -415,44 +410,6 @@ export default function PedidoDetalhe({
         }
     }
 
-    async function registrarAceiteInstalacao(event) {
-        event.preventDefault();
-        setErro("");
-        setSucesso("");
-
-        if (!assinaturaAceite || !assinaturaAceite.trim()) {
-            setErro("Colete a assinatura digital do cliente antes de concluir a instalação.");
-            return;
-        }
-
-        const payload = {
-            assinatura_cliente_instalacao: assinaturaAceite.trim(),
-        };
-        if (numeroSerieInput.trim()) {
-            payload.numero_serie = numeroSerieInput.trim();
-        }
-        if (fimGarantiaInput) {
-            payload.fim_garantia = fimGarantiaInput;
-        }
-
-        setSalvando(true);
-        try {
-            const res = await api.post(`/pedido/${pedido.id}/aceite-instalacao`, payload);
-            const pedAtual = res.data?.pedido;
-            setSucesso(manutencao ? "Aceite registrado. Atendimento concluído!" :
-                `Aceite registrado! Nº de Série: ${pedAtual?.numero_serie || "gerado"} • Garantia até ${formatarDataBr(
-                    pedAtual?.fim_garantia
-                )}.`
-            );
-            await onPedidoAtualizado?.(pedido.id);
-        } catch (err) {
-            console.error("Erro ao registrar aceite da instalação:", err);
-            setErro(err.response?.data?.erro || "Erro ao coletar assinatura de aceite.");
-        } finally {
-            setSalvando(false);
-        }
-    }
-
     const infraComPendencia = !formMedicao.viga_ok || !formMedicao.piso_ok || !formMedicao.ponto_eletrico_ok;
 
     return (
@@ -497,7 +454,7 @@ export default function PedidoDetalhe({
                             Prontuário ({pedido.numero_serie})
                         </Button>
                     )}
-                    {onAbrirOs && (
+                    {onAbrirOs && !["Concluido", "Cancelado"].includes(pedido.status) && (
                         <Button
                             size="small"
                             variant="outlined"
@@ -1164,7 +1121,7 @@ export default function PedidoDetalhe({
                                 )}
 
                                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
-                                    {etapas.map((etapa) => {
+                                    {etapas.filter((etapa) => etapa !== "Concluido").map((etapa) => {
                                         const atual = pedido.status === etapa;
                                         const exigeDesbloqueio = (ETAPAS_FABRICACAO.includes(etapa) || etapa === "Em Atendimento");
                                         const bloqueada = exigeDesbloqueio && pedido.bloqueio_fabricacao;
@@ -1182,14 +1139,14 @@ export default function PedidoDetalhe({
                                                         <CheckCircleIcon fontSize="small" />
                                                     ) : null
                                                 }
-                                                disabled={salvando || atual}
+                                                disabled={salvando || atual || pedido.status === "Concluido" || pedido.status === "Cancelado"}
                                                 onClick={() => alterarEtapaProducao(etapa)}
                                             >
                                                 {etapa}
                                             </Button>
                                         );
                                     })}
-                                    {pedido.status !== "Cancelado" && ehAdm && (
+                                    {!["Cancelado", "Concluido"].includes(pedido.status) && ehAdm && (
                                         <Button
                                             size="small"
                                             variant="outlined"
@@ -1267,86 +1224,21 @@ export default function PedidoDetalhe({
 
                             <Divider />
 
-                            <Box>
-                                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                                    {manutencao ? "Aceite do atendimento" : "Aceite da instalação, série e garantia"}
-                                </Typography>
-
-                                {pedido.assinatura_cliente_instalacao && pedido.status === "Concluido" && (
-                                    <Alert severity="success" sx={{ mb: 2 }}>
-                                        {manutencao ? "Atendimento concluído em " : "Instalação concluída em "}{formatarDataHoraBr(pedido.data_conclusao)} • Nº de Série:{" "}
-                                        <strong>{pedido.numero_serie}</strong> • Garantia até{" "}
-                                        <strong>{formatarDataBr(pedido.fim_garantia)}</strong>
+                            <Stack spacing={2}>
+                                <Typography variant="h6">Encerramento e aceite</Typography>
+                                {pedido.status === "Concluido" ? (
+                                    <Alert severity="success">
+                                        Serviço concluído em {formatarDataHoraBr(pedido.data_conclusao)}.
+                                        {!manutencao && <> Série: <strong>{pedido.numero_serie}</strong> • Garantia até <strong>{formatarDataBr(pedido.fim_garantia)}</strong>.</>}
+                                        {manutencao && " A série e a garantia da porta original foram preservadas."}
                                     </Alert>
+                                ) : (
+                                    <Alert severity="info">O parecer e a assinatura são registrados uma única vez na OS. Ao finalizar a OS, este pedido será concluído automaticamente.</Alert>
                                 )}
-
-                                {pedido.bloqueio_fabricacao && (
-                                    <Alert severity="warning" sx={{ mb: 2 }}>
-                                        {manutencao ? "A conclusão exige diagnóstico técnico e aprovação do orçamento pelo cliente." : "A conclusão exige aprovação comercial e checklist de medição aprovado."}
-                                    </Alert>
-                                )}
-
-                                {pedido.assinatura_cliente_instalacao ? (
-                                    <Box sx={{ mb: 2 }}>
-                                        <VisualizarAssinatura
-                                            valor={pedido.assinatura_cliente_instalacao}
-                                            titulo="Assinatura de Aceite Registrada"
-                                        />
-                                    </Box>
-                                ) : null}
-
-                                <form onSubmit={registrarAceiteInstalacao}>
-                                    <Stack spacing={2}>
-                                        <Grid container spacing={2} sx={{ display: manutencao ? "none" : "flex" }}>
-                                            <Grid item xs={12} sm={6}>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Nº de Série da Porta (opcional)"
-                                                    placeholder={`Auto: APORTEC-${new Date().getFullYear()}-${String(
-                                                        pedido.id
-                                                    ).padStart(4, "0")}`}
-                                                    value={numeroSerieInput}
-                                                    onChange={(e) => setNumeroSerieInput(e.target.value)}
-                                                    helperText="Deixe em branco para gerar automaticamente no padrão APORTEC."
-                                                />
-                                            </Grid>
-                                            <Grid item xs={12} sm={6}>
-                                                <TextField
-                                                    fullWidth
-                                                    type="date"
-                                                    label="Fim da Garantia (opcional)"
-                                                    InputLabelProps={{ shrink: true }}
-                                                    value={fimGarantiaInput}
-                                                    onChange={(e) => setFimGarantiaInput(e.target.value)}
-                                                    helperText="Deixe em branco para definir 1 ano a partir de hoje."
-                                                />
-                                            </Grid>
-                                        </Grid>
-
-                                        <AssinaturaDigital
-                                            valor={assinaturaAceite}
-                                            onChange={setAssinaturaAceite}
-                                            label="Coletar / Atualizar Assinatura Digital do Cliente"
-                                        />
-
-                                        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                                            <Button
-                                                type="submit"
-                                                variant="contained"
-                                                color="success"
-                                                startIcon={<CheckCircleIcon />}
-                                                disabled={salvando || pedido.bloqueio_fabricacao}
-                                            >
-                                                {salvando ? (
-                                                    <CircularProgress size={20} color="inherit" />
-                                                ) : (
-                                                    manutencao ? "Registrar aceite e concluir atendimento" : "Registrar Aceite e Concluir Instalação"
-                                                )}
-                                            </Button>
-                                        </Box>
-                                    </Stack>
-                                </form>
-                            </Box>
+                                {(pedido.ordens_servico || []).map((os) => <Typography key={os.id}>OS #{os.id} — {os.status_os}</Typography>)}
+                                {pedido.assinatura_cliente_instalacao && <VisualizarAssinatura valor={pedido.assinatura_cliente_instalacao} titulo="Aceite registrado no encerramento" />}
+                                {onConsultarOs && <Button variant="outlined" onClick={() => onConsultarOs(pedido.id)}>Consultar OS do pedido</Button>}
+                            </Stack>
                         </Stack>
                     )}
                 </Box>

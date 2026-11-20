@@ -47,7 +47,7 @@ import {
     usuarioEhAdm,
     usuarioEhFuncionario,
 } from "../utils/permissoes";
-import AssinaturaDigital from "./comum/AssinaturaDigital";
+import AssinaturaDigital, { VisualizarAssinatura } from "./comum/AssinaturaDigital";
 
 const TIPOS_SERVICO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 const COBERTURAS = ["Garantia", "Contrato", "Avulso"];
@@ -82,7 +82,7 @@ const EXTRATORES_OS = {
     status_os: (os) => os.status_os || "",
 };
 
-export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimparContexto }) {
+export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimparContexto, pedidoConsultaId = null, onLimparConsulta }) {
     const ehAdm = usuarioEhAdm(usuario);
     const ehFuncionario = usuarioEhFuncionario(usuario);
 
@@ -107,6 +107,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
     const [salvando, setSalvando] = useState(false);
 
     const [osAtender, setOsAtender] = useState(null);
+    const [osConsulta, setOsConsulta] = useState(null);
     const [statusAtender, setStatusAtender] = useState("Finalizada");
     const [parecerAtender, setParecerAtender] = useState("");
     const [assinaturaAtender, setAssinaturaAtender] = useState("");
@@ -189,6 +190,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
     const ordensFiltradas = useMemo(() => {
         const termo = busca.trim().toLowerCase();
         const filtradas = ordens.filter((os) => {
+            if (pedidoConsultaId && Number(os.pedido_id) !== Number(pedidoConsultaId)) return false;
             if (filtroStatus !== "TODAS" && os.status_os !== filtroStatus) return false;
             if (filtroTipo !== "TODOS" && os.tipo_servico !== filtroTipo) return false;
             if (!termo) return true;
@@ -205,7 +207,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
             );
         });
         return ordenarLista(filtradas, ordenacao.campo, ordenacao.direcao, EXTRATORES_OS);
-    }, [ordens, busca, filtroStatus, filtroTipo, ordenacao]);
+    }, [ordens, busca, filtroStatus, filtroTipo, ordenacao, pedidoConsultaId]);
 
     function abrirNovaOs() {
         setModoEdicao(false);
@@ -254,9 +256,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
             data_agendamento: form.data_agendamento ? new Date(form.data_agendamento).toISOString() : null,
         };
 
-        if (form.status_os === "Finalizada") {
-            payload.data_conclusao = new Date().toISOString();
-        }
 
         setSalvando(true);
         try {
@@ -278,6 +277,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
     }
 
     function abrirAtendimento(os) {
+        if (os.status_os === "Finalizada") { setOsConsulta(os); return; }
         setOsAtender(os);
         setStatusAtender(os.status_os === "Aberta" ? "Finalizada" : os.status_os || "Finalizada");
         setParecerAtender(os.parecer_tecnico || "");
@@ -306,14 +306,11 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
             assinatura_cliente_digital: assinaturaAtender?.trim() || null,
         };
 
-        if (statusAtender === "Finalizada") {
-            payload.data_conclusao = osAtender.data_conclusao || new Date().toISOString();
-        }
 
         setSalvandoAtender(true);
         try {
             await api.put(`/ordem_servico/${osAtender.id}`, payload);
-            setSucessoMsg(`Ordem de Serviço #${osAtender.id} atualizada (${statusAtender})!`);
+            setSucessoMsg(statusAtender === "Finalizada" ? `OS #${osAtender.id} finalizada. Pedido #${osAtender.pedido_id} concluído com o mesmo aceite!` : `Ordem de Serviço #${osAtender.id} atualizada (${statusAtender})!`);
             setOsAtender(null);
             carregarDados();
         } catch (err) {
@@ -395,6 +392,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 </Alert>
             )}
 
+            {pedidoConsultaId && <Chip sx={{ mb: 2 }} label={`OS do pedido #${pedidoConsultaId}`} onDelete={onLimparConsulta} />}
             <Card elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                 <Stack spacing={2}>
                     <Stack
@@ -581,7 +579,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                         </TableCell>
                                         <TableCell align="center">
                                             <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                <Tooltip title="Atender / Finalizar com Parecer e Assinatura">
+                                                <Tooltip title={os.status_os === "Finalizada" ? "Consultar encerramento e aceite" : "Atender / Finalizar com Parecer e Assinatura"}>
                                                     <IconButton
                                                         size="small"
                                                         color="success"
@@ -594,6 +592,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                                     <IconButton
                                                         size="small"
                                                         color="primary"
+                                                        disabled={os.status_os === "Finalizada"}
                                                         onClick={() => abrirEdicao(os)}
                                                     >
                                                         <EditIcon />
@@ -604,6 +603,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                                         <IconButton
                                                             size="small"
                                                             color="error"
+                                                            disabled={os.status_os === "Finalizada"}
                                                             onClick={() => setOsExcluir(os)}
                                                         >
                                                             <DeleteIcon />
@@ -757,7 +757,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                             value={form.status_os}
                                             onChange={(e) => setForm({ ...form, status_os: e.target.value })}
                                         >
-                                            {STATUS_OS.map((s) => (
+                                            {STATUS_OS.filter((s) => s !== "Finalizada").map((s) => (
                                                 <MenuItem key={s} value={s}>
                                                     {s}
                                                 </MenuItem>
@@ -807,6 +807,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                     <DialogContent dividers>
                         <Stack spacing={2} sx={{ pt: 1 }}>
                             {erroAtender && <Alert severity="error">{erroAtender}</Alert>}
+                            {statusAtender === "Finalizada" && <Alert severity="info">Uma única assinatura conclui a OS e o pedido vinculado. Este encerramento não poderá ser refeito.</Alert>}
 
                             <FormControl fullWidth>
                                 <InputLabel id="atender-status-label">Novo Status da OS</InputLabel>
@@ -850,11 +851,23 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                             {salvandoAtender ? (
                                 <CircularProgress size={20} color="inherit" />
                             ) : (
-                                "Registrar Parecer e Salvar"
+                                statusAtender === "Finalizada" ? (osAtender?.tipo_servico === "Instalacao" ? "Finalizar instalação" : "Finalizar manutenção") : "Salvar atendimento"
                             )}
                         </Button>
                     </DialogActions>
                 </form>
+            </Dialog>
+
+            <Dialog open={Boolean(osConsulta)} onClose={() => setOsConsulta(null)} maxWidth="sm" fullWidth>
+                <DialogTitle>Encerramento da OS #{osConsulta?.id}</DialogTitle>
+                <DialogContent dividers><Stack spacing={2}>
+                    <Alert severity="success">OS finalizada • Pedido #{osConsulta?.pedido_id} — {osConsulta?.pedido?.status}</Alert>
+                    <Typography>Conclusão: {formatarDataHoraBr(osConsulta?.data_conclusao)}</Typography>
+                    <Typography sx={{ whiteSpace: "pre-wrap" }}>Parecer: {osConsulta?.parecer_tecnico}</Typography>
+                    {osConsulta?.tipo_servico === "Instalacao" && <Typography>Série: {osConsulta?.pedido?.numero_serie || "Não informada"} • Garantia: {osConsulta?.pedido?.fim_garantia || "Não informada"}</Typography>}
+                    <VisualizarAssinatura valor={osConsulta?.assinatura_cliente_digital} titulo="Aceite do cliente" />
+                </Stack></DialogContent>
+                <DialogActions><Button onClick={() => setOsConsulta(null)}>Fechar</Button></DialogActions>
             </Dialog>
 
             <Dialog open={Boolean(osExcluir)} onClose={() => setOsExcluir(null)} maxWidth="xs" fullWidth>

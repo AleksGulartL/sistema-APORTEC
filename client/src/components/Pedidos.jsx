@@ -83,6 +83,7 @@ export default function Pedidos({
     onLimparContexto,
     onAbrirProntuario,
     onAbrirOs,
+    onConsultarOs,
 }) {
     const ehAdm = usuarioEhAdm(usuario);
     const ehFuncionario = usuarioEhFuncionario(usuario);
@@ -294,6 +295,7 @@ export default function Pedidos({
                     onPedidoAtualizado={atualizarPedidoIndividual}
                     onAbrirProntuario={onAbrirProntuario}
                     onAbrirOs={onAbrirOs}
+                    onConsultarOs={onConsultarOs}
                 />
             </Box>
         );

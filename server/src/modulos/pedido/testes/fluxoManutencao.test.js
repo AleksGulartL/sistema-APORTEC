@@ -35,7 +35,7 @@ test('aprovação com diagnóstico libera manutenção sem checklist de mediçã
 });
 test('não executa nem aceita serviço antes da aprovação', async () => {
     await expect(service.atualizarStatusEtapa(9, { status: 'Em Atendimento' })).rejects.toMatchObject({ status: 400 });
-    await expect(service.coletarAssinaturaAceite(9, { assinatura_cliente_instalacao: 'assinatura' })).rejects.toMatchObject({ status: 400 });
+    await expect(service.coletarAssinaturaAceite(9, { assinatura_cliente_instalacao: 'assinatura' })).rejects.toMatchObject({ status: 410 });
 });
 test('revisar orçamento invalida a aprovação e bloqueia execução novamente', async () => {
     repo.buscarPorId.mockResolvedValue({ ...manutencao, status: 'Aguardando', orcamento_enviado: true, status_aprovacao: 'Aprovado', diagnostico_tecnico: 'Trocar sensor', bloqueio_fabricacao: false });

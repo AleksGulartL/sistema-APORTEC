@@ -1,4 +1,4 @@
-const { ordem_servico, cliente, pedido, usuario } = require("../../database/models");
+const { sequelize, ordem_servico, cliente, pedido, usuario } = require("../../database/models");
 
 function obterIncludes() {
     const includes = [];
@@ -36,8 +36,9 @@ async function listar() {
     });
 }
 
-async function buscarPorId(id) {
+async function buscarPorId(id, options = {}) {
     return ordem_servico.findByPk(id, {
+        ...options,
         include: obterIncludes(),
     });
 }
@@ -47,9 +48,16 @@ async function criar(dados) {
 }
 
 async function atualizar(id, dados) {
-    const registro = await ordem_servico.findByPk(id);
-    if (!registro) return null;
-    return registro.update(dados);
+    return sequelize.transaction(async (transaction) => {
+        const registro = await ordem_servico.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!registro) return null;
+        if (registro.status_os === "Finalizada") {
+            throw Object.assign(new Error("Esta OS já foi finalizada e não pode ser alterada."), { status: 409 });
+        }
+        // O trigger conclui o pedido na mesma transação desta atualização.
+        await registro.update(dados, { transaction });
+        return buscarPorId(id, { transaction });
+    });
 }
 
 async function deletar(id) {

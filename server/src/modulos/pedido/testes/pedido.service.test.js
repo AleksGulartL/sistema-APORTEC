@@ -64,42 +64,21 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
         expect(pedidoRepository.atualizar).not.toHaveBeenCalled();
     });
 
-    test("RF13 & RF15: Deve coletar assinatura digital de aceite, concluir o pedido e gravar numero_serie e fim_garantia no próprio pedido", async () => {
-        pedidoRepository.buscarPorId.mockResolvedValue({
-            id: 10,
-            cliente_id: 3,
-            status: "Pronto para Instalacao",
-            status_aprovacao: "Aprovado", orcamento_enviado: true, checklist_medicao: { status_aprovacao: "Aprovado", viga_ok: true, piso_ok: true, ponto_eletrico_ok: true }, bloqueio_fabricacao: false,
-        });
-        pedidoRepository.atualizar.mockImplementation(async (id, payload) => ({
-            id,
-            ...payload,
-        }));
-
-        const resultado = await pedidoService.coletarAssinaturaAceite(10, {
-            assinatura_cliente_instalacao: "ASSINATURA_DIGITAL_BASE64_CLIENTE",
-        });
-
-        expect(pedidoRepository.atualizar).toHaveBeenCalledWith(
-            10,
-            expect.objectContaining({
-                assinatura_cliente_instalacao: "ASSINATURA_DIGITAL_BASE64_CLIENTE",
-                numero_serie: expect.stringMatching(/^APORTEC-\d{4}-0010$/),
-                status: "Concluido",
-            })
-        );
-        expect(resultado.pedido.numero_serie).toMatch(/^APORTEC-\d{4}-0010$/);
-        expect(resultado.pedido.fim_garantia).toBeDefined();
+    test("o endpoint antigo de aceite não conclui o pedido separadamente", async () => {
+        pedidoRepository.atualizar.mockClear();
+        await expect(pedidoService.coletarAssinaturaAceite(10, { assinatura_cliente_instalacao: "assinatura" })).rejects.toMatchObject({ status: 410 });
+        expect(pedidoRepository.atualizar).not.toHaveBeenCalled();
     });
 
-    test("RF13: Deve lançar erro 400 se assinatura digital não for informada no aceite", async () => {
-        await expect(
-            pedidoService.coletarAssinaturaAceite(10, { assinatura_cliente_instalacao: "   " })
-        ).rejects.toMatchObject({
-            message: "A assinatura digital do cliente é obrigatória para formalizar o aceite da instalação.",
-            status: 400,
-        });
+    test("não conclui o pedido por mudança direta de etapa", async () => {
+        await expect(pedidoService.atualizarStatusEtapa(10, { status: "Concluido" })).rejects.toMatchObject({ status: 400 });
     });
+
+    test("não reabre pedido já concluído por mudança de etapa", async () => {
+        pedidoRepository.buscarPorId.mockResolvedValue({ status: "Concluido" });
+        await expect(pedidoService.atualizarStatusEtapa(10, { status: "Aguardando" })).rejects.toMatchObject({ status: 409 });
+    });
+
 });
 
 test("novo orçamento sempre começa em rascunho, sem aprovação nem custo arbitrário", async () => {

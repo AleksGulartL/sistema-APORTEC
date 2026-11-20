@@ -5,6 +5,31 @@ const ordemServicoRepository = require("./ordemServico.repository");
 
 const TIPOS_SERVICO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 const ORIGENS_COBERTURA = ["Garantia", "Contrato", "Avulso"];
+const CAMPOS_OS = ["pedido_id", "tecnico_responsavel_id", "tipo_servico", "origem_cobertura", "status_os", "descricao_problema", "parecer_tecnico", "assinatura_cliente_digital", "data_agendamento"];
+const dadosPermitidos = (dados) => Object.fromEntries(CAMPOS_OS.filter((campo) => dados[campo] !== undefined).map((campo) => [campo, dados[campo]]));
+const erroFluxo = (mensagem, status = 400) => Object.assign(new Error(mensagem), { status });
+
+async function validarFluxo(dados, atual = {}) {
+    if (atual.status_os === "Finalizada") throw erroFluxo("Esta OS já foi finalizada e não pode ser alterada.", 409);
+    const pedido = await pedidoRepository.buscarPorId(dados.pedido_id || atual.pedido_id);
+    if (!pedido) throw erroFluxo("Pedido não encontrado.");
+    if (["Concluido", "Cancelado"].includes(pedido.status)) throw erroFluxo("O pedido vinculado já está encerrado.", 409);
+    if ((dados.tipo_servico || atual.tipo_servico) !== pedido.tipo_pedido) throw erroFluxo("O tipo da OS deve corresponder ao orçamento aprovado.");
+    const status = dados.status_os || atual.status_os || "Aberta";
+    if (["Em Andamento", "Finalizada"].includes(status)) exigirLiberacao(pedido);
+    if (status === "Finalizada") {
+        if (atual.status_os === "Cancelada") throw erroFluxo("Uma OS cancelada não pode ser finalizada.", 409);
+        if (pedido.tipo_pedido === "Instalacao" && pedido.status !== "Pronto para Instalacao") throw erroFluxo("Conclua a produção antes de finalizar a instalação.");
+        for (const campo of ["parecer_tecnico", "assinatura_cliente_digital"]) {
+            if (typeof dados[campo] !== "string" || !dados[campo].trim()) throw erroFluxo("Informe o parecer técnico e a assinatura do cliente para finalizar.");
+            dados[campo] = dados[campo].trim();
+        }
+        const tecnico = dados.tecnico_responsavel_id === undefined ? atual.tecnico_responsavel_id : dados.tecnico_responsavel_id;
+        if (!tecnico) throw erroFluxo("Atribua um técnico antes de finalizar a OS.");
+        await validarTecnico(tecnico);
+    }
+}
+
 const STATUS_OS = ["Aberta", "Em Andamento", "Finalizada", "Cancelada"];
 
 function validarOrdemServico(dados, isUpdate = false) {
@@ -104,6 +129,7 @@ async function buscarPorId(id) {
 
 async function criar(dados) {
     validarOrdemServico(dados, false);
+    if (dados.status_os === "Finalizada") throw erroFluxo("Crie a OS aberta ou em andamento e finalize pelo atendimento.");
     await validarTecnico(dados.tecnico_responsavel_id);
     const idTecnicoRaw = dados.tecnico_responsavel_id;
     const idTecnico =
@@ -112,15 +138,13 @@ async function criar(dados) {
             : null;
 
     const dadosFormatados = {
-        ...dados,
+        ...dadosPermitidos(dados),
         pedido_id: Number(dados.pedido_id),
         tecnico_responsavel_id: idTecnico,
     };
 
     delete dadosFormatados.id;
-    if (["Em Andamento", "Finalizada"].includes(dadosFormatados.status_os)) {
-        exigirLiberacao(await pedidoRepository.buscarPorId(dadosFormatados.pedido_id));
-    }
+    await validarFluxo(dadosFormatados);
     return ordemServicoRepository.criar(dadosFormatados);
 }
 
@@ -134,7 +158,7 @@ async function atualizar(id, dados) {
 
     validarOrdemServico(dados, true);
     await validarTecnico(dados.tecnico_responsavel_id);
-    const dadosFormatados = { ...dados };
+    const dadosFormatados = dadosPermitidos(dados);
 
     if (dadosFormatados.pedido_id !== undefined) {
         dadosFormatados.pedido_id = Number(dadosFormatados.pedido_id);
@@ -149,13 +173,7 @@ async function atualizar(id, dados) {
     delete dadosFormatados.id;
     const atual = await ordemServicoRepository.buscarPorId(idNum);
     if (!atual) return null;
-    if (["Em Andamento", "Finalizada"].includes(dadosFormatados.status_os || atual.status_os)) {
-        const pedido = await pedidoRepository.buscarPorId(dadosFormatados.pedido_id || atual.pedido_id);
-        exigirLiberacao(pedido);
-        if ((dadosFormatados.tipo_servico || atual.tipo_servico) !== pedido.tipo_pedido) {
-            throw Object.assign(new Error("O tipo da OS deve corresponder ao orçamento aprovado."), { status: 400 });
-        }
-    }
+    await validarFluxo(dadosFormatados, atual);
     return ordemServicoRepository.atualizar(idNum, dadosFormatados);
 }
 
@@ -166,6 +184,9 @@ async function deletar(id) {
         erro.status = 400;
         throw erro;
     }
+    const atual = await ordemServicoRepository.buscarPorId(idNum);
+    if (!atual) return null;
+    if (atual.status_os === "Finalizada") throw erroFluxo("Uma OS finalizada não pode ser excluída.", 409);
     return ordemServicoRepository.deletar(idNum);
 }
 
