@@ -49,8 +49,12 @@ export default function Perfil() {
                     try {
                         const resCli = await api.get("/portal-cliente/resumo");
                         setDadosCliente(resCli.data?.cliente || null);
-                    } catch {
-                        // Cliente ainda pode não possuir ficha complementar vinculada
+                    } catch (errCliente) {
+                        setDadosCliente(null);
+                        setErro(
+                            errCliente.response?.data?.erro ||
+                                "Não foi possível carregar os dados cadastrais completos do cliente."
+                        );
                     }
                 }
             } catch (err) {
@@ -117,6 +121,11 @@ export default function Perfil() {
     return (
         <Box sx={{ py: 3, maxWidth: 680, mx: "auto" }}>
             <Stack spacing={3}>
+                {erro && (
+                    <Alert severity="warning" onClose={() => setErro("")}>
+                        {erro}
+                    </Alert>
+                )}
                 <Card elevation={3} sx={{ borderRadius: 3, textAlign: "center", p: 2 }}>
                     <CardContent>
                         <Avatar
