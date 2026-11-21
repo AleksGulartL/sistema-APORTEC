@@ -36,7 +36,7 @@ export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
               { valor: "cliente_inicio", label: "Início", icone: <HomeIcon /> },
               { valor: "cliente_pedidos", label: "Meus Pedidos", icone: <AssignmentIcon /> },
               { valor: "cliente_portas", label: "Minhas Portas", icone: <SensorDoorIcon /> },
-              { valor: "cliente_os", label: "Assistência", icone: <SupportAgentIcon /> },
+              { valor: "cliente_os", label: "Atendimentos", icone: <SupportAgentIcon /> },
           ]
         : [
               { valor: "dashboard", label: "Dashboard", icone: <DashboardIcon /> },

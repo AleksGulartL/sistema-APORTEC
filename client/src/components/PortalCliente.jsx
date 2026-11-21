@@ -139,6 +139,17 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
         [ordensServico]
     );
 
+    const osParaAssinar = useMemo(
+        () => osAbertas.filter((os) => Boolean(os.parecer_tecnico?.trim())),
+        [osAbertas]
+    );
+
+    function abrirModalAssinatura(os) {
+        setOsAssinar(os);
+        setAssinaturaCliente("");
+        setErroAssinatura("");
+    }
+
     const pendenciasObra = useMemo(
         () =>
             pedidosAtivos.filter((p) => {
@@ -267,7 +278,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         {secao === "cliente_inicio" && `Olá, ${nomeCliente}`}
                         {secao === "cliente_pedidos" && "Meus Pedidos e Orçamentos"}
                         {secao === "cliente_portas" && "Minhas Portas e Garantias"}
-                        {secao === "cliente_os" && "Assistência Técnica e Chamados"}
+                        {secao === "cliente_os" && "Atendimentos e Chamados"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         {secao === "cliente_inicio" &&
@@ -277,7 +288,7 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         {secao === "cliente_portas" &&
                             "Consulte o número de série, especificações técnicas e vigência da garantia das suas portas"}
                         {secao === "cliente_os" &&
-                            "Acompanhe suas visitas técnicas agendadas ou solicite manutenção"}
+                            "Acompanhe suas visitas técnicas agendadas, assine atendimentos concluídos ou solicite manutenção"}
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
@@ -317,6 +328,27 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         >
                             Você possui <strong>{orcamentosPendentes.length} orçamento(s)</strong> aguardando sua
                             aprovação para iniciar a fabricação.
+                        </Alert>
+                    )}
+
+                    {osParaAssinar.length > 0 && (
+                        <Alert
+                            severity="success"
+                            action={
+                                <Button
+                                    color="inherit"
+                                    size="small"
+                                    onClick={() =>
+                                        osParaAssinar.length === 1
+                                            ? abrirModalAssinatura(osParaAssinar[0])
+                                            : onMudarSecao?.("cliente_os")
+                                    }
+                                >
+                                    Assinar Agora
+                                </Button>
+                            }
+                        >
+                            Você possui <strong>{osParaAssinar.length} atendimento(s)</strong> finalizado(s) pela equipe técnica aguardando sua assinatura de conclusão.
                         </Alert>
                     )}
 
@@ -620,6 +652,30 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                             </Alert>
                                         )}
 
+                                        {(() => {
+                                            const osAssinatura = osParaAssinar.find((os) => Number(os.pedido_id) === Number(p.id));
+                                            if (!osAssinatura) return null;
+                                            return (
+                                                <Alert
+                                                    severity="success"
+                                                    sx={{ mb: 2 }}
+                                                    action={
+                                                        <Button
+                                                            size="small"
+                                                            variant="contained"
+                                                            color="success"
+                                                            startIcon={<CheckCircleIcon />}
+                                                            onClick={() => abrirModalAssinatura(osAssinatura)}
+                                                        >
+                                                            Assinar e Concluir
+                                                        </Button>
+                                                    }
+                                                >
+                                                    Atendimento técnico registrado (OS #{osAssinatura.id}). Assine para concluir este pedido.
+                                                </Alert>
+                                            );
+                                        })()}
+
                                         {Array.isArray(p.itens) && p.itens.length > 0 && (
                                             <Table size="small">
                                                 <TableHead sx={{ bgcolor: "grey.100" }}>
@@ -801,18 +857,14 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                             <VisualizarAssinatura valor={os.assinatura_cliente_digital} titulo="Sua Assinatura de Aceite" />
                                         </Box>
                                     )}
-                                    {os.status_os !== "Finalizada" && os.status_os !== "Cancelada" && os.parecer_tecnico && (
+                                    {osParaAssinar.some((item) => item.id === os.id) && (
                                         <Button
                                             variant="contained"
                                             color="success"
                                             size="small"
                                             startIcon={<CheckCircleIcon />}
                                             sx={{ mt: 1 }}
-                                            onClick={() => {
-                                                setOsAssinar(os);
-                                                setAssinaturaCliente("");
-                                                setErroAssinatura("");
-                                            }}
+                                            onClick={() => abrirModalAssinatura(os)}
                                         >
                                             Assinar e Concluir Atendimento
                                         </Button>
