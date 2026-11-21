@@ -4,7 +4,6 @@ import {
     Box,
     Button,
     Chip,
-    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -46,8 +45,6 @@ import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
 import SaveIcon from "@mui/icons-material/Save";
-import ThumbDownIcon from "@mui/icons-material/ThumbDown";
-import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import PagamentoFields from "../comum/PagamentoFields";
 import api from "../../services/api";
 import {

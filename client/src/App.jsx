@@ -13,7 +13,6 @@ import PortalCliente from "./components/PortalCliente";
 import Perfil from "./components/Perfil";
 import { usuarioEhAdm, usuarioEhCliente } from "./utils/permissoes";
 
-// Tema Material UI customizado para o APORTEC
 const theme = createTheme({
     palette: {
         mode: "light",
@@ -74,7 +73,6 @@ export default function App() {
     const [pedidoParaNovaOs, setPedidoParaNovaOs] = useState(null);
     const [pedidoConsultaOsId, setPedidoConsultaOsId] = useState(null);
 
-    // Event listener para expiração de token tratada pelo interceptor do Axios
     useEffect(() => {
         function onTokenExpired() {
             setIsLoggedIn(false);
