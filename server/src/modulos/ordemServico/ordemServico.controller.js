@@ -32,6 +32,7 @@ async function criar(req, res) {
         console.error("Erro ao criar ordem de serviço:", erro);
         return responderErroController(res, erro, {
             statusPadrao: 400,
+            mensagemDuplicado: "Já existe outra porta registrada com este número de série.",
             mensagemVinculo: "Pedido ou técnico responsável informado não existe.",
         });
     }
@@ -48,6 +49,7 @@ async function atualizar(req, res) {
         console.error("Erro ao atualizar ordem de serviço:", erro);
         return responderErroController(res, erro, {
             statusPadrao: 400,
+            mensagemDuplicado: "Já existe outra porta registrada com este número de série.",
             mensagemVinculo: "Pedido ou técnico responsável informado não existe.",
         });
     }

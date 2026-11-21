@@ -59,12 +59,6 @@
 
    Substitua `DB_USER` pelo resultado de `whoami` (`bruno` nesta máquina). Na instalação padrão local pelo Homebrew, `DB_PASS` pode ficar vazio. Se você configurou uma senha para o banco, preencha esse campo. Essas credenciais são do banco, diferentes das contas de acesso ao app.
 
-Com o banco criado e o `.env` configurado, aplique as migrações a partir da raiz do projeto. Elas atualizam o banco existente sem apagar os dados:
-
-```bash
-yarn --cwd server db:migrate
-```
-
 5. Em um terminal na raiz do projeto, inicie o backend e mantenha-o aberto:
 
    ```bash

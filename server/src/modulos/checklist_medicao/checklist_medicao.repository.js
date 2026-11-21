@@ -21,7 +21,7 @@ function obterIncludes() {
 async function sincronizarBloqueioPedido(checklist) {
     if (!checklist || !checklist.pedido_id || !pedido) return;
     const regPedido = await pedido.findByPk(checklist.pedido_id);
-    if (!regPedido) return;
+    if (!regPedido || ["Concluido", "Cancelado"].includes(regPedido.status)) return;
 
     const pendencias = [];
     if (regPedido.status_aprovacao !== "Aprovado") {

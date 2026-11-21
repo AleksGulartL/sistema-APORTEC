@@ -6,7 +6,7 @@ require("dotenv").config();
 const suite = process.env.TEST_POSTGRES === "1" ? describe : describe.skip;
 
 suite("Encerramento único da OS — PostgreSQL real", () => {
-    let admin, setup, db, app, token, criado = false;
+    let admin, setup, db, app, token, tokenAdm, pedidoRepository, ids, criado = false;
     const bancoAnterior = process.env.DB_NAME;
     const banco = `aportec_encerramento_${process.pid}_${Date.now()}`;
     const assinatura = "TESTE - aceite único do cliente";
@@ -22,14 +22,22 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
         setup = new Client({ ...config, database: banco });
         await setup.connect();
         await setup.query(fs.readFileSync(path.join(__dirname, "../../aportec.sql"), "utf8"));
-        const migracao = fs.readFileSync(path.join(__dirname, "../database/migrations/008_encerramento_unico_os.sql"), "utf8");
-        await setup.query(migracao); // A mesma atualização é idempotente em uma instalação nova.
         process.env.DB_NAME = banco;
         db = require("../database/models");
+        pedidoRepository = require("../modulos/pedido/pedido.repository");
         app = require("../../main");
         const login = await request(app).post("/auth/login").send({ email: "tecnico@gmail.com", senha: "senha123" });
         expect(login.status).toBe(200);
         token = login.body.token;
+        const loginAdm = await request(app).post("/auth/login").send({ email: "admin@gmail.com", senha: "senha123" });
+        expect(loginAdm.status).toBe(200);
+        tokenAdm = loginAdm.body.token;
+        const [admReg, tecReg, cliReg] = await Promise.all([
+            db.usuario.findOne({ where: { email: "admin@gmail.com" } }),
+            db.usuario.findOne({ where: { email: "tecnico@gmail.com" } }),
+            db.usuario.findOne({ where: { email: "clara@gmail.com" } }),
+        ]);
+        ids = { adm: admReg.id, tecnico: tecReg.id, cliente: cliReg.id };
     }, 20000);
 
     afterAll(async () => {
@@ -45,14 +53,14 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
 
     async function preparar(tipo = "Instalacao") {
         const manutencao = tipo !== "Instalacao";
-        const pedido = await db.pedido.create({ cliente_id: 4, usuario_criador_id: 1, responsavel_producao_id: 3,
+        const pedido = await db.pedido.create({ cliente_id: ids.cliente, usuario_criador_id: ids.adm, responsavel_producao_id: ids.tecnico,
             tipo_pedido: tipo, pedido_origem_id: manutencao ? 1 : null, orcamento_enviado: true,
             status_aprovacao: "Aprovado", bloqueio_fabricacao: false, status: manutencao ? "Em Atendimento" : "Pronto para Instalacao",
             diagnostico_tecnico: manutencao ? "TESTE - revisão técnica" : null });
-        if (!manutencao) await db.checklist_medicao.create({ pedido_id: pedido.id, tecnico_id: 3, medidas_vao: "2.40 x 2.20 m",
+        if (!manutencao) await db.checklist_medicao.create({ pedido_id: pedido.id, tecnico_id: ids.tecnico, medidas_vao: "2.40 x 2.20 m",
             status_aprovacao: "Aprovado", viga_ok: true, piso_ok: true, ponto_eletrico_ok: true });
         const res = await request(app).post("/ordem_servico").auth(token, { type: "bearer" }).send({ pedido_id: pedido.id,
-            tecnico_responsavel_id: 3, tipo_servico: tipo, status_os: "Aberta" });
+            tecnico_responsavel_id: ids.tecnico, tipo_servico: tipo, status_os: "Aberta" });
         expect(res.status).toBe(201);
         return { pedido, os: res.body };
     }
@@ -87,14 +95,20 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
         expect((await db.pedido.findByPk(1)).toJSON()).toEqual(original);
     });
 
+    test("banco criado pelo aportec.sql não possui triggers nem funções PL/pgSQL customizadas", async () => {
+        const triggers = await setup.query("SELECT tgname FROM pg_trigger WHERE NOT tgisinternal");
+        const funcoes = await setup.query("SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public'");
+        expect(triggers.rows).toEqual([]);
+        expect(funcoes.rows).toEqual([]);
+    });
+
     test("finalização repetida, edição e exclusão não mudam o encerramento nem a garantia", async () => {
         const { pedido, os } = await preparar();
         expect((await finalizar(os)).status).toBe(200);
         const antes = (await db.pedido.findByPk(pedido.id)).toJSON();
         expect((await finalizar(os)).status).toBe(409);
         expect((await request(app).put(`/ordem_servico/${os.id}`).auth(token, { type: "bearer" }).send({ status_os: "Aberta" })).status).toBe(409);
-        // A exclusão por SQL também é protegida, além do soft-delete da API.
-        await expect(setup.query("DELETE FROM ordem_servico WHERE id = $1", [os.id])).rejects.toMatchObject({ code: "23514" });
+        expect((await request(app).delete(`/ordem_servico/${os.id}`).auth(tokenAdm, { type: "bearer" })).status).toBe(409);
         expect((await db.pedido.findByPk(pedido.id)).toJSON()).toEqual(antes);
     });
 
@@ -107,7 +121,7 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
 
     test("erro ao gerar a série desfaz também a assinatura e a finalização da OS", async () => {
         const { pedido, os } = await preparar();
-        const ano = (await setup.query("SELECT to_char(CURRENT_TIMESTAMP, 'YYYY') AS ano")).rows[0].ano;
+        const ano = new Date().getFullYear();
         const original = await db.pedido.findByPk(1);
         const serieAnterior = original.numero_serie;
         await original.update({ numero_serie: `APORTEC-${ano}-${String(pedido.id).padStart(4, "0")}` });
@@ -124,12 +138,28 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
         } finally { await original.update({ numero_serie: serieAnterior }); }
     });
 
-    test("não permite concluir diretamente o pedido nem encerrar por SQL sem assinatura", async () => {
+    test("não permite concluir diretamente o pedido nem encerrar OS sem parecer e assinatura", async () => {
         const { pedido, os } = await preparar();
         expect((await request(app).patch(`/pedido/${pedido.id}/status`).auth(token, { type: "bearer" }).send({ status: "Concluido" })).status).toBe(400);
         expect((await request(app).post(`/pedido/${pedido.id}/aceite-instalacao`).auth(token, { type: "bearer" }).send({ assinatura_cliente_instalacao: assinatura })).status).toBe(410);
-        await expect(setup.query("UPDATE pedido SET status = 'Concluido' WHERE id = $1", [pedido.id])).rejects.toMatchObject({ code: "23514" });
-        await expect(setup.query("UPDATE ordem_servico SET status_os = 'Finalizada' WHERE id = $1", [os.id])).rejects.toMatchObject({ code: "23514" });
+        await expect(pedidoRepository.atualizar(pedido.id, { status: "Concluido" })).rejects.toMatchObject({ status: 400 });
+        expect((await request(app).put(`/ordem_servico/${os.id}`).auth(token, { type: "bearer" }).send({ status_os: "Finalizada" })).status).toBe(400);
         expect((await db.ordem_servico.findByPk(os.id)).status_os).toBe("Aberta");
+    });
+
+    test("protege itens e dados comerciais de orçamento enviado e bloqueia transferência entre pedidos", async () => {
+        // Pedido 2 do seed está enviado e pendente
+        const itemExistente = await db.pedido_item.findOne({ where: { pedido_id: 2 } });
+        expect((await request(app).post("/pedido_item").auth(tokenAdm, { type: "bearer" }).send({ pedido_id: 2, item_id: 4, quantidade: 1 })).status).toBe(400);
+        expect((await request(app).put(`/pedido_item/${itemExistente.id}`).auth(tokenAdm, { type: "bearer" }).send({ quantidade: 9 })).status).toBe(400);
+        expect((await request(app).delete(`/pedido_item/${itemExistente.id}`).auth(tokenAdm, { type: "bearer" })).status).toBe(400);
+        expect((await request(app).put("/pedido/2").auth(tokenAdm, { type: "bearer" }).send({ percentual_acrescimo: 25 })).status).toBe(400);
+
+        // Reabrindo o orçamento, volta a aceitar edição de itens, mas nunca transferência para outro pedido
+        expect((await request(app).patch("/pedido/2/reabrir-orcamento").auth(tokenAdm, { type: "bearer" })).status).toBe(200);
+        expect((await request(app).put(`/pedido_item/${itemExistente.id}`).auth(tokenAdm, { type: "bearer" }).send({ pedido_id: 1 })).status).toBe(400);
+        const editado = await request(app).put(`/pedido_item/${itemExistente.id}`).auth(tokenAdm, { type: "bearer" }).send({ quantidade: 2 });
+        expect(editado.status).toBe(200);
+        expect(editado.body.quantidade).toBe(2);
     });
 });

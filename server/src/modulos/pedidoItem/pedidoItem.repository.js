@@ -1,4 +1,5 @@
-const { pedido_item, pedido, item_catalogo } = require("../../database/models");
+const { sequelize, pedido_item, pedido, item_catalogo } = require("../../database/models");
+const { validarOrcamentoEditavel } = require("../../utils/fluxoPedido");
 
 function obterIncludes() {
     const includes = [];
@@ -17,13 +18,21 @@ function obterIncludes() {
     return includes;
 }
 
-async function recalcularTotaisPedido(pedidoId) {
+async function travarPedidoEditavel(pedidoId, transaction) {
+    const regPedido = await pedido.findByPk(pedidoId, { transaction, lock: transaction.LOCK.UPDATE });
+    validarOrcamentoEditavel(regPedido);
+    return regPedido;
+}
+
+async function recalcularTotaisPedido(pedidoId, transaction) {
     if (!pedidoId || !pedido || !pedido_item) return;
-    const registroPedido = await pedido.findByPk(pedidoId);
+    const opcoes = transaction ? { transaction } : {};
+    const registroPedido = await pedido.findByPk(pedidoId, opcoes);
     if (!registroPedido) return;
 
     const itens = await pedido_item.findAll({
         where: { pedido_id: pedidoId },
+        ...opcoes,
     });
 
     const custoTotal = itens.reduce(
@@ -31,9 +40,10 @@ async function recalcularTotaisPedido(pedidoId) {
         0
     );
 
-    await registroPedido.update({
-        custo_total: Number(custoTotal.toFixed(2)),
-    });
+    await registroPedido.update(
+        { custo_total: Number(custoTotal.toFixed(2)) },
+        opcoes
+    );
 }
 
 async function listar() {
@@ -55,26 +65,38 @@ async function buscarItemCatalogo(itemId) {
 }
 
 async function criar(dados) {
-    const criado = await pedido_item.create(dados);
-    await recalcularTotaisPedido(criado.pedido_id);
-    return criado;
+    return sequelize.transaction(async (transaction) => {
+        await travarPedidoEditavel(dados.pedido_id, transaction);
+        const criado = await pedido_item.create(dados, { transaction });
+        await recalcularTotaisPedido(criado.pedido_id, transaction);
+        return criado;
+    });
 }
 
 async function atualizar(id, dados) {
-    const registro = await pedido_item.findByPk(id);
-    if (!registro) return null;
-    const atualizado = await registro.update(dados);
-    await recalcularTotaisPedido(atualizado.pedido_id);
-    return atualizado;
+    return sequelize.transaction(async (transaction) => {
+        const registro = await pedido_item.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!registro) return null;
+        if (dados.pedido_id !== undefined && Number(dados.pedido_id) !== Number(registro.pedido_id)) {
+            throw Object.assign(new Error("Não é permitido transferir itens entre orçamentos."), { status: 400 });
+        }
+        await travarPedidoEditavel(registro.pedido_id, transaction);
+        const atualizado = await registro.update(dados, { transaction });
+        await recalcularTotaisPedido(atualizado.pedido_id, transaction);
+        return atualizado;
+    });
 }
 
 async function deletar(id) {
-    const registro = await pedido_item.findByPk(id);
-    if (!registro) return null;
-    const pedidoId = registro.pedido_id;
-    await registro.destroy();
-    await recalcularTotaisPedido(pedidoId);
-    return registro;
+    return sequelize.transaction(async (transaction) => {
+        const registro = await pedido_item.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!registro) return null;
+        await travarPedidoEditavel(registro.pedido_id, transaction);
+        const pedidoId = registro.pedido_id;
+        await registro.destroy({ transaction });
+        await recalcularTotaisPedido(pedidoId, transaction);
+        return registro;
+    });
 }
 
 module.exports = {

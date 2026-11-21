@@ -19,7 +19,6 @@
         "start": "node main.js",
         "seed": "node src/database/seed.js",
         "test": "jest --runInBand --detectOpenHandles",
-        "db:migrate": "node src/database/migrate.js",
         "test:integration": "TEST_POSTGRES=1 jest --runInBand --detectOpenHandles src/testes/encerramento.integration.test.js"
     },
     "devDependencies": {

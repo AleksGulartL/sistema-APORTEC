@@ -163,8 +163,12 @@ CREATE TABLE pedido (
         custo_total >= 0 AND percentual_acrescimo >= 0
     ),
     CONSTRAINT chk_pedido_desbloqueio_fabricacao CHECK (
-        status NOT IN ('Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido')
-        OR (bloqueio_fabricacao = FALSE AND status_aprovacao = 'Aprovado')
+        status NOT IN ('Em Atendimento', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido')
+        OR (bloqueio_fabricacao = FALSE AND status_aprovacao = 'Aprovado' AND orcamento_enviado = TRUE)
+    ),
+    CONSTRAINT chk_atendimento_diagnosticado CHECK (
+        status <> 'Em Atendimento'
+        OR (tipo_pedido IN ('Manutencao Corretiva', 'Manutencao Preventiva') AND diagnostico_tecnico IS NOT NULL AND length(trim(diagnostico_tecnico)) > 0)
     )
 );
 
@@ -253,28 +257,6 @@ CREATE TABLE ordem_servico (
 CREATE INDEX idx_os_pedido_id ON ordem_servico (pedido_id) WHERE deleted_at IS NULL;
 
 -- =============================================================================
-CREATE OR REPLACE FUNCTION validar_atribuicao_tecnico() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE tecnico_id BIGINT;
-BEGIN
-    IF TG_OP = 'UPDATE' AND (to_jsonb(NEW)->>TG_ARGV[0]) IS NOT DISTINCT FROM (to_jsonb(OLD)->>TG_ARGV[0]) THEN
-        RETURN NEW;
-    END IF;
-    tecnico_id := (to_jsonb(NEW)->>TG_ARGV[0])::BIGINT;
-    IF tecnico_id IS NOT NULL AND NOT EXISTS (
-        SELECT 1 FROM usuario WHERE id = tecnico_id AND perfil = 'TECNICO' AND ativo AND deleted_at IS NULL
-    ) THEN
-        RAISE EXCEPTION 'O responsável deve ser um técnico ativo.' USING ERRCODE = '23514';
-    END IF;
-    RETURN NEW;
-END;
-$$;
-DROP TRIGGER IF EXISTS validar_tecnico_pedido ON pedido;
-CREATE TRIGGER validar_tecnico_pedido BEFORE INSERT OR UPDATE OF responsavel_producao_id ON pedido
-FOR EACH ROW EXECUTE FUNCTION validar_atribuicao_tecnico('responsavel_producao_id');
-DROP TRIGGER IF EXISTS validar_tecnico_os ON ordem_servico;
-CREATE TRIGGER validar_tecnico_os BEFORE INSERT OR UPDATE OF tecnico_responsavel_id ON ordem_servico
-FOR EACH ROW EXECUTE FUNCTION validar_atribuicao_tecnico('tecnico_responsavel_id');
-
 -- 12. CARGA INICIAL DE DADOS (OPERAÇÃO INICIAL E DEMONSTRAÇÃO)
 -- Credenciais padrão (todas com senha: senha123):
 --   ADM     : admin@gmail.com   | senha123
@@ -310,7 +292,6 @@ INSERT INTO categoria_item (nome) VALUES
 
 INSERT INTO usuario (nome_completo, email, senha_hash, perfil, ativo) VALUES
     ('Ana Administradora', 'admin@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'ADM', TRUE),
-    ('Aleksander Gulart', 'alekslopes7@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'ADM', TRUE),
     ('Tiago Técnico', 'tecnico@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'TECNICO', TRUE),
     ('Clara Cliente', 'clara@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'CLIENTE', TRUE);
 
@@ -429,180 +410,3 @@ INSERT INTO ordem_servico (
     'Instalação completa da porta social automática bipartida e calibração dos sensores.',
     CURRENT_TIMESTAMP + INTERVAL '2 days'
 );
-
--- Proteções de aprovação e execução
-ALTER TABLE pedido DROP CONSTRAINT IF EXISTS chk_pedido_desbloqueio_fabricacao;
-ALTER TABLE pedido ADD CONSTRAINT chk_pedido_desbloqueio_fabricacao CHECK (
-    status NOT IN ('Em Atendimento', 'Em Fabricacao', 'Montagem', 'Testes', 'Pronto para Instalacao', 'Concluido')
-    OR (bloqueio_fabricacao = FALSE AND status_aprovacao = 'Aprovado' AND orcamento_enviado = TRUE)
-);
-ALTER TABLE pedido DROP CONSTRAINT IF EXISTS chk_atendimento_diagnosticado;
-ALTER TABLE pedido ADD CONSTRAINT chk_atendimento_diagnosticado CHECK (
-    status <> 'Em Atendimento' OR (tipo_pedido IN ('Manutencao Corretiva', 'Manutencao Preventiva') AND length(trim(diagnostico_tecnico)) > 0 AND diagnostico_tecnico IS NOT NULL)
-);
-CREATE OR REPLACE FUNCTION proteger_itens_orcamento() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE destino BIGINT;
-BEGIN
-    IF TG_OP = 'UPDATE' AND NEW.pedido_id <> OLD.pedido_id THEN
-        RAISE EXCEPTION 'Não é permitido transferir itens entre orçamentos.' USING ERRCODE = '23514';
-    END IF;
-    IF TG_OP = 'DELETE' THEN destino := OLD.pedido_id; ELSE destino := NEW.pedido_id; END IF;
-    PERFORM id FROM pedido WHERE id = destino FOR UPDATE;
-    IF EXISTS (SELECT 1 FROM pedido WHERE id = destino AND (orcamento_enviado OR status IN ('Cancelado', 'Concluido'))) THEN
-        RAISE EXCEPTION 'Reabra o orçamento para revisão antes de alterar seus itens.' USING ERRCODE = '23514';
-    END IF;
-    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
-END;
-$$;
-DROP TRIGGER IF EXISTS proteger_itens_orcamento ON pedido_item;
-CREATE TRIGGER proteger_itens_orcamento BEFORE INSERT OR UPDATE OR DELETE ON pedido_item
-FOR EACH ROW EXECUTE FUNCTION proteger_itens_orcamento();
-CREATE OR REPLACE FUNCTION proteger_execucao_os() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE orcamento pedido%ROWTYPE;
-BEGIN
-    IF NEW.status_os IN ('Em Andamento', 'Finalizada') THEN
-        SELECT * INTO orcamento FROM pedido WHERE id = NEW.pedido_id AND deleted_at IS NULL;
-        IF NOT FOUND OR orcamento.status = 'Cancelado' OR NOT orcamento.orcamento_enviado OR orcamento.status_aprovacao <> 'Aprovado' OR orcamento.bloqueio_fabricacao THEN
-            RAISE EXCEPTION 'Execução bloqueada: aguarde a aprovação do orçamento pelo cliente.' USING ERRCODE = '23514';
-        END IF;
-        IF NEW.tipo_servico <> orcamento.tipo_pedido OR (NEW.tipo_servico <> 'Instalacao' AND coalesce(length(trim(orcamento.diagnostico_tecnico)), 0) = 0) THEN
-            RAISE EXCEPTION 'Registre o diagnóstico e vincule a OS ao orçamento deste serviço.' USING ERRCODE = '23514';
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-DROP TRIGGER IF EXISTS proteger_execucao_os ON ordem_servico;
-CREATE TRIGGER proteger_execucao_os BEFORE INSERT OR UPDATE ON ordem_servico
-FOR EACH ROW EXECUTE FUNCTION proteger_execucao_os();
-CREATE OR REPLACE FUNCTION proteger_dados_comerciais() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    IF OLD.orcamento_enviado AND (NEW.cliente_id, NEW.tipo_pedido, NEW.endereco_instalacao, NEW.forma_pagamento, NEW.condicoes_pagamento, NEW.percentual_acrescimo, NEW.diagnostico_tecnico)
-        IS DISTINCT FROM (OLD.cliente_id, OLD.tipo_pedido, OLD.endereco_instalacao, OLD.forma_pagamento, OLD.condicoes_pagamento, OLD.percentual_acrescimo, OLD.diagnostico_tecnico) THEN
-        RAISE EXCEPTION 'Reabra o orçamento antes de alterar a proposta enviada ao cliente.' USING ERRCODE = '23514';
-    END IF;
-    RETURN NEW;
-END;
-$$;
-DROP TRIGGER IF EXISTS proteger_dados_comerciais ON pedido;
-CREATE TRIGGER proteger_dados_comerciais BEFORE UPDATE ON pedido FOR EACH ROW EXECUTE FUNCTION proteger_dados_comerciais();
-
--- Chamados antigos ainda abertos entram no mesmo fluxo sem perder seu ID nem a porta de origem.
-DO $$
-DECLARE chamado RECORD; nova_solicitacao BIGINT;
-BEGIN
-    FOR chamado IN
-        SELECT os.id, os.pedido_id, os.tipo_servico, os.tecnico_responsavel_id, os.descricao_problema,
-               p.cliente_id, p.endereco_instalacao
-        FROM ordem_servico os JOIN pedido p ON p.id = os.pedido_id
-        WHERE os.status_os = 'Aberta' AND os.deleted_at IS NULL AND p.deleted_at IS NULL
-          AND os.tipo_servico IN ('Manutencao Corretiva', 'Manutencao Preventiva')
-          AND os.tipo_servico <> p.tipo_pedido
-    LOOP
-        INSERT INTO pedido (cliente_id, usuario_criador_id, responsavel_producao_id, pedido_origem_id,
-                            tipo_pedido, descricao_solicitacao, endereco_instalacao, status, motivo_bloqueio)
-        VALUES (chamado.cliente_id, chamado.cliente_id,
-                (SELECT id FROM usuario WHERE id = chamado.tecnico_responsavel_id AND perfil = 'TECNICO' AND ativo AND deleted_at IS NULL),
-                chamado.pedido_id, chamado.tipo_servico, coalesce(chamado.descricao_problema, 'Solicitação de manutenção'),
-                chamado.endereco_instalacao, 'Recebida', 'Aguardando avaliação técnica e aprovação do orçamento de manutenção.')
-        RETURNING id INTO nova_solicitacao;
-        UPDATE ordem_servico SET pedido_id = nova_solicitacao, updated_at = CURRENT_TIMESTAMP WHERE id = chamado.id;
-    END LOOP;
-END;
-$$;
-
--- Uma única assinatura na OS encerra o serviço e seu pedido, atomicamente.
--- Não altera nem reassina ordens históricas já finalizadas.
-CREATE OR REPLACE FUNCTION proteger_execucao_os() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE orcamento pedido%ROWTYPE;
-BEGIN
-    IF TG_OP = 'UPDATE' AND OLD.status_os = 'Finalizada' THEN
-        RAISE EXCEPTION 'Esta OS já foi finalizada e não pode ser alterada.' USING ERRCODE = '23514';
-    END IF;
-    SELECT * INTO orcamento FROM pedido WHERE id = NEW.pedido_id AND deleted_at IS NULL FOR UPDATE;
-    IF NOT FOUND THEN RAISE EXCEPTION 'Pedido não encontrado.' USING ERRCODE = '23503'; END IF;
-    IF orcamento.status IN ('Cancelado', 'Concluido') THEN
-        RAISE EXCEPTION 'O pedido vinculado já está encerrado.' USING ERRCODE = '23514';
-    END IF;
-    IF NEW.tipo_servico <> orcamento.tipo_pedido THEN
-        RAISE EXCEPTION 'O tipo da OS deve corresponder ao pedido vinculado.' USING ERRCODE = '23514';
-    END IF;
-    IF NEW.status_os IN ('Em Andamento', 'Finalizada') THEN
-        IF NOT orcamento.orcamento_enviado OR orcamento.status_aprovacao <> 'Aprovado' OR orcamento.bloqueio_fabricacao THEN
-            RAISE EXCEPTION 'Execução bloqueada: aguarde a aprovação do orçamento pelo cliente.' USING ERRCODE = '23514';
-        END IF;
-        IF NEW.tipo_servico <> 'Instalacao' AND coalesce(length(trim(orcamento.diagnostico_tecnico)), 0) = 0 THEN
-            RAISE EXCEPTION 'Registre o diagnóstico técnico antes do atendimento.' USING ERRCODE = '23514';
-        END IF;
-    END IF;
-    IF NEW.status_os = 'Finalizada' THEN
-        IF TG_OP = 'UPDATE' AND OLD.status_os = 'Cancelada' THEN
-            RAISE EXCEPTION 'Uma OS cancelada não pode ser finalizada.' USING ERRCODE = '23514';
-        END IF;
-        IF coalesce(length(trim(NEW.parecer_tecnico)), 0) = 0 OR coalesce(length(trim(NEW.assinatura_cliente_digital)), 0) = 0 THEN
-            RAISE EXCEPTION 'Informe o parecer técnico e a assinatura do cliente para finalizar.' USING ERRCODE = '23514';
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM usuario WHERE id = NEW.tecnico_responsavel_id AND perfil = 'TECNICO' AND ativo AND deleted_at IS NULL) THEN
-            RAISE EXCEPTION 'Atribua um técnico ativo antes de finalizar a OS.' USING ERRCODE = '23514';
-        END IF;
-        IF NEW.tipo_servico = 'Instalacao' AND (orcamento.status <> 'Pronto para Instalacao' OR NOT EXISTS (
-            SELECT 1 FROM checklist_medicao WHERE pedido_id = orcamento.id AND deleted_at IS NULL
-                AND status_aprovacao = 'Aprovado' AND viga_ok AND piso_ok AND ponto_eletrico_ok
-        )) THEN
-            RAISE EXCEPTION 'Conclua a produção e aprove a medição antes de finalizar a instalação.' USING ERRCODE = '23514';
-        END IF;
-        NEW.data_conclusao := CURRENT_TIMESTAMP;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION proteger_exclusao_os_finalizada() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    IF OLD.status_os = 'Finalizada' THEN
-        RAISE EXCEPTION 'Uma OS finalizada não pode ser excluída.' USING ERRCODE = '23514';
-    END IF;
-    RETURN OLD;
-END;
-$$;
-DROP TRIGGER IF EXISTS proteger_exclusao_os_finalizada ON ordem_servico;
-CREATE TRIGGER proteger_exclusao_os_finalizada BEFORE DELETE ON ordem_servico
-FOR EACH ROW EXECUTE FUNCTION proteger_exclusao_os_finalizada();
-
-CREATE OR REPLACE FUNCTION proteger_conclusao_pedido() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    IF OLD.status = 'Concluido' THEN
-        IF (NEW.status, NEW.assinatura_cliente_instalacao, NEW.numero_serie, NEW.fim_garantia, NEW.data_conclusao)
-            IS DISTINCT FROM (OLD.status, OLD.assinatura_cliente_instalacao, OLD.numero_serie, OLD.fim_garantia, OLD.data_conclusao) THEN
-            RAISE EXCEPTION 'O encerramento deste pedido já foi registrado e não pode ser refeito.' USING ERRCODE = '23514';
-        END IF;
-    ELSIF NEW.status = 'Concluido' AND NOT EXISTS (
-        SELECT 1 FROM ordem_servico WHERE pedido_id = NEW.id AND deleted_at IS NULL AND status_os = 'Finalizada'
-            AND assinatura_cliente_digital = NEW.assinatura_cliente_instalacao AND data_conclusao = NEW.data_conclusao
-    ) THEN
-        RAISE EXCEPTION 'Finalize a OS com parecer e assinatura para concluir este pedido.' USING ERRCODE = '23514';
-    END IF;
-    RETURN NEW;
-END;
-$$;
-DROP TRIGGER IF EXISTS proteger_conclusao_pedido ON pedido;
-CREATE TRIGGER proteger_conclusao_pedido BEFORE UPDATE ON pedido
-FOR EACH ROW EXECUTE FUNCTION proteger_conclusao_pedido();
-
-CREATE OR REPLACE FUNCTION concluir_pedido_pela_os() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    IF NEW.status_os = 'Finalizada' THEN
-        UPDATE pedido SET status = 'Concluido', assinatura_cliente_instalacao = NEW.assinatura_cliente_digital,
-            data_conclusao = NEW.data_conclusao, updated_at = CURRENT_TIMESTAMP,
-            numero_serie = CASE WHEN tipo_pedido = 'Instalacao' THEN coalesce(numero_serie,
-                'APORTEC-' || to_char(NEW.data_conclusao, 'YYYY') || '-' || lpad(id::text, greatest(4, length(id::text)), '0')) ELSE numero_serie END,
-            fim_garantia = CASE WHEN tipo_pedido = 'Instalacao' THEN coalesce(fim_garantia,
-                (NEW.data_conclusao::date + INTERVAL '1 year')::date) ELSE fim_garantia END
-        WHERE id = NEW.pedido_id;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-DROP TRIGGER IF EXISTS concluir_pedido_pela_os ON ordem_servico;
-CREATE TRIGGER concluir_pedido_pela_os AFTER INSERT OR UPDATE OF status_os ON ordem_servico
-FOR EACH ROW EXECUTE FUNCTION concluir_pedido_pela_os();

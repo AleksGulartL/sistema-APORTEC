@@ -1,4 +1,5 @@
 const {
+    sequelize,
     pedido,
     cliente,
     usuario,
@@ -9,6 +10,7 @@ const {
     checklist_medicao,
     ordem_servico,
 } = require("../../database/models");
+const { validarEdicaoPedido } = require("../../utils/fluxoPedido");
 
 function obterIncludes() {
     const includes = [{ model: pedido, as: "pedido_origem", attributes: ["id", "numero_serie", "fim_garantia", "endereco_instalacao"] }];
@@ -80,10 +82,13 @@ async function criar(dados) {
 }
 
 async function atualizar(id, dados) {
-    const registro = await pedido.findByPk(id);
-    if (!registro) return null;
-    await registro.update(dados);
-    return buscarPorId(id);
+    return sequelize.transaction(async (transaction) => {
+        const registro = await pedido.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!registro) return null;
+        validarEdicaoPedido(registro, dados);
+        await registro.update(dados, { transaction });
+        return pedido.findByPk(id, { transaction, include: obterIncludes() });
+    });
 }
 
 async function deletar(id) {
