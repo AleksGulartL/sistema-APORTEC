@@ -362,8 +362,8 @@ export default function CatalogoEstoque({ usuario }) {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         {ehAdm
-                            ? "Cadastro de itens, entrada/baixa de saldo e alertas de estoque mínimo (RF10, RF11)"
-                            : "Consulta de catálogo, preços de referência e saldos disponíveis em estoque (RF10, RF11)"}
+                            ? "Cadastro de itens, entrada/baixa de saldo e alertas de estoque mínimo"
+                            : "Consulta de catálogo, preços de referência e saldos disponíveis em estoque"}
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>

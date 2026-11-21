@@ -10,5 +10,6 @@ router.patch("/portal-cliente/pedidos/:id/aprovacao", proteger("portalCliente", 
 router.post("/portal-cliente/ordens-servico", proteger("portalCliente", "abrirSolicitacao"), portalClienteController.abrirSolicitacao);
 
 router.post("/portal-cliente/solicitacoes", proteger("portalCliente", "criarSolicitacao"), portalClienteController.criarSolicitacao);
+router.post("/portal-cliente/ordens-servico/:id/assinar", proteger("portalCliente", "assinarEncerramento"), portalClienteController.assinarEncerramento);
 
 module.exports = router;

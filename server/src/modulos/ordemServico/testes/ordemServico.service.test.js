@@ -58,24 +58,20 @@ describe("OrdemServicoService - Testes Unitários", () => {
         });
     });
 
-    test("finaliza com parecer e assinatura, sem aceitar uma data de conclusão arbitrária", async () => {
-        const dados = { status_os: "Finalizada", parecer_tecnico: "Porta instalada", assinatura_cliente_digital: "TESTE - aceite" };
-        await ordemServicoService.atualizar(1, { ...dados, data_conclusao: "2000-01-01" });
-        expect(ordemServicoRepository.atualizar).toHaveBeenCalledWith(1, dados);
-    });
-
-    test.each([
-        { parecer_tecnico: "", assinatura_cliente_digital: "aceite" },
-        { parecer_tecnico: "Instalado", assinatura_cliente_digital: " " },
-    ])("não finaliza sem parecer e assinatura: %j", async (dados) => {
-        await expect(ordemServicoService.atualizar(1, { status_os: "Finalizada", ...dados })).rejects.toMatchObject({ status: 400 });
+    test("bloqueia finalização ou envio de assinatura pelo técnico/ADM (exclusivo do cliente)", async () => {
+        await expect(
+            ordemServicoService.atualizar(1, { status_os: "Finalizada", parecer_tecnico: "Porta instalada", assinatura_cliente_digital: "TESTE - aceite" })
+        ).rejects.toMatchObject({ status: 403 });
+        await expect(
+            ordemServicoService.atualizar(1, { assinatura_cliente_digital: "TESTE - aceite" })
+        ).rejects.toMatchObject({ status: 403 });
         expect(ordemServicoRepository.atualizar).not.toHaveBeenCalled();
     });
 
-    test("não finaliza instalação antes de concluir a produção", async () => {
-        require("../../pedido/pedido.repository").buscarPorId.mockResolvedValue({ tipo_pedido: "Instalacao", status: "Montagem", status_aprovacao: "Aprovado", orcamento_enviado: true,
-            bloqueio_fabricacao: false, checklist_medicao: { status_aprovacao: "Aprovado" } });
-        await expect(ordemServicoService.atualizar(1, { status_os: "Finalizada", parecer_tecnico: "Instalado", assinatura_cliente_digital: "aceite" })).rejects.toMatchObject({ status: 400 });
+    test("permite ao técnico registrar parecer técnico e colocar OS em andamento", async () => {
+        ordemServicoRepository.atualizar.mockResolvedValue({ id: 1, status_os: "Em Andamento", parecer_tecnico: "Porta ajustada" });
+        await ordemServicoService.atualizar(1, { status_os: "Em Andamento", parecer_tecnico: "Porta ajustada", data_conclusao: "2000-01-01" });
+        expect(ordemServicoRepository.atualizar).toHaveBeenCalledWith(1, { status_os: "Em Andamento", parecer_tecnico: "Porta ajustada" });
     });
 
     test("não cria uma OS diretamente finalizada", async () => {

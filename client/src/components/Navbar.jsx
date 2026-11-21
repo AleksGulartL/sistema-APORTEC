@@ -11,7 +11,6 @@ import {
     Tooltip,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
-import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
@@ -19,7 +18,7 @@ import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import BuildIcon from "@mui/icons-material/Build";
-import QrCode2Icon from "@mui/icons-material/QrCode2";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import HomeIcon from "@mui/icons-material/Home";
 import SensorDoorIcon from "@mui/icons-material/SensorDoor";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
@@ -44,7 +43,7 @@ export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
               { valor: "pedidos", label: "Pedidos", icone: <AssignmentIcon /> },
               { valor: "catalogo", label: "Estoque", icone: <Inventory2Icon /> },
               { valor: "ordens_servico", label: "OS", icone: <BuildIcon /> },
-              { valor: "prontuario", label: "Prontuário", icone: <QrCode2Icon /> },
+              { valor: "prontuario", label: "Prontuário", icone: <FactCheckIcon /> },
               { valor: "clientes", label: "Clientes", icone: <PeopleAltIcon /> },
               ...(ehAdm ? [{ valor: "usuarios", label: "Usuários", icone: <ManageAccountsIcon /> }] : []),
           ];
@@ -88,21 +87,22 @@ export default function Navbar({ usuario, abaAtiva, onMudarAba, onLogout }) {
                 <Toolbar disableGutters sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
                     <Box
                         onClick={() => onMudarAba(ehCliente ? "cliente_inicio" : "dashboard")}
-                        sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, cursor: "pointer" }}
+                        sx={{ display: "flex", alignItems: "center", flexShrink: 0, cursor: "pointer" }}
                     >
-                        <PrecisionManufacturingIcon sx={{ fontSize: 32, color: "#ff9800" }} />
-                        <Typography
-                            variant="h6"
-                            noWrap
+                        <Box
+                            component="img"
+                            src="/logo-aportec.png"
+                            alt="APORTEC - Soluções em Entrada Automática"
                             sx={{
-                                fontWeight: 700,
-                                letterSpacing: ".1rem",
-                                color: "inherit",
-                                textDecoration: "none",
+                                height: 38,
+                                width: "auto",
+                                display: "block",
+                                bgcolor: "white",
+                                px: 1.25,
+                                py: 0.4,
+                                borderRadius: 1.5,
                             }}
-                        >
-                            APORTEC
-                        </Typography>
+                        />
                     </Box>
 
                     <Box sx={{ display: { xs: "none", lg: "flex" }, flex: 1, minWidth: 0, justifyContent: "center" }}>

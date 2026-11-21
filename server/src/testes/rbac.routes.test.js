@@ -25,7 +25,7 @@ jest.mock("../modulos/pedido/pedido.controller", () =>
     mockStubController([...mockCRUD, "atualizarStatusEtapa", "coletarAssinaturaAceite", "registrarAvaliacao", "enviarOrcamento", "reabrirOrcamento"])
 );
 jest.mock("../modulos/portalCliente/portalCliente.controller", () =>
-    mockStubController(["obterResumo", "responderAprovacao", "abrirSolicitacao", "criarSolicitacao"])
+    mockStubController(["obterResumo", "responderAprovacao", "abrirSolicitacao", "criarSolicitacao", "assinarEncerramento"])
 );
 
 const app = express();
@@ -95,6 +95,7 @@ const ROTAS = [
     ["get", "/portal-cliente/resumo", "portalCliente", "obterResumo"],
     ["patch", "/portal-cliente/pedidos/1/aprovacao", "portalCliente", "responderAprovacao"],
     ["post", "/portal-cliente/ordens-servico", "portalCliente", "abrirSolicitacao"],
+    ["post", "/portal-cliente/ordens-servico/1/assinar", "portalCliente", "assinarEncerramento"],
 ];
 
 const TODOS_PERFIS = Object.values(PERFIS);

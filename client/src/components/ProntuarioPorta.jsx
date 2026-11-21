@@ -572,7 +572,7 @@ export default function ProntuarioPorta({
                         Prontuário da Porta
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Consulta consolidada por nº de série ou cliente: garantia, medidas, peças e histórico de OS (RF15)
+                        Consulta consolidada por nº de série ou cliente: garantia, medidas, peças e histórico de OS
                     </Typography>
                 </Box>
                 <Button

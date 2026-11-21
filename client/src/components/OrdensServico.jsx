@@ -47,7 +47,7 @@ import {
     usuarioEhAdm,
     usuarioEhFuncionario,
 } from "../utils/permissoes";
-import AssinaturaDigital, { VisualizarAssinatura } from "./comum/AssinaturaDigital";
+import { VisualizarAssinatura } from "./comum/AssinaturaDigital";
 
 const TIPOS_SERVICO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 const COBERTURAS = ["Garantia", "Contrato", "Avulso"];
@@ -108,9 +108,8 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
 
     const [osAtender, setOsAtender] = useState(null);
     const [osConsulta, setOsConsulta] = useState(null);
-    const [statusAtender, setStatusAtender] = useState("Finalizada");
+    const [statusAtender, setStatusAtender] = useState("Em Andamento");
     const [parecerAtender, setParecerAtender] = useState("");
-    const [assinaturaAtender, setAssinaturaAtender] = useState("");
     const [erroAtender, setErroAtender] = useState("");
     const [salvandoAtender, setSalvandoAtender] = useState(false);
 
@@ -279,9 +278,8 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
     function abrirAtendimento(os) {
         if (os.status_os === "Finalizada") { setOsConsulta(os); return; }
         setOsAtender(os);
-        setStatusAtender(os.status_os === "Aberta" ? "Finalizada" : os.status_os || "Finalizada");
+        setStatusAtender(os.status_os === "Aberta" ? "Em Andamento" : os.status_os || "Em Andamento");
         setParecerAtender(os.parecer_tecnico || "");
-        setAssinaturaAtender(os.assinatura_cliente_digital || "");
         setErroAtender("");
     }
 
@@ -290,31 +288,19 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
         if (!osAtender) return;
         setErroAtender("");
 
-        if (statusAtender === "Finalizada" && !parecerAtender.trim()) {
-            setErroAtender("Informe o parecer técnico para finalizar a Ordem de Serviço.");
-            return;
-        }
-
-        if (statusAtender === "Finalizada" && (!assinaturaAtender || !assinaturaAtender.trim())) {
-            setErroAtender("Colete a assinatura digital do cliente para finalizar a Ordem de Serviço.");
-            return;
-        }
-
         const payload = {
             status_os: statusAtender,
             parecer_tecnico: parecerAtender.trim() || null,
-            assinatura_cliente_digital: assinaturaAtender?.trim() || null,
         };
-
 
         setSalvandoAtender(true);
         try {
             await api.put(`/ordem_servico/${osAtender.id}`, payload);
-            setSucessoMsg(statusAtender === "Finalizada" ? `OS #${osAtender.id} finalizada. Pedido #${osAtender.pedido_id} concluído com o mesmo aceite!` : `Ordem de Serviço #${osAtender.id} atualizada (${statusAtender})!`);
+            setSucessoMsg(`Ordem de Serviço #${osAtender.id} atualizada (${statusAtender}). Aguardando assinatura do cliente no portal para concluir!`);
             setOsAtender(null);
             carregarDados();
         } catch (err) {
-            console.error("Erro ao finalizar OS:", err);
+            console.error("Erro ao atualizar atendimento da OS:", err);
             setErroAtender(err.response?.data?.erro || "Erro ao atualizar atendimento da OS.");
         } finally {
             setSalvandoAtender(false);
@@ -363,7 +349,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                         Ordens de Serviço (Assistência)
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Abertura de chamados, cobertura, agendamento técnico, parecer e assinatura digital (RF14)
+                        Abertura de chamados, cobertura, agendamento técnico e parecer do atendimento
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
@@ -579,7 +565,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                         </TableCell>
                                         <TableCell align="center">
                                             <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                <Tooltip title={os.status_os === "Finalizada" ? "Consultar encerramento e aceite" : "Atender / Finalizar com Parecer e Assinatura"}>
+                                                <Tooltip title={os.status_os === "Finalizada" ? "Consultar encerramento e aceite" : "Atender e registrar parecer técnico"}>
                                                     <IconButton
                                                         size="small"
                                                         color="success"
@@ -802,12 +788,14 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                 <form onSubmit={salvarAtendimento}>
                     <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <AssignmentTurnedInIcon color="success" />
-                        Atendimento e Encerramento da OS #{osAtender?.id}
+                        Atendimento da OS #{osAtender?.id}
                     </DialogTitle>
                     <DialogContent dividers>
                         <Stack spacing={2} sx={{ pt: 1 }}>
                             {erroAtender && <Alert severity="error">{erroAtender}</Alert>}
-                            {statusAtender === "Finalizada" && <Alert severity="info">Uma única assinatura conclui a OS e o pedido vinculado. Este encerramento não poderá ser refeito.</Alert>}
+                            <Alert severity="info">
+                                Registre o parecer técnico. Somente o cliente pode assinar digitalmente no Portal do Cliente para finalizar a OS e concluir o pedido.
+                            </Alert>
 
                             <FormControl fullWidth>
                                 <InputLabel id="atender-status-label">Novo Status da OS</InputLabel>
@@ -817,7 +805,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                     value={statusAtender}
                                     onChange={(e) => setStatusAtender(e.target.value)}
                                 >
-                                    {STATUS_OS.map((s) => (
+                                    {["Aberta", "Em Andamento", "Cancelada"].map((s) => (
                                         <MenuItem key={s} value={s}>
                                             {s}
                                         </MenuItem>
@@ -826,7 +814,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                             </FormControl>
 
                             <TextField
-                                required={statusAtender === "Finalizada"}
                                 fullWidth
                                 multiline
                                 rows={3}
@@ -835,12 +822,6 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                                 value={parecerAtender}
                                 onChange={(e) => setParecerAtender(e.target.value)}
                             />
-
-                            <AssinaturaDigital
-                                valor={assinaturaAtender}
-                                onChange={setAssinaturaAtender}
-                                label="Assinatura Digital do Cliente (Comprovante de Atendimento)"
-                            />
                         </Stack>
                     </DialogContent>
                     <DialogActions sx={{ p: 2 }}>
@@ -848,11 +829,7 @@ export default function OrdensServico({ usuario, pedidoParaNovaOs = null, onLimp
                             Cancelar
                         </Button>
                         <Button type="submit" variant="contained" color="success" disabled={salvandoAtender}>
-                            {salvandoAtender ? (
-                                <CircularProgress size={20} color="inherit" />
-                            ) : (
-                                statusAtender === "Finalizada" ? (osAtender?.tipo_servico === "Instalacao" ? "Finalizar instalação" : "Finalizar manutenção") : "Salvar atendimento"
-                            )}
+                            {salvandoAtender ? <CircularProgress size={20} color="inherit" /> : "Salvar atendimento"}
                         </Button>
                     </DialogActions>
                 </form>

@@ -3,11 +3,8 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
-    FormControlLabel,
     Stack,
-    Switch,
     Typography,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -29,10 +26,7 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     const [alertasEstoque, setAlertasEstoque] = useState([]);
     const [ordensServico, setOrdensServico] = useState([]);
     const [clientes, setClientes] = useState([]);
-    const [checklists, setChecklists] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
-    const [autoAtualizar, setAutoAtualizar] = useState(true);
-    const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
     const [eventoSelecionado, setEventoSelecionado] = useState(null);
 
     const carregarDados = useCallback(
@@ -51,12 +45,11 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                     api.get("/item_catalogo"),
                     api.get("/ordem_servico"),
                     api.get("/cliente"),
-                    api.get("/checklist_medicao"),
                     ehAdm ? api.get("/usuarios") : Promise.resolve({ data: [] }),
                     ehAdm ? api.get("/item_catalogo/alertas-estoque") : Promise.resolve({ data: [] }),
                 ];
 
-                const [resPed, resItens, resOs, resCli, resChk, resUsu, resAlertas] =
+                const [resPed, resItens, resOs, resCli, resUsu, resAlertas] =
                     await Promise.allSettled(requisicoes);
 
                 const falhouTudo = [resPed, resItens, resOs, resCli].every((r) => r.status === "rejected");
@@ -73,8 +66,6 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                     resOs.status === "fulfilled" && Array.isArray(resOs.value.data) ? resOs.value.data : [];
                 const listaCli =
                     resCli.status === "fulfilled" && Array.isArray(resCli.value.data) ? resCli.value.data : [];
-                const listaChk =
-                    resChk.status === "fulfilled" && Array.isArray(resChk.value.data) ? resChk.value.data : [];
                 const listaUsu =
                     resUsu.status === "fulfilled" && Array.isArray(resUsu.value.data) ? resUsu.value.data : [];
 
@@ -87,10 +78,8 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                 setItensEstoque(listaItens);
                 setOrdensServico(listaOs);
                 setClientes(listaCli);
-                setChecklists(listaChk);
                 setUsuarios(listaUsu);
                 setAlertasEstoque(listaAlertas);
-                setUltimaAtualizacao(new Date());
             } catch (err) {
                 console.error("Erro ao carregar dashboard:", err);
                 setErro("Erro inesperado ao montar o levantamento da Dashboard.");
@@ -104,14 +93,6 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     useEffect(() => {
         carregarDados(false);
     }, [carregarDados]);
-
-    useEffect(() => {
-        if (!ehFuncionario || !autoAtualizar) return undefined;
-        const timer = setInterval(() => {
-            carregarDados(true);
-        }, 30000);
-        return () => clearInterval(timer);
-    }, [ehFuncionario, autoAtualizar, carregarDados]);
 
     if (!ehFuncionario) {
         return (
@@ -131,8 +112,6 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     const totalUsuariosAtivos = ehAdm
         ? usuarios.filter((u) => u.ativo !== false).length
         : clientes.filter((c) => c.usuario?.ativo !== false).length + 1;
-    const totalUsuariosTabela = ehAdm ? usuarios.length : clientes.length + 1;
-    const totalItensPedidos = pedidos.reduce((acc, p) => acc + (Array.isArray(p.itens) ? p.itens.length : 0), 0);
 
     return (
         <Box sx={{ py: 3 }}>
@@ -148,27 +127,10 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                         Dashboard Operacional e Analítica
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Indicadores consolidados, quantidade de registros por tabela, alertas de estoque e agenda
+                        Indicadores consolidados, alertas de estoque e agenda
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-                    {ultimaAtualizacao && (
-                        <Chip
-                            size="small"
-                            variant="outlined"
-                            label={`Atualizado às ${ultimaAtualizacao.toLocaleTimeString("pt-BR")}`}
-                        />
-                    )}
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                size="small"
-                                checked={autoAtualizar}
-                                onChange={(e) => setAutoAtualizar(e.target.checked)}
-                            />
-                        }
-                        label={<Typography variant="caption">Atualização dinâmica (30s)</Typography>}
-                    />
                     <Button
                         variant="outlined"
                         startIcon={<RefreshIcon />}
@@ -215,9 +177,6 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                         totalOsTotal={ordensServico.length}
                         totalClientes={clientes.length}
                         totalUsuariosAtivos={totalUsuariosAtivos}
-                        totalUsuariosTabela={totalUsuariosTabela}
-                        totalChecklists={checklists.length}
-                        totalItensPedidos={totalItensPedidos}
                     />
 
                     <AgendaCalendario

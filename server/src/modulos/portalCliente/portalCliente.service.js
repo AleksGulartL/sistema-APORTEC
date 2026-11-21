@@ -1,6 +1,7 @@
 const { avaliacaoAprovada } = require("../../utils/fluxoPedido");
 const { criarErro } = require("../../utils/criarErro");
 const portalClienteRepository = require("./portalCliente.repository");
+const ordemServicoRepository = require("../ordemServico/ordemServico.repository");
 
 const TIPOS_SOLICITACAO_CLIENTE = ["Manutencao Corretiva", "Manutencao Preventiva"];
 
@@ -124,8 +125,25 @@ async function criarSolicitacao(usuarioLogado, dados = {}) {
     });
 }
 
+async function assinarEncerramentoOs(usuarioLogado, osId, dados = {}) {
+    const idNum = Number(osId);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+        throw criarErro("O 'id' da ordem de serviço informado é inválido.");
+    }
+    const assinatura = typeof dados.assinatura_cliente_digital === "string" ? dados.assinatura_cliente_digital.trim() : "";
+    if (!assinatura) {
+        throw criarErro("Informe sua assinatura digital para concluir o atendimento.");
+    }
+    if (assinatura.startsWith("data:image/")) {
+        throw criarErro("Utilize a assinatura por texto para confirmar o aceite.");
+    }
+    const cliente = await obterClienteVinculado(usuarioLogado);
+    return ordemServicoRepository.finalizarPeloCliente(idNum, cliente.usuario_id, assinatura);
+}
+
 module.exports = {
     criarSolicitacao,
+    assinarEncerramentoOs,
     obterResumo,
     responderAprovacaoOrcamento,
     abrirSolicitacaoManutencao,

@@ -46,8 +46,22 @@ async function criarSolicitacao(req, res) {
     }
 }
 
+async function assinarEncerramento(req, res) {
+    try {
+        const os = await portalClienteService.assinarEncerramentoOs(req.usuario, req.params.id, req.body || {});
+        if (!os) return res.status(404).json({ erro: "Ordem de serviço não encontrada." });
+        return res.status(200).json(os);
+    } catch (erro) {
+        return responderErroController(res, erro, {
+            statusPadrao: 400,
+            mensagemDuplicado: "Já existe outra porta registrada com este número de série.",
+        });
+    }
+}
+
 module.exports = {
     criarSolicitacao,
+    assinarEncerramento,
     obterResumo,
     responderAprovacao,
     abrirSolicitacao,

@@ -54,7 +54,7 @@ import {
     formatarDataHoraBr,
     formatarMoedaBr,
 } from "../utils/permissoes";
-import { VisualizarAssinatura } from "./comum/AssinaturaDigital";
+import AssinaturaDigital, { VisualizarAssinatura } from "./comum/AssinaturaDigital";
 
 const ETAPAS_CLIENTE = [
     "Recebida",
@@ -210,6 +210,36 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
             setErroOs(err.response?.data?.erro || "Erro ao registrar solicitação de atendimento.");
         } finally {
             setSalvandoOs(false);
+        }
+    }
+
+    const [osAssinar, setOsAssinar] = useState(null);
+    const [assinaturaCliente, setAssinaturaCliente] = useState("");
+    const [erroAssinatura, setErroAssinatura] = useState("");
+    const [salvandoAssinatura, setSalvandoAssinatura] = useState(false);
+
+    async function enviarAssinaturaOs(event) {
+        event.preventDefault();
+        if (!osAssinar) return;
+        setErroAssinatura("");
+        if (!assinaturaCliente.trim()) {
+            setErroAssinatura("Informe sua assinatura digital para confirmar o recebimento e concluir.");
+            return;
+        }
+        setSalvandoAssinatura(true);
+        try {
+            await api.post(`/portal-cliente/ordens-servico/${osAssinar.id}/assinar`, {
+                assinatura_cliente_digital: assinaturaCliente.trim(),
+            });
+            setSucessoMsg(`Atendimento da OS #${osAssinar.id} assinado e pedido #${osAssinar.pedido_id} concluído!`);
+            setOsAssinar(null);
+            setAssinaturaCliente("");
+            carregarResumo();
+        } catch (err) {
+            console.error("Erro ao assinar OS:", err);
+            setErroAssinatura(err.response?.data?.erro || "Não foi possível registrar a assinatura.");
+        } finally {
+            setSalvandoAssinatura(false);
         }
     }
 
@@ -762,9 +792,30 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                                         </Typography>
                                     )}
                                     {os.parecer_tecnico && (
-                                        <Typography variant="body2" color="success.dark">
+                                        <Typography variant="body2" color="success.dark" sx={{ mb: 1 }}>
                                             <strong>Parecer Técnico:</strong> {os.parecer_tecnico}
                                         </Typography>
+                                    )}
+                                    {os.assinatura_cliente_digital && (
+                                        <Box sx={{ mt: 1 }}>
+                                            <VisualizarAssinatura valor={os.assinatura_cliente_digital} titulo="Sua Assinatura de Aceite" />
+                                        </Box>
+                                    )}
+                                    {os.status_os !== "Finalizada" && os.status_os !== "Cancelada" && os.parecer_tecnico && (
+                                        <Button
+                                            variant="contained"
+                                            color="success"
+                                            size="small"
+                                            startIcon={<CheckCircleIcon />}
+                                            sx={{ mt: 1 }}
+                                            onClick={() => {
+                                                setOsAssinar(os);
+                                                setAssinaturaCliente("");
+                                                setErroAssinatura("");
+                                            }}
+                                        >
+                                            Assinar e Concluir Atendimento
+                                        </Button>
                                     )}
                                 </CardContent>
                             </Card>
@@ -878,6 +929,36 @@ export default function PortalCliente({ usuario, secao = "cliente_inicio", onMud
                         </Button>
                         <Button type="submit" variant="contained" color="secondary" disabled={salvandoOs}>
                             {salvandoOs ? <CircularProgress size={20} color="inherit" /> : "Enviar Solicitação"}
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
+
+            <Dialog open={Boolean(osAssinar)} onClose={() => setOsAssinar(null)} maxWidth="sm" fullWidth>
+                <form onSubmit={enviarAssinaturaOs}>
+                    <DialogTitle>Assinar e Concluir Atendimento — OS #{osAssinar?.id}</DialogTitle>
+                    <DialogContent dividers>
+                        <Stack spacing={2} sx={{ pt: 0.5 }}>
+                            {erroAssinatura && <Alert severity="error">{erroAssinatura}</Alert>}
+                            <Alert severity="info">
+                                Somente você (cliente) assina este termo. Ao confirmar, a OS será finalizada e o pedido #{osAssinar?.pedido_id} será concluído.
+                            </Alert>
+                            <Typography variant="body2">
+                                <strong>Parecer Técnico:</strong> {osAssinar?.parecer_tecnico}
+                            </Typography>
+                            <AssinaturaDigital
+                                valor={assinaturaCliente}
+                                onChange={setAssinaturaCliente}
+                                label="Sua Assinatura Digital (Aceite de Conclusão)"
+                            />
+                        </Stack>
+                    </DialogContent>
+                    <DialogActions sx={{ p: 2 }}>
+                        <Button onClick={() => setOsAssinar(null)} color="inherit" disabled={salvandoAssinatura}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" variant="contained" color="success" disabled={salvandoAssinatura}>
+                            {salvandoAssinatura ? <CircularProgress size={20} color="inherit" /> : "Assinar e Concluir"}
                         </Button>
                     </DialogActions>
                 </form>

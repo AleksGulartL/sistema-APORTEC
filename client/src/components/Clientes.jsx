@@ -277,7 +277,7 @@ export default function Clientes({ usuario }) {
                         Clientes APORTEC
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Consulta e gerenciamento de clientes cadastrados e suas credenciais do portal (RF02)
+                        Consulta e gerenciamento de clientes cadastrados e suas credenciais do portal
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>

@@ -6,11 +6,11 @@ require("dotenv").config();
 const suite = process.env.TEST_POSTGRES === "1" ? describe : describe.skip;
 
 suite("Encerramento único da OS — PostgreSQL real", () => {
-    let admin, setup, db, app, token, tokenAdm, pedidoRepository, ids, criado = false;
+    let admin, setup, db, app, token, tokenAdm, tokenCliente, pedidoRepository, ids, criado = false;
     const bancoAnterior = process.env.DB_NAME;
     const banco = `aportec_encerramento_${process.pid}_${Date.now()}`;
     const assinatura = "TESTE - aceite único do cliente";
-    const payload = { status_os: "Finalizada", parecer_tecnico: "TESTE - serviço executado", assinatura_cliente_digital: assinatura };
+    const payload = { assinatura_cliente_digital: assinatura };
 
     beforeAll(async () => {
         const { Client } = require("pg");
@@ -26,16 +26,19 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
         db = require("../database/models");
         pedidoRepository = require("../modulos/pedido/pedido.repository");
         app = require("../../main");
-        const login = await request(app).post("/auth/login").send({ email: "tecnico@gmail.com", senha: "senha123" });
+        const login = await request(app).post("/auth/login").send({ email: "tecnico@aportec.com", senha: "senha123" });
         expect(login.status).toBe(200);
         token = login.body.token;
-        const loginAdm = await request(app).post("/auth/login").send({ email: "admin@gmail.com", senha: "senha123" });
+        const loginAdm = await request(app).post("/auth/login").send({ email: "admin@aportec.com", senha: "senha123" });
         expect(loginAdm.status).toBe(200);
         tokenAdm = loginAdm.body.token;
+        const loginCli = await request(app).post("/auth/login").send({ email: "clara@aportec.com", senha: "senha123" });
+        expect(loginCli.status).toBe(200);
+        tokenCliente = loginCli.body.token;
         const [admReg, tecReg, cliReg] = await Promise.all([
-            db.usuario.findOne({ where: { email: "admin@gmail.com" } }),
-            db.usuario.findOne({ where: { email: "tecnico@gmail.com" } }),
-            db.usuario.findOne({ where: { email: "clara@gmail.com" } }),
+            db.usuario.findOne({ where: { email: "admin@aportec.com" } }),
+            db.usuario.findOne({ where: { email: "tecnico@aportec.com" } }),
+            db.usuario.findOne({ where: { email: "clara@aportec.com" } }),
         ]);
         ids = { adm: admReg.id, tecnico: tecReg.id, cliente: cliReg.id };
     }, 20000);
@@ -60,11 +63,11 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
         if (!manutencao) await db.checklist_medicao.create({ pedido_id: pedido.id, tecnico_id: ids.tecnico, medidas_vao: "2.40 x 2.20 m",
             status_aprovacao: "Aprovado", viga_ok: true, piso_ok: true, ponto_eletrico_ok: true });
         const res = await request(app).post("/ordem_servico").auth(token, { type: "bearer" }).send({ pedido_id: pedido.id,
-            tecnico_responsavel_id: ids.tecnico, tipo_servico: tipo, status_os: "Aberta" });
+            tecnico_responsavel_id: ids.tecnico, tipo_servico: tipo, status_os: "Em Andamento", parecer_tecnico: "TESTE - serviço executado" });
         expect(res.status).toBe(201);
         return { pedido, os: res.body };
     }
-    const finalizar = (os) => request(app).put(`/ordem_servico/${os.id}`).auth(token, { type: "bearer" }).send(payload);
+    const finalizar = (os) => request(app).post(`/portal-cliente/ordens-servico/${os.id}/assinar`).auth(tokenCliente, { type: "bearer" }).send(payload);
 
     test("uma assinatura finaliza OS e instalação, com série, garantia e mesma data de conclusão", async () => {
         const { pedido, os } = await preparar();
@@ -129,7 +132,7 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
             expect((await finalizar(os)).status).toBe(400);
             const ordem = await db.ordem_servico.findByPk(os.id);
             const naoConcluido = await db.pedido.findByPk(pedido.id);
-            expect(ordem.status_os).toBe("Aberta");
+            expect(ordem.status_os).toBe("Em Andamento");
             expect(ordem.assinatura_cliente_digital).toBeNull();
             expect(ordem.data_conclusao).toBeNull();
             expect(naoConcluido.status).toBe("Pronto para Instalacao");
@@ -138,13 +141,15 @@ suite("Encerramento único da OS — PostgreSQL real", () => {
         } finally { await original.update({ numero_serie: serieAnterior }); }
     });
 
-    test("não permite concluir diretamente o pedido nem encerrar OS sem parecer e assinatura", async () => {
+    test("apenas o cliente assina e finaliza; técnico/ADM não podem finalizar nem assinar", async () => {
         const { pedido, os } = await preparar();
         expect((await request(app).patch(`/pedido/${pedido.id}/status`).auth(token, { type: "bearer" }).send({ status: "Concluido" })).status).toBe(400);
         expect((await request(app).post(`/pedido/${pedido.id}/aceite-instalacao`).auth(token, { type: "bearer" }).send({ assinatura_cliente_instalacao: assinatura })).status).toBe(410);
         await expect(pedidoRepository.atualizar(pedido.id, { status: "Concluido" })).rejects.toMatchObject({ status: 400 });
-        expect((await request(app).put(`/ordem_servico/${os.id}`).auth(token, { type: "bearer" }).send({ status_os: "Finalizada" })).status).toBe(400);
-        expect((await db.ordem_servico.findByPk(os.id)).status_os).toBe("Aberta");
+        expect((await request(app).put(`/ordem_servico/${os.id}`).auth(token, { type: "bearer" }).send({ status_os: "Finalizada" })).status).toBe(403);
+        expect((await request(app).post(`/portal-cliente/ordens-servico/${os.id}/assinar`).auth(token, { type: "bearer" }).send(payload)).status).toBe(403);
+        expect((await request(app).post(`/portal-cliente/ordens-servico/${os.id}/assinar`).auth(tokenCliente, { type: "bearer" }).send({})).status).toBe(400);
+        expect((await db.ordem_servico.findByPk(os.id)).status_os).toBe("Em Andamento");
     });
 
     test("protege itens e dados comerciais de orçamento enviado e bloqueia transferência entre pedidos", async () => {

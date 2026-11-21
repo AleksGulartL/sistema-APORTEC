@@ -8,7 +8,6 @@ import {
     TextField,
     Button,
     Alert,
-    Avatar,
     Stack,
     IconButton,
     InputAdornment,
@@ -72,13 +71,12 @@ export default function Login({ onLogin }) {
         <Container maxWidth="xs" sx={{ mt: 8 }}>
             <Card elevation={4} sx={{ borderRadius: 3, p: 1 }}>
                 <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <Avatar sx={{ m: 1, bgcolor: "primary.main", width: 56, height: 56 }}>
-                        <LockOutlinedIcon fontSize="large" />
-                    </Avatar>
-
-                    <Typography component="h1" variant="h5" fontWeight="bold" gutterBottom>
-                        APORTEC
-                    </Typography>
+                    <Box
+                        component="img"
+                        src="/logo-aportec.png"
+                        alt="APORTEC - Soluções em Entrada Automática"
+                        sx={{ maxWidth: 230, width: "100%", height: "auto", mb: 1.5, mt: 0.5 }}
+                    />
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Sistema de Gestão Operacional &amp; Produtiva
                     </Typography>

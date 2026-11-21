@@ -168,6 +168,46 @@ async function atualizar(id, dados) {
     });
 }
 
+async function finalizarPeloCliente(id, clienteId, assinatura) {
+    return sequelize.transaction(async (transaction) => {
+        const registro = await ordem_servico.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!registro) return null;
+
+        const regPedido = await pedido.findByPk(registro.pedido_id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!regPedido || Number(regPedido.cliente_id) !== Number(clienteId)) {
+            throw criarErro("Ordem de serviço não encontrada para este cliente.", 404);
+        }
+        if (registro.status_os === "Finalizada") {
+            throw criarErro("Esta OS já foi finalizada e não pode ser alterada.", 409);
+        }
+
+        await validarRegrasOsNaTransacao({
+            pedidoId: registro.pedido_id,
+            tipoServico: registro.tipo_servico,
+            novoStatus: "Finalizada",
+            tecnicoId: registro.tecnico_responsavel_id,
+            parecer: registro.parecer_tecnico,
+            assinatura,
+            statusAnterior: registro.status_os,
+            transaction,
+        });
+
+        const dataConclusao = new Date();
+        const assinaturaLimpa = assinatura.trim();
+        await registro.update(
+            {
+                status_os: "Finalizada",
+                assinatura_cliente_digital: assinaturaLimpa,
+                data_conclusao: dataConclusao,
+            },
+            { transaction }
+        );
+        await regPedido.update(montarDadosConclusaoPedido(regPedido, assinaturaLimpa, dataConclusao), { transaction });
+
+        return buscarPorId(id, { transaction });
+    });
+}
+
 async function deletar(id) {
     return sequelize.transaction(async (transaction) => {
         const registro = await ordem_servico.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
@@ -185,5 +225,6 @@ module.exports = {
     buscarPorId,
     criar,
     atualizar,
+    finalizarPeloCliente,
     deletar,
 };

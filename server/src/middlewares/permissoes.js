@@ -90,6 +90,7 @@ const PERMISSOES = Object.freeze({
         criarSolicitacao: [CLIENTE],
         responderAprovacao: [CLIENTE],
         abrirSolicitacao: [CLIENTE],
+        assinarEncerramento: [CLIENTE],
     },
 });
 

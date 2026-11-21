@@ -259,10 +259,9 @@ CREATE INDEX idx_os_pedido_id ON ordem_servico (pedido_id) WHERE deleted_at IS N
 -- =============================================================================
 -- 12. CARGA INICIAL DE DADOS (OPERAÇÃO INICIAL E DEMONSTRAÇÃO)
 -- Credenciais padrão (todas com senha: senha123):
---   ADM     : admin@gmail.com   | senha123
---   ADM     : alekslopes7@gmail.com | senha123
---   TECNICO : tecnico@gmail.com | senha123
---   CLIENTE : clara@gmail.com   | senha123
+--   ADM     : admin@aportec.com   | senha123
+--   TECNICO : tecnico@aportec.com | senha123
+--   CLIENTE : clara@aportec.com   | senha123
 -- =============================================================================
 
 INSERT INTO tipo_item (nome) VALUES
@@ -291,11 +290,11 @@ INSERT INTO categoria_item (nome) VALUES
     ('Outros');
 
 INSERT INTO usuario (nome_completo, email, senha_hash, perfil, ativo) VALUES
-    ('Ana Administradora', 'admin@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'ADM', TRUE),
-    ('Tiago Técnico', 'tecnico@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'TECNICO', TRUE),
-    ('Clara Cliente', 'clara@gmail.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'CLIENTE', TRUE);
+    ('Ana Administradora', 'admin@aportec.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'ADM', TRUE),
+    ('Tiago Técnico', 'tecnico@aportec.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'TECNICO', TRUE),
+    ('Clara Cliente', 'clara@aportec.com', '$2b$10$1TbD.iSa19YbaFo2He4KfOrmXEnW8NoVhx6Re5b1zOAGO/zqzgXUS', 'CLIENTE', TRUE);
 
-INSERT INTO cliente (usuario_id, cnpj_cpf, telefone, endereco) VALUES ( (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
+INSERT INTO cliente (usuario_id, cnpj_cpf, telefone, endereco) VALUES ( (SELECT id FROM usuario WHERE email = 'clara@aportec.com'),
     '123.456.789-00',
     '(49) 99999-0101',
     'Av. Fernando Machado, 1200, Centro, Chapecó - SC'
@@ -341,9 +340,9 @@ INSERT INTO pedido (
     bloqueio_fabricacao, motivo_bloqueio, custo_total, percentual_acrescimo,
     condicoes_pagamento, numero_serie, fim_garantia, data_aprovacao, data_previsao_fim
 ) VALUES (
-    TRUE, (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
-    (SELECT id FROM usuario WHERE email = 'admin@gmail.com'),
-    (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
+    TRUE, (SELECT id FROM usuario WHERE email = 'clara@aportec.com'),
+    (SELECT id FROM usuario WHERE email = 'admin@aportec.com'),
+    (SELECT id FROM usuario WHERE email = 'tecnico@aportec.com'),
     'Av. Fernando Machado, 1200, Centro, Chapecó - SC',
     'Instalacao', 'Aprovado', 'Pronto para Instalacao',
     FALSE, NULL, 5100.00, 15.00,
@@ -359,9 +358,9 @@ INSERT INTO pedido (
     bloqueio_fabricacao, motivo_bloqueio, custo_total, percentual_acrescimo,
     condicoes_pagamento, data_previsao_fim
 ) VALUES (
-    TRUE, (SELECT id FROM usuario WHERE email = 'clara@gmail.com'),
-    (SELECT id FROM usuario WHERE email = 'admin@gmail.com'),
-    (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
+    TRUE, (SELECT id FROM usuario WHERE email = 'clara@aportec.com'),
+    (SELECT id FROM usuario WHERE email = 'admin@aportec.com'),
+    (SELECT id FROM usuario WHERE email = 'tecnico@aportec.com'),
     'Rua Marechal Bormann, 450, Chapecó - SC',
     'Instalacao', 'Pendente', 'Pendente',
     TRUE, 'Bloqueado: orçamento pendente de aprovação pelo cliente.',
@@ -385,14 +384,14 @@ INSERT INTO checklist_medicao (
 ) VALUES
     (
         1,
-        (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
+        (SELECT id FROM usuario WHERE email = 'tecnico@aportec.com'),
         '2400mm x 2200mm', 'Bipartida (Central)', 2,
         'Temperado 10mm Incolor', 'APORTEC Slim 200kg',
         TRUE, TRUE, TRUE, 'Aprovado'
     ),
     (
         2,
-        (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
+        (SELECT id FROM usuario WHERE email = 'tecnico@aportec.com'),
         '1800mm x 2150mm', 'Lateral Direita', 1,
         'Temperado 10mm Verde', 'APORTEC Slim 200kg',
         TRUE, TRUE, TRUE, 'Aprovado'
@@ -404,7 +403,7 @@ INSERT INTO ordem_servico (
     status_os, descricao_problema, data_agendamento
 ) VALUES (
     1,
-    (SELECT id FROM usuario WHERE email = 'tecnico@gmail.com'),
+    (SELECT id FROM usuario WHERE email = 'tecnico@aportec.com'),
     'Instalacao', 'Garantia',
     'Em Andamento',
     'Instalação completa da porta social automática bipartida e calibração dos sensores.',

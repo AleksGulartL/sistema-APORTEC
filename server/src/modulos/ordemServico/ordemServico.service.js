@@ -6,28 +6,20 @@ const ordemServicoRepository = require("./ordemServico.repository");
 
 const TIPOS_SERVICO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 const ORIGENS_COBERTURA = ["Garantia", "Contrato", "Avulso"];
-const CAMPOS_OS = ["pedido_id", "tecnico_responsavel_id", "tipo_servico", "origem_cobertura", "status_os", "descricao_problema", "parecer_tecnico", "assinatura_cliente_digital", "data_agendamento"];
+const CAMPOS_OS = ["pedido_id", "tecnico_responsavel_id", "tipo_servico", "origem_cobertura", "status_os", "descricao_problema", "parecer_tecnico", "data_agendamento"];
 const dadosPermitidos = (dados) => Object.fromEntries(CAMPOS_OS.filter((campo) => dados[campo] !== undefined).map((campo) => [campo, dados[campo]]));
 
 async function validarFluxo(dados, atual = {}) {
     if (atual.status_os === "Finalizada") throw criarErro("Esta OS já foi finalizada e não pode ser alterada.", 409);
+    if (dados.status_os === "Finalizada" || (dados.assinatura_cliente_digital !== undefined && dados.assinatura_cliente_digital !== null && String(dados.assinatura_cliente_digital).trim() !== "")) {
+        throw criarErro("Apenas o cliente pode assinar e finalizar o encerramento pelo Portal do Cliente.", 403);
+    }
     const pedido = await pedidoRepository.buscarPorId(dados.pedido_id || atual.pedido_id);
     if (!pedido) throw criarErro("Pedido não encontrado.");
     if (["Concluido", "Cancelado"].includes(pedido.status)) throw criarErro("O pedido vinculado já está encerrado.", 409);
     if ((dados.tipo_servico || atual.tipo_servico) !== pedido.tipo_pedido) throw criarErro("O tipo da OS deve corresponder ao orçamento aprovado.");
     const status = dados.status_os || atual.status_os || "Aberta";
-    if (["Em Andamento", "Finalizada"].includes(status)) exigirLiberacao(pedido);
-    if (status === "Finalizada") {
-        if (atual.status_os === "Cancelada") throw criarErro("Uma OS cancelada não pode ser finalizada.", 409);
-        if (pedido.tipo_pedido === "Instalacao" && pedido.status !== "Pronto para Instalacao") throw criarErro("Conclua a produção antes de finalizar a instalação.");
-        for (const campo of ["parecer_tecnico", "assinatura_cliente_digital"]) {
-            if (typeof dados[campo] !== "string" || !dados[campo].trim()) throw criarErro("Informe o parecer técnico e a assinatura do cliente para finalizar.");
-            dados[campo] = dados[campo].trim();
-        }
-        const tecnico = dados.tecnico_responsavel_id === undefined ? atual.tecnico_responsavel_id : dados.tecnico_responsavel_id;
-        if (!tecnico) throw criarErro("Atribua um técnico antes de finalizar a OS.");
-        await validarTecnico(tecnico);
-    }
+    if (status === "Em Andamento") exigirLiberacao(pedido);
 }
 
 const STATUS_OS = ["Aberta", "Em Andamento", "Finalizada", "Cancelada"];
@@ -149,6 +141,9 @@ async function atualizar(id, dados) {
     }
 
     delete dadosFormatados.id;
+    if (dados.assinatura_cliente_digital !== undefined && dados.assinatura_cliente_digital !== null && String(dados.assinatura_cliente_digital).trim() !== "") {
+        throw criarErro("Apenas o cliente pode assinar e finalizar o encerramento pelo Portal do Cliente.", 403);
+    }
     const atual = await ordemServicoRepository.buscarPorId(idNum);
     if (!atual) return null;
     await validarFluxo(dadosFormatados, atual);

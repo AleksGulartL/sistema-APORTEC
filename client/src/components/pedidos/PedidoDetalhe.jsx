@@ -475,13 +475,13 @@ export default function PedidoDetalhe({
             >
                 {pedido.bloqueio_fabricacao ? (
                     <>
-                        <strong>Trava Técnica Ativa (RF08):</strong>{" "}
+                        <strong>Trava Técnica Ativa:</strong>{" "}
                         {pedido.motivo_bloqueio ||
                             "A fabricação permanece bloqueada até a aprovação comercial e aprovação do checklist técnico de medição."}
                     </>
                 ) : (
                     <>
-                        <strong>Produção Desbloqueada (RF08):</strong> Orçamento aprovado e checklist técnico de
+                        <strong>Produção Desbloqueada:</strong> Orçamento aprovado e checklist técnico de
                         medição aprovado com infraestrutura validada.
                     </>
                 )}
@@ -543,7 +543,7 @@ export default function PedidoDetalhe({
                                     spacing={1}
                                 >
                                     <Typography variant="h6" fontWeight="bold">
-                                        Proposta Comercial e Prazos (RF03, RF05, RF06)
+                                        Proposta Comercial e Prazos
                                     </Typography>
                                     {ehAdm && <Button variant="contained" disabled={salvando} onClick={() => acaoOrcamento(pedido.orcamento_enviado ? "reabrir-orcamento" : "enviar-orcamento")}>
                                         {pedido.orcamento_enviado ? "Revisar orçamento" : "Enviar orçamento ao cliente"}
@@ -738,7 +738,7 @@ export default function PedidoDetalhe({
                         <Stack spacing={3}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
                                 <Typography variant="h6" fontWeight="bold">
-                                    Itens e Materiais do Pedido (RF04, RF06, RF11)
+                                    Itens e Materiais do Pedido
                                 </Typography>
                                 <Stack direction="row" spacing={1}>
                                     <Chip
@@ -914,7 +914,7 @@ export default function PedidoDetalhe({
                         <form onSubmit={salvarChecklistMedicao}>
                             <Stack spacing={2.5}>
                                 <Typography variant="h6" fontWeight="bold">
-                                    Checklist Técnico de Medição em Obra (RF07, RF08)
+                                    Checklist Técnico de Medição em Obra
                                 </Typography>
 
                                 <Grid container spacing={2}>
@@ -1059,7 +1059,7 @@ export default function PedidoDetalhe({
                                     {infraComPendencia && (
                                         <Alert severity="warning" sx={{ mt: 1.5 }}>
                                             Com pendências de infraestrutura, o checklist não pode ser aprovado e a
-                                            fabricação permanecerá bloqueada (RF08).
+                                            fabricação permanecerá bloqueada.
                                         </Alert>
                                     )}
                                 </Paper>
@@ -1166,7 +1166,7 @@ export default function PedidoDetalhe({
                                     sx={{ p: 2, borderRadius: 2, borderColor: "primary.main", bgcolor: "grey.50" }}
                                 >
                                     <Typography variant="subtitle1" fontWeight="bold" color="primary.main" gutterBottom>
-                                        Checklist de Pré-Saída Gerado (RF12)
+                                        Checklist de Pré-Saída Gerado
                                     </Typography>
                                     <Grid container spacing={1} sx={{ mb: 1.5 }}>
                                         <Grid item xs={12} sm={6}>

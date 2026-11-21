@@ -315,7 +315,7 @@ export default function Pedidos({
                         Pedidos, Orçamentos e Produção
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Gestão unificada da proposta comercial, itens, checklist de medição e produção (RF03–RF09, RF12, RF13)
+                        Gestão unificada da proposta comercial, itens, checklist de medição e produção
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -452,7 +452,7 @@ export default function Pedidos({
                                     onOrdenar={setOrdenacao}
                                 />
                                 <TableCell sx={{ color: "white", fontWeight: "bold" }}>Avaliação técnica</TableCell>
-                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Trava (RF08)</TableCell>
+                                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Trava</TableCell>
                                 <CabecalhoOrdenavel
                                     campo="status"
                                     rotulo="Etapa"
