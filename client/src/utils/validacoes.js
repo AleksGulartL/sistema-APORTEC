@@ -1,7 +1,7 @@
 export const REGEX_EMAIL = /^[^\s@]+@[^\s@.]+\.com$/i;
 export const REGEX_CPF = /^(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})$/;
 export const REGEX_CNPJ = /^(?:\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})$/;
-export const REGEX_TELEFONE = /^(?:\([1-9]{2}\)\s?\d{4,5}-\d{4}|[1-9]{2}\d{8,9})$/;
+export const REGEX_TELEFONE = /^(?:\(\d{2}\)\s?\d{4,5}-\d{4}|\d{10,11})$/;
 
 export const MENSAGEM_ERRO_EMAIL =
     "E-mail inválido: informe um endereço com '@' e '.com' (ex: nome@empresa.com). Ajuste o e-mail para continuar.";
@@ -12,10 +12,6 @@ export const MENSAGEM_ERRO_TELEFONE =
 
 function extrairDigitos(valor, limite) {
     return String(valor || "").replace(/\D/g, "").slice(0, limite);
-}
-
-function todosDigitosIguais(digitos) {
-    return /^(\d)\1+$/.test(digitos);
 }
 
 function criarResultadoAjuda(valido, mostrarErro, mensagemErro, mensagemPadrao) {
@@ -61,8 +57,7 @@ export function formatarCpfCnpj(valor) {
 export function cpfCnpjEhValido(valor) {
     if (typeof valor !== "string") return false;
     const texto = valor.trim();
-    if (!REGEX_CPF.test(texto) && !REGEX_CNPJ.test(texto)) return false;
-    return !todosDigitosIguais(texto.replace(/\D/g, ""));
+    return REGEX_CPF.test(texto) || REGEX_CNPJ.test(texto);
 }
 
 export function normalizarCpfCnpj(valor) {
@@ -89,9 +84,7 @@ export function formatarTelefone(valor) {
 
 export function telefoneEhValido(valor) {
     if (typeof valor !== "string") return false;
-    const texto = valor.trim();
-    if (!REGEX_TELEFONE.test(texto)) return false;
-    return !todosDigitosIguais(texto.replace(/\D/g, ""));
+    return REGEX_TELEFONE.test(valor.trim());
 }
 
 export function normalizarTelefone(valor) {
