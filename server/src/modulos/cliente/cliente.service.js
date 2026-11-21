@@ -1,9 +1,10 @@
 const clienteRepository = require("./cliente.repository");
 const { validarEmail } = require("../../utils/validacaoEmail");
+const { validarCpfCnpj, validarTelefone } = require("../../utils/validacaoCliente");
 const { criarErro } = require("../../utils/criarErro");
 
 function validarCliente(dados, isUpdate = false) {
-    let emailNormalizado;
+    const camposNormalizados = {};
     const temUsuarioId =
         dados.usuario_id !== undefined && dados.usuario_id !== null && String(dados.usuario_id).trim() !== "";
 
@@ -13,7 +14,7 @@ function validarCliente(dados, isUpdate = false) {
             throw criarErro("O campo 'usuario_id' deve ser um número inteiro válido.");
         }
         if (dados.email !== undefined) {
-            emailNormalizado = validarEmail(dados.email);
+            camposNormalizados.email = validarEmail(dados.email);
         }
     } else if (!isUpdate || dados.nome_completo !== undefined || dados.email !== undefined) {
         if (!isUpdate || dados.nome_completo !== undefined) {
@@ -23,20 +24,16 @@ function validarCliente(dados, isUpdate = false) {
         }
 
         if (!isUpdate || dados.email !== undefined) {
-            emailNormalizado = validarEmail(dados.email);
+            camposNormalizados.email = validarEmail(dados.email);
         }
     }
 
     if (!isUpdate || dados.cnpj_cpf !== undefined) {
-        if (!dados.cnpj_cpf || typeof dados.cnpj_cpf !== "string" || !dados.cnpj_cpf.trim()) {
-            throw criarErro("O campo 'cnpj_cpf' é obrigatório e deve ser um texto válido.");
-        }
+        camposNormalizados.cnpj_cpf = validarCpfCnpj(dados.cnpj_cpf);
     }
 
     if (!isUpdate || dados.telefone !== undefined) {
-        if (!dados.telefone || typeof dados.telefone !== "string" || !dados.telefone.trim()) {
-            throw criarErro("O campo 'telefone' é obrigatório e deve ser um texto válido.");
-        }
+        camposNormalizados.telefone = validarTelefone(dados.telefone);
     }
 
     if (!isUpdate || dados.endereco !== undefined) {
@@ -51,7 +48,7 @@ function validarCliente(dados, isUpdate = false) {
         }
     }
 
-    return emailNormalizado;
+    return camposNormalizados;
 }
 
 async function listar() {
@@ -67,9 +64,8 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    const emailNormalizado = validarCliente(dados, false);
-    const payload = emailNormalizado !== undefined ? { ...dados, email: emailNormalizado } : dados;
-    return clienteRepository.criar(payload);
+    const camposNormalizados = validarCliente(dados, false);
+    return clienteRepository.criar({ ...dados, ...camposNormalizados });
 }
 
 async function atualizar(id, dados) {
@@ -78,9 +74,8 @@ async function atualizar(id, dados) {
         throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
 
-    const emailNormalizado = validarCliente(dados, true);
-    const payload = emailNormalizado !== undefined ? { ...dados, email: emailNormalizado } : dados;
-    return clienteRepository.atualizar(idNum, payload);
+    const camposNormalizados = validarCliente(dados, true);
+    return clienteRepository.atualizar(idNum, { ...dados, ...camposNormalizados });
 }
 
 async function deletar(id) {

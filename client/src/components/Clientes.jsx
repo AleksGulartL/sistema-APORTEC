@@ -37,10 +37,20 @@ import Tabela from "./Tabela";
 import api from "../services/api";
 import { usuarioEhAdm, usuarioEhFuncionario } from "../utils/permissoes";
 import {
+    cpfCnpjEhValido,
     emailEhValido,
+    formatarCpfCnpj,
+    formatarTelefone,
+    MENSAGEM_ERRO_CPF_CNPJ,
     MENSAGEM_ERRO_EMAIL,
+    MENSAGEM_ERRO_TELEFONE,
+    normalizarCpfCnpj,
     normalizarEmail,
+    normalizarTelefone,
+    obterAjudaCpfCnpj,
     obterAjudaEmail,
+    obterAjudaTelefone,
+    telefoneEhValido,
 } from "../utils/validacoes";
 
 function gerarSenhaSugerida() {
@@ -56,6 +66,12 @@ const FORM_INICIAL = {
     email: "",
     endereco: "",
     senha: "",
+};
+
+const CAMPOS_TOCADOS_INICIAL = {
+    cnpj_cpf: false,
+    telefone: false,
+    email: false,
 };
 
 export default function Clientes({ usuario }) {
@@ -75,7 +91,7 @@ export default function Clientes({ usuario }) {
     const [modalAberto, setModalAberto] = useState(false);
     const [modoEdicao, setModoEdicao] = useState(false);
     const [form, setForm] = useState(FORM_INICIAL);
-    const [emailTocado, setEmailTocado] = useState(false);
+    const [camposTocados, setCamposTocados] = useState(CAMPOS_TOCADOS_INICIAL);
     const [mostrarSenha, setMostrarSenha] = useState(true);
     const [erroModal, setErroModal] = useState("");
     const [salvando, setSalvando] = useState(false);
@@ -129,37 +145,64 @@ export default function Clientes({ usuario }) {
             ...FORM_INICIAL,
             senha: gerarSenhaSugerida(),
         });
-        setEmailTocado(false);
+        setCamposTocados(CAMPOS_TOCADOS_INICIAL);
         setMostrarSenha(true);
         setErroModal("");
         setModalAberto(true);
     }
 
     function abrirEdicao(item) {
+        const docAtual = item.cnpj_cpf || "";
+        const telAtual = item.telefone || "";
         const emailAtual = item.usuario?.email || "";
         setModoEdicao(true);
         setForm({
             usuario_id: item.usuario_id,
             nome_completo: item.usuario?.nome_completo || "",
-            cnpj_cpf: item.cnpj_cpf || "",
-            telefone: item.telefone || "",
+            cnpj_cpf: cpfCnpjEhValido(docAtual) ? normalizarCpfCnpj(docAtual) : docAtual,
+            telefone: telefoneEhValido(telAtual) ? normalizarTelefone(telAtual) : telAtual,
             email: emailAtual,
             endereco: item.endereco || "",
             senha: "",
         });
-        setEmailTocado(Boolean(emailAtual.trim()) && !emailEhValido(emailAtual));
+        setCamposTocados({
+            cnpj_cpf: Boolean(docAtual.trim()) && !cpfCnpjEhValido(docAtual),
+            telefone: Boolean(telAtual.trim()) && !telefoneEhValido(telAtual),
+            email: Boolean(emailAtual.trim()) && !emailEhValido(emailAtual),
+        });
         setMostrarSenha(true);
         setErroModal("");
         setModalAberto(true);
+    }
+
+    function atualizarCampoValidado(campo, valor, ehValido, mensagemErro) {
+        setForm((prev) => ({ ...prev, [campo]: valor }));
+        if (erroModal === mensagemErro && ehValido(valor)) {
+            setErroModal("");
+        }
     }
 
     async function salvarCliente(event) {
         event.preventDefault();
         setErroModal("");
 
-        if (!emailEhValido(form.email)) {
-            setEmailTocado(true);
-            setErroModal(MENSAGEM_ERRO_EMAIL);
+        const docValido = cpfCnpjEhValido(form.cnpj_cpf);
+        const telValido = telefoneEhValido(form.telefone);
+        const emailValido = emailEhValido(form.email);
+
+        if (!docValido || !telValido || !emailValido) {
+            setCamposTocados((prev) => ({
+                cnpj_cpf: !docValido || prev.cnpj_cpf,
+                telefone: !telValido || prev.telefone,
+                email: !emailValido || prev.email,
+            }));
+            setErroModal(
+                !docValido
+                    ? MENSAGEM_ERRO_CPF_CNPJ
+                    : !telValido
+                      ? MENSAGEM_ERRO_TELEFONE
+                      : MENSAGEM_ERRO_EMAIL
+            );
             return;
         }
 
@@ -174,8 +217,8 @@ export default function Clientes({ usuario }) {
 
         const payload = {
             nome_completo: form.nome_completo.trim(),
-            cnpj_cpf: form.cnpj_cpf.trim(),
-            telefone: form.telefone.trim(),
+            cnpj_cpf: normalizarCpfCnpj(form.cnpj_cpf),
+            telefone: normalizarTelefone(form.telefone),
             email: normalizarEmail(form.email),
             endereco: form.endereco.trim(),
         };
@@ -456,8 +499,20 @@ export default function Clientes({ usuario }) {
                                                 fullWidth
                                                 label="CNPJ ou CPF"
                                                 placeholder="00.000.000/0001-00 ou 000.000.000-00"
+                                                inputProps={{ inputMode: "numeric" }}
                                                 value={form.cnpj_cpf}
-                                                onChange={(e) => setForm({ ...form, cnpj_cpf: e.target.value })}
+                                                onChange={(e) =>
+                                                    atualizarCampoValidado(
+                                                        "cnpj_cpf",
+                                                        formatarCpfCnpj(e.target.value),
+                                                        cpfCnpjEhValido,
+                                                        MENSAGEM_ERRO_CPF_CNPJ
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    setCamposTocados((prev) => ({ ...prev, cnpj_cpf: true }))
+                                                }
+                                                {...obterAjudaCpfCnpj(form.cnpj_cpf, camposTocados.cnpj_cpf)}
                                             />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
@@ -466,8 +521,20 @@ export default function Clientes({ usuario }) {
                                                 fullWidth
                                                 label="Telefone"
                                                 placeholder="(00) 00000-0000"
+                                                inputProps={{ inputMode: "tel" }}
                                                 value={form.telefone}
-                                                onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                                                onChange={(e) =>
+                                                    atualizarCampoValidado(
+                                                        "telefone",
+                                                        formatarTelefone(e.target.value),
+                                                        telefoneEhValido,
+                                                        MENSAGEM_ERRO_TELEFONE
+                                                    )
+                                                }
+                                                onBlur={() =>
+                                                    setCamposTocados((prev) => ({ ...prev, telefone: true }))
+                                                }
+                                                {...obterAjudaTelefone(form.telefone, camposTocados.telefone)}
                                             />
                                         </Grid>
                                     </Grid>
@@ -499,15 +566,18 @@ export default function Clientes({ usuario }) {
                                         autoComplete="email"
                                         inputProps={{ inputMode: "email" }}
                                         value={form.email}
-                                        onChange={(e) => {
-                                            const novoEmail = e.target.value;
-                                            setForm({ ...form, email: novoEmail });
-                                            if (erroModal === MENSAGEM_ERRO_EMAIL && emailEhValido(novoEmail)) {
-                                                setErroModal("");
-                                            }
-                                        }}
-                                        onBlur={() => setEmailTocado(true)}
-                                        {...obterAjudaEmail(form.email, emailTocado)}
+                                        onChange={(e) =>
+                                            atualizarCampoValidado(
+                                                "email",
+                                                e.target.value,
+                                                emailEhValido,
+                                                MENSAGEM_ERRO_EMAIL
+                                            )
+                                        }
+                                        onBlur={() =>
+                                            setCamposTocados((prev) => ({ ...prev, email: true }))
+                                        }
+                                        {...obterAjudaEmail(form.email, camposTocados.email)}
                                     />
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
                                         <TextField

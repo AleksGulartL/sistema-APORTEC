@@ -31,7 +31,7 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
     });
 
     test("Deve lançar erro HTTP 400 quando o campo 'nome_completo' for omitido", async () => {
-        const dadosInvalidos = { cnpj_cpf: "123", telefone: "999", email: "empresa@gmail.com", endereco: "Rua A" };
+        const dadosInvalidos = { cnpj_cpf: "123.456.789-00", telefone: "(49) 99999-0101", email: "empresa@gmail.com", endereco: "Rua A" };
 
         await expect(clienteService.criar(dadosInvalidos))
             .rejects
@@ -39,11 +39,63 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
     });
 
     test("Deve lançar erro HTTP 400 quando o campo 'cnpj_cpf' for omitido", async () => {
-        const dadosInvalidos = { nome_completo: "Empresa X", telefone: "999", email: "empresa@gmail.com", endereco: "Rua A" };
+        const dadosInvalidos = { nome_completo: "Empresa X", telefone: "(49) 99999-0101", email: "empresa@gmail.com", endereco: "Rua A" };
 
         await expect(clienteService.criar(dadosInvalidos))
             .rejects
             .toMatchObject({ message: "O campo 'cnpj_cpf' é obrigatório e deve ser um texto válido.", status: 400 });
+    });
+
+    test("Deve lançar erro HTTP 400 quando o CPF/CNPJ estiver em formato inválido", async () => {
+        for (const docInvalido of ["123", "123.456.789", "000.000.000-00", "12.345.678/0001-9", "123abc45678"]) {
+            await expect(
+                clienteService.criar({
+                    nome_completo: "Empresa X",
+                    cnpj_cpf: docInvalido,
+                    telefone: "(49) 99999-0101",
+                    email: "empresa@gmail.com",
+                    endereco: "Rua Central, 100",
+                })
+            )
+                .rejects
+                .toMatchObject({
+                    status: 400,
+                    message: expect.stringContaining("000.000.000-00"),
+                });
+        }
+
+        await expect(clienteService.atualizar(1, { cnpj_cpf: "12345" }))
+            .rejects
+            .toMatchObject({
+                status: 400,
+                message: expect.stringContaining("00.000.000/0001-00"),
+            });
+    });
+
+    test("Deve lançar erro HTTP 400 quando o telefone estiver em formato inválido", async () => {
+        for (const telInvalido of ["999", "(00) 99999-0101", "49-99999-0101", "(49) 9999-01011", "(11) 11111-1111"]) {
+            await expect(
+                clienteService.criar({
+                    nome_completo: "Empresa X",
+                    cnpj_cpf: "123.456.789-00",
+                    telefone: telInvalido,
+                    email: "empresa@gmail.com",
+                    endereco: "Rua Central, 100",
+                })
+            )
+                .rejects
+                .toMatchObject({
+                    status: 400,
+                    message: expect.stringContaining("(00) 00000-0000"),
+                });
+        }
+
+        await expect(clienteService.atualizar(1, { telefone: "12345" }))
+            .rejects
+            .toMatchObject({
+                status: 400,
+                message: expect.stringContaining("(00) 00000-0000"),
+            });
     });
 
     test("Deve lançar erro HTTP 400 quando o e-mail não contiver '@' e '.com'", async () => {
@@ -72,7 +124,7 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
             });
     });
 
-    test("Deve cadastrar cliente com sucesso com qualquer provedor '.com' e normalizar e-mail", async () => {
+    test("Deve cadastrar cliente com sucesso e normalizar CPF/CNPJ, telefone e e-mail", async () => {
         const dadosValidos = {
             nome_completo: "Empresa X",
             cnpj_cpf: "12345678000199",
@@ -81,14 +133,36 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
             endereco: "Rua Central, 100",
         };
 
-        clienteRepository.criar.mockResolvedValue({ usuario_id: 1, ...dadosValidos, email: "contato@empresa.com" });
+        clienteRepository.criar.mockResolvedValue({
+            usuario_id: 1,
+            ...dadosValidos,
+            cnpj_cpf: "12.345.678/0001-99",
+            telefone: "(49) 9999-9999",
+            email: "contato@empresa.com",
+        });
 
         const resultado = await clienteService.criar(dadosValidos);
 
         expect(clienteRepository.criar).toHaveBeenCalledWith(
-            expect.objectContaining({ email: "contato@empresa.com" })
+            expect.objectContaining({
+                cnpj_cpf: "12.345.678/0001-99",
+                telefone: "(49) 9999-9999",
+                email: "contato@empresa.com",
+            })
         );
         expect(resultado).toHaveProperty("usuario_id", 1);
+    });
+
+    test("Deve atualizar apenas os campos enviados sem exigir CPF/CNPJ, telefone ou e-mail omitidos", async () => {
+        clienteRepository.atualizar.mockResolvedValue({
+            usuario_id: 1,
+            endereco: "Rua Nova, 200",
+        });
+
+        const resultado = await clienteService.atualizar(1, { endereco: "Rua Nova, 200" });
+
+        expect(clienteRepository.atualizar).toHaveBeenCalledWith(1, { endereco: "Rua Nova, 200" });
+        expect(resultado).toHaveProperty("endereco", "Rua Nova, 200");
     });
 
     test("Deve cadastrar cliente vinculado a um usuario_id existente sem exigir repetição de nome_completo e email", async () => {
