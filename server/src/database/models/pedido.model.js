@@ -39,11 +39,34 @@ const pedido = sequelize.define(
                 return toNumberOrNull(this.getDataValue("responsavel_producao_id"));
             },
         },
-        diagnostico_tecnico: { type: DataTypes.TEXT, allowNull: true },
-        data_avaliacao: { type: DataTypes.DATE, allowNull: true },
-        orcamento_enviado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-        descricao_solicitacao: { type: DataTypes.TEXT, allowNull: true },
-        pedido_origem_id: { type: DataTypes.BIGINT, allowNull: true },
+        diagnostico_tecnico: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: "diagnostico_tecnico",
+        },
+        data_avaliacao: { 
+            type: DataTypes.DATE, 
+            allowNull: true,
+            field: "data_avaliacao",
+
+        },
+        orcamento_enviado: { 
+            type: DataTypes.BOOLEAN, 
+            allowNull: false, 
+            defaultValue: false,
+            field: "orcamento_enviado",
+        },
+        descricao_solicitacao: { 
+            type: DataTypes.TEXT, 
+            allowNull: true,
+            field: "descricao_solicitacao",
+        },
+        pedido_origem_id: { 
+            type: DataTypes.BIGINT, 
+            allowNull: true,
+            field: "pedido_origem_id",
+
+        },
         endereco_instalacao: {
             type: DataTypes.TEXT,
             allowNull: true,

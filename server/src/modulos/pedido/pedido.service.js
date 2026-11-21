@@ -152,7 +152,6 @@ async function atualizar(id, dados) {
     return pedidoRepository.atualizar(idNum, dadosFormatados);
 }
 
-// RF12 - Atualizar Status da Etapa do Pedido e gerar automaticamente Checklist de Pré-Saída
 async function atualizarStatusEtapa(id, dados = {}) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
@@ -206,7 +205,6 @@ async function atualizarStatusEtapa(id, dados = {}) {
     };
 }
 
-// RF13 & RF15 - Coletar Assinatura Digital de Aceite e registrar número de série e garantia no próprio Pedido
 async function coletarAssinaturaAceite() {
     throw criarErro("O aceite agora é registrado exclusivamente na finalização da OS.", 410);
 }

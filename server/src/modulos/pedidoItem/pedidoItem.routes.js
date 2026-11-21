@@ -4,7 +4,6 @@ const proteger = require("../../middlewares/proteger");
 
 const router = express.Router();
 
-// RF04 / RF06 - Itens vinculados ao pedido
 router.get(["/pedido_item", "/pedido-itens"], proteger("pedidoItem", "listar"), pedidoItemController.listar);
 router.get(["/pedido_item/:id", "/pedido-itens/:id"], proteger("pedidoItem", "buscarPorId"), pedidoItemController.buscarPorId);
 router.post(["/pedido_item", "/pedido-itens"], proteger("pedidoItem", "criar"), pedidoItemController.criar);

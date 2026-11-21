@@ -4,7 +4,6 @@ const proteger = require("../../middlewares/proteger");
 
 const router = express.Router();
 
-// RF01 - Gestão de usuários: todas as ações exigem token válido e perfil ADM
 router.get("/usuarios", proteger("usuario", "listar"), usuarioController.listar);
 router.get("/usuarios/:id", proteger("usuario", "buscarPorId"), usuarioController.buscarPorId);
 router.post("/usuarios", proteger("usuario", "criar"), usuarioController.criar);

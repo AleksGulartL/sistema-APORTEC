@@ -1,18 +1,16 @@
-// Normaliza o papel: maiúsculas, sem acentos e com sinônimos de administrador unificados em "ADM"
 function normalizarPapel(papel) {
     const valor = String(papel)
         .trim()
         .toUpperCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, ""); // remove acentos (ex.: TÉCNICO -> TECNICO)
+        .replace(/[\u0300-\u036f]/g, ""); 
 
     if (valor === "ADMIN" || valor === "ADMINISTRADOR") return "ADM";
     return valor;
 }
 
-// Obtém o papel RBAC do usuário autenticado a partir de `perfil`.
 function obterPapelUsuario(usuario) {
-    const papel = usuario.perfil || ""; // removed fallback to `role`
+    const papel = usuario.perfil || "";
     return papel ? normalizarPapel(papel) : "";
 }
 
@@ -38,7 +36,7 @@ function autorizar(...papeisPermitidos) {
             });
         }
 
-        return next(); // next() permite que a requisição continue para o controller
+        return next();
     };
 }
 

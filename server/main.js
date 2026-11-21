@@ -20,7 +20,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Rotas dos módulos do Sistema APORTEC (7 Entidades + Autenticação + Portal do Cliente)
 app.use(authRoutes);
 app.use(usuarioRoutes);
 app.use(clienteRoutes);

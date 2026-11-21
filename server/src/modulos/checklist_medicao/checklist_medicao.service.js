@@ -59,7 +59,6 @@ function validarChecklistMedicao(dados, isUpdate = false) {
             throw criarErro("O campo 'status_aprovacao' deve ser 'Pendente', 'Aprovado' ou 'Reprovado'.");
         }
 
-        // RF07 & RF08 - Impede aprovação do checklist quando há pendências de infraestrutura
         const temPendenciaInfra =
             dados.viga_ok === false || dados.piso_ok === false || dados.ponto_eletrico_ok === false;
         if (dados.status_aprovacao === "Aprovado" && temPendenciaInfra) {

@@ -1,4 +1,3 @@
-// Centraliza a validação e normalização de e-mails exigindo '@' e '.com' (ex: nome@empresa.com).
 const { criarErro } = require("./criarErro");
 
 const REGEX_EMAIL = /^[^\s@]+@[^\s@.]+\.com$/i;

@@ -33,7 +33,6 @@ async function obterResumo(usuarioLogado) {
     };
 }
 
-// RF05 - Aprovação / Reprovação de orçamento pelo próprio Cliente
 async function responderAprovacaoOrcamento(usuarioLogado, pedidoId, dados = {}) {
     const idNum = Number(pedidoId);
     if (!Number.isInteger(idNum) || idNum <= 0) {
@@ -81,7 +80,6 @@ async function responderAprovacaoOrcamento(usuarioLogado, pedidoId, dados = {}) 
     return portalClienteRepository.atualizarPedido(regPedido, payloadAtualizacao);
 }
 
-// RF14 - Abertura de solicitação de manutenção pelo próprio Cliente
 async function abrirSolicitacaoManutencao(usuarioLogado, dados = {}) {
     const cliente = await obterClienteVinculado(usuarioLogado);
     const origem = await portalClienteRepository.buscarPedidoDoClientePorId(Number(dados.pedido_id), cliente.usuario_id);
@@ -90,7 +88,6 @@ async function abrirSolicitacaoManutencao(usuarioLogado, dados = {}) {
         pedido_origem_id: origem.id, endereco: dados.endereco || origem.endereco_instalacao || cliente.endereco });
 }
 
-// O mesmo registro acompanha a solicitação, o orçamento e a execução.
 async function criarSolicitacao(usuarioLogado, dados = {}) {
     const cliente = await obterClienteVinculado(usuarioLogado);
     const tipos = ["Instalacao", ...TIPOS_SOLICITACAO_CLIENTE];

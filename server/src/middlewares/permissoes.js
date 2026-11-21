@@ -1,6 +1,3 @@
-// Matriz central de permissões (RBAC - RF01)
-// Define, para cada função de controller, quais perfis de acesso podem executá-la.
-
 const PERFIS = Object.freeze({
     ADM: "ADM",
     TECNICO: "TECNICO",
@@ -12,7 +9,6 @@ const { ADM, TECNICO, CLIENTE } = PERFIS;
 const FUNCIONARIOS = [ADM, TECNICO];
 
 const PERMISSOES = Object.freeze({
-    // RF01 - Gestão de usuários: exclusiva do ADM
     usuario: {
         listarTecnicos: FUNCIONARIOS,
         listar: [ADM],
@@ -22,7 +18,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF02 - Clientes: cadastro pelo ADM; consulta pelos colaboradores internos
     cliente: {
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
@@ -31,7 +26,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF10 - Catálogo/Estoque: mantido pelo ADM; consulta liberada aos colaboradores
     itemCatalogo: {
         listar: FUNCIONARIOS,
         listarTipos: FUNCIONARIOS,
@@ -43,7 +37,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF04/RF05/RF06/RF12/RF13 - Pedido (ciclo unificado Orçamento -> Pedido)
     pedido: {
         registrarAvaliacao: [TECNICO],
         enviarOrcamento: [ADM],
@@ -57,7 +50,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF04/RF06 - Itens do pedido
     pedidoItem: {
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
@@ -66,7 +58,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF07/RF08 - Checklist técnico de medição
     checklistMedicao: {
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
@@ -75,7 +66,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // RF14 - Ordens de serviço
     ordemServico: {
         listar: FUNCIONARIOS,
         buscarPorId: FUNCIONARIOS,
@@ -84,7 +74,6 @@ const PERMISSOES = Object.freeze({
         deletar: [ADM],
     },
 
-    // Portal do Cliente (escopo isolado aos registros do próprio cliente autenticado)
     portalCliente: {
         obterResumo: [CLIENTE],
         criarSolicitacao: [CLIENTE],

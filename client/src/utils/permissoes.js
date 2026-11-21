@@ -1,15 +1,15 @@
 export function obterPerfilUsuario(usuario) {
     if (!usuario) return "";
-    const bruto = String(usuario.perfil || "")
+    const perfil = String(usuario.perfil || "")
         .trim()
         .toUpperCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
 
-    if (["ADM", "ADMIN", "ADMINISTRADOR"].includes(bruto)) return "ADM";
-    if (bruto.includes("TECNIC")) return "TECNICO";
-    if (bruto.includes("CLIENT")) return "CLIENTE";
-    return bruto;
+    if (["ADM", "ADMIN", "ADMINISTRADOR"].includes(perfil)) return "ADM";
+    if (perfil.includes("TECNIC")) return "TECNICO";
+    if (perfil.includes("CLIENT")) return "CLIENTE";
+    return perfil;
 }
 
 export function usuarioEhAdm(usuario) {
@@ -60,7 +60,6 @@ export function ordenarLista(lista = [], campo, direcao = "asc", extratores = {}
     });
 }
 
-// Converte DATEONLY ("YYYY-MM-DD") ou TIMESTAMPTZ em chave local "YYYY-MM-DD" sem deslocamento de fuso
 export function extrairChaveDataLocal(valor) {
     if (!valor) return null;
     const texto = String(valor).trim();

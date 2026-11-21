@@ -1,11 +1,5 @@
--- =============================================================================
--- SISTEMA DE GESTÃO OPERACIONAL E PRODUTIVA - APORTEC
--- Modelagem Relacional Normalizada (3FN - 9 Tabelas + Especialização 1:1)
--- =============================================================================
 
--- =============================================================================
--- 1. LIMPEZA DE ESTRUTURAS ANTERIORES
--- =============================================================================
+ -- LIMPEZA DE ESTRUTURAS ANTERIORES
 
 DROP TABLE IF EXISTS ordem_servico CASCADE;
 DROP TABLE IF EXISTS checklist_medicao CASCADE;
@@ -25,9 +19,6 @@ DROP TYPE IF EXISTS tipo_servico;
 DROP TYPE IF EXISTS origem_cobertura;
 DROP TYPE IF EXISTS status_ordem_servico;
 
--- =============================================================================
--- 2. TIPOS ENUMERADOS (DOMÍNIOS)
--- =============================================================================
 
 CREATE TYPE perfil_usuario AS ENUM ('ADM', 'TECNICO', 'CLIENTE');
 CREATE TYPE status_aprovacao AS ENUM ('Pendente', 'Aprovado', 'Reprovado');
@@ -39,15 +30,13 @@ CREATE TYPE tipo_servico AS ENUM ('Instalacao', 'Manutencao Preventiva', 'Manute
 CREATE TYPE origem_cobertura AS ENUM ('Garantia', 'Contrato', 'Avulso');
 CREATE TYPE status_ordem_servico AS ENUM ('Aberta', 'Em Andamento', 'Finalizada', 'Cancelada');
 
--- =============================================================================
--- 3. TABELA: usuario (RF01 - Cadastro de Usuários, Login e Perfis RBAC)
--- =============================================================================
+
 CREATE TABLE usuario (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome_completo VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL,
     senha_hash VARCHAR(255) NOT NULL,
-    perfil perfil_usuario NOT NULL DEFAULT 'TECNICO',
+    perfil perfil_usuario NOT NULL DEFAULT 'CLIENTE',
     ativo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -55,9 +44,7 @@ CREATE TABLE usuario (
     CONSTRAINT uq_usuario_email UNIQUE (email)
 );
 
--- =============================================================================
--- 4. TABELA: cliente (RF02 - Especialização 1:1 de usuario)
--- =============================================================================
+
 CREATE TABLE cliente (
     usuario_id BIGINT PRIMARY KEY,
     cnpj_cpf VARCHAR(20) NOT NULL,
@@ -71,25 +58,19 @@ CREATE TABLE cliente (
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
--- =============================================================================
--- 5. TABELA: tipo_item (Domínio de tipos de itens do catálogo)
--- =============================================================================
+
 CREATE TABLE tipo_item (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome VARCHAR(50) NOT NULL UNIQUE
 );
 
--- =============================================================================
--- 6. TABELA: categoria_item (Domínio de categorias de itens do catálogo)
--- =============================================================================
+
 CREATE TABLE categoria_item (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome VARCHAR(50) NOT NULL UNIQUE
 );
 
--- =============================================================================
--- 7. TABELA: item_catalogo (RF04, RF10, RF11 - Catálogo e Controle de Estoque)
--- =============================================================================
+
 CREATE TABLE item_catalogo (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     codigo_referencia VARCHAR(50),
@@ -119,10 +100,7 @@ CREATE INDEX idx_item_catalogo_alerta_minimo
     ON item_catalogo (id, quantidade_atual, estoque_minimo)
     WHERE quantidade_atual <= estoque_minimo AND deleted_at IS NULL;
 
--- =============================================================================
--- 8. TABELA: pedido (RF03, RF04, RF05, RF06, RF08, RF09, RF12, RF13, RF15)
--- Unifica Orçamento + Pedido/OP + Instalação + Prontuário da Porta
--- =============================================================================
+
 CREATE TABLE pedido (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     cliente_id BIGINT NOT NULL,
@@ -175,9 +153,7 @@ CREATE TABLE pedido (
 CREATE INDEX idx_pedido_cliente_id ON pedido (cliente_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pedido_status_bloqueio ON pedido (status, bloqueio_fabricacao) WHERE deleted_at IS NULL;
 
--- =============================================================================
--- 9. TABELA: pedido_item (RF04, RF06, RF11 - Relação N:M entre Pedido e Item)
--- =============================================================================
+
 CREATE TABLE pedido_item (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     pedido_id BIGINT NOT NULL,
@@ -199,9 +175,7 @@ CREATE TABLE pedido_item (
 
 CREATE INDEX idx_pedido_item_pedido_id ON pedido_item (pedido_id) WHERE deleted_at IS NULL;
 
--- =============================================================================
--- 10. TABELA: checklist_medicao (RF07, RF08 - Levantamento Técnico 1:1 com Pedido)
--- =============================================================================
+
 CREATE TABLE checklist_medicao (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     pedido_id BIGINT NOT NULL,
@@ -230,9 +204,7 @@ CREATE TABLE checklist_medicao (
     )
 );
 
--- =============================================================================
--- 11. TABELA: ordem_servico (RF03, RF13, RF14, RF15 - Instalação e Pós-Venda)
--- =============================================================================
+
 CREATE TABLE ordem_servico (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     pedido_id BIGINT NOT NULL,
@@ -256,13 +228,11 @@ CREATE TABLE ordem_servico (
 
 CREATE INDEX idx_os_pedido_id ON ordem_servico (pedido_id) WHERE deleted_at IS NULL;
 
--- =============================================================================
--- 12. CARGA INICIAL DE DADOS (OPERAÇÃO INICIAL E DEMONSTRAÇÃO)
+
 -- Credenciais padrão (todas com senha: senha123):
 --   ADM     : admin@aportec.com   | senha123
 --   TECNICO : tecnico@aportec.com | senha123
 --   CLIENTE : clara@aportec.com   | senha123
--- =============================================================================
 
 INSERT INTO tipo_item (nome) VALUES
     ('Servico'),
@@ -333,7 +303,6 @@ INSERT INTO item_catalogo (
         'UN', 290.00, 18, 6
     );
 
--- Pedido 1: Pronto para Instalação (aprovado e desbloqueado)
 INSERT INTO pedido (
     orcamento_enviado, cliente_id, usuario_criador_id, responsavel_producao_id,
     endereco_instalacao, tipo_pedido, status_aprovacao, status,
@@ -351,7 +320,6 @@ INSERT INTO pedido (
     CURRENT_TIMESTAMP - INTERVAL '5 days', CURRENT_DATE + INTERVAL '3 days'
 );
 
--- Pedido 2: Pendente de aprovação comercial (com trava ativa)
 INSERT INTO pedido (
     orcamento_enviado, cliente_id, usuario_criador_id, responsavel_producao_id,
     endereco_instalacao, tipo_pedido, status_aprovacao, status,
@@ -369,7 +337,6 @@ INSERT INTO pedido (
     CURRENT_DATE + INTERVAL '12 days'
 );
 
--- Itens dos Pedidos
 INSERT INTO pedido_item (pedido_id, item_id, quantidade, valor_unitario) VALUES
     (1, (SELECT id FROM item_catalogo WHERE codigo_referencia = 'KIT-SLIM-200'), 1, 3500.00),
     (1, (SELECT id FROM item_catalogo WHERE codigo_referencia = 'VID-TEMP-10'), 2, 420.00),
@@ -377,7 +344,6 @@ INSERT INTO pedido_item (pedido_id, item_id, quantidade, valor_unitario) VALUES
     (2, (SELECT id FROM item_catalogo WHERE codigo_referencia = 'KIT-SLIM-200'), 1, 3500.00),
     (2, (SELECT id FROM item_catalogo WHERE codigo_referencia = 'SENS-RAD-01'), 1, 380.00);
 
--- Checklists de Medição
 INSERT INTO checklist_medicao (
     pedido_id, tecnico_id, medidas_vao, sentido_abertura, quantidade_folhas,
     tipo_vidro, modelo_automatizador, viga_ok, piso_ok, ponto_eletrico_ok, status_aprovacao
@@ -397,7 +363,6 @@ INSERT INTO checklist_medicao (
         TRUE, TRUE, TRUE, 'Aprovado'
     );
 
--- Ordens de Serviço
 INSERT INTO ordem_servico (
     pedido_id, tecnico_responsavel_id, tipo_servico, origem_cobertura,
     status_os, descricao_problema, data_agendamento

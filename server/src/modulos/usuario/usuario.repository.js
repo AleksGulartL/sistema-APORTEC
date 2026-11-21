@@ -39,7 +39,13 @@ async function deletar(id) {
 }
 
 async function listarTecnicos() {
-    return usuario.findAll({ where: { perfil: "TECNICO", ativo: true }, attributes: ["id", "nome_completo", "perfil", "ativo"], order: [["nome_completo", "ASC"]] });
+    return usuario.findAll({
+        where: {
+            perfil: "TECNICO", ativo: true
+        },
+        attributes: ["id", "nome_completo", "perfil", "ativo"],
+        order: [["nome_completo", "ASC"]]
+    });
 }
 
 module.exports = {

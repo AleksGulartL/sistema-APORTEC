@@ -98,7 +98,6 @@ async function deletar(id) {
     return registro;
 }
 
-// RF12 - Gera checklist de materiais de pré-saída usando diretamente pedido_item
 async function gerarChecklistPreSaida(pedidoId) {
     const regPedido = await buscarPorId(pedidoId);
     if (!regPedido) return null;

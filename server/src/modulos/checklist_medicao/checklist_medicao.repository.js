@@ -17,7 +17,6 @@ function obterIncludes() {
     return includes;
 }
 
-// RF08 - Sincroniza automaticamente a trava de liberação para fabricação no pedido vinculado
 async function sincronizarBloqueioPedido(checklist) {
     if (!checklist || !checklist.pedido_id || !pedido) return;
     const regPedido = await pedido.findByPk(checklist.pedido_id);

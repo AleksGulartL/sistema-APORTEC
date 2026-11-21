@@ -1,9 +1,3 @@
-/**
- * Padroniza o retorno HTTP de erros nos controllers (Critério 5 - Tratamento de Erros e Segurança):
- * - Mapeia restrições de unicidade (23505) e chave estrangeira (23503) do PostgreSQL/Sequelize para HTTP 400.
- * - Preserva mensagens de validação de regra de negócio (status 4xx).
- * - Oculta mensagens técnicas internas em falhas inesperadas (status 500).
- */
 function responderErroController(res, erro, opcoes = {}) {
     const {
         statusPadrao = 500,
