@@ -1,3 +1,5 @@
+const { criarErro } = require("./criarErro");
+
 const CAMPOS_COMERCIAIS = [
     "cliente_id",
     "tipo_pedido",
@@ -28,7 +30,7 @@ function avaliacaoAprovada(pedido) {
 
 function exigirLiberacao(pedido) {
     if (!pedido || pedido.status === "Cancelado" || pedido.status_aprovacao !== "Aprovado" || pedido.orcamento_enviado !== true || pedido.bloqueio_fabricacao !== false || !avaliacaoAprovada(pedido)) {
-        throw Object.assign(new Error("Execução bloqueada: registre a avaliação técnica e aguarde a aprovação do orçamento pelo cliente."), { status: 400 });
+        throw criarErro("Execução bloqueada: registre a avaliação técnica e aguarde a aprovação do orçamento pelo cliente.");
     }
 }
 
@@ -46,24 +48,24 @@ function valorDiferente(campo, atual, novo) {
 
 function validarOrcamentoEditavel(pedido) {
     if (!pedido) {
-        throw Object.assign(new Error("Pedido não encontrado."), { status: 400 });
+        throw criarErro("Pedido não encontrado.");
     }
     if (pedido.orcamento_enviado || ["Cancelado", "Concluido"].includes(pedido.status)) {
-        throw Object.assign(new Error("Reabra o orçamento para revisão antes de alterar seus itens."), { status: 400 });
+        throw criarErro("Reabra o orçamento para revisão antes de alterar seus itens.");
     }
 }
 
 function validarEdicaoPedido(atual, dados = {}) {
     if (atual.status === "Concluido") {
         if (CAMPOS_CONCLUSAO.some((campo) => valorDiferente(campo, atual[campo], dados[campo]))) {
-            throw Object.assign(new Error("O encerramento deste pedido já foi registrado e não pode ser refeito."), { status: 409 });
+            throw criarErro("O encerramento deste pedido já foi registrado e não pode ser refeito.", 409);
         }
     } else if (dados.status === "Concluido") {
-        throw Object.assign(new Error("Finalize a OS com parecer e assinatura para concluir este pedido."), { status: 400 });
+        throw criarErro("Finalize a OS com parecer e assinatura para concluir este pedido.");
     }
 
     if (atual.orcamento_enviado && CAMPOS_COMERCIAIS.some((campo) => valorDiferente(campo, atual[campo], dados[campo]))) {
-        throw Object.assign(new Error("Reabra o orçamento antes de alterar a proposta enviada ao cliente."), { status: 400 });
+        throw criarErro("Reabra o orçamento antes de alterar a proposta enviada ao cliente.");
     }
 }
 

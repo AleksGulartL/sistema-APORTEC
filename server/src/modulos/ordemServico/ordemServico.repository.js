@@ -1,7 +1,6 @@
 const { sequelize, ordem_servico, cliente, pedido, usuario, checklist_medicao } = require("../../database/models");
 const { ehManutencao, avaliacaoAprovada, montarDadosConclusaoPedido } = require("../../utils/fluxoPedido");
-
-const erroFluxo = (mensagem, status = 400) => Object.assign(new Error(mensagem), { status });
+const { criarErro } = require("../../utils/criarErro");
 
 function obterIncludes() {
     const includes = [];
@@ -43,41 +42,41 @@ async function validarRegrasOsNaTransacao({
     transaction,
 }) {
     const regPedido = await pedido.findByPk(pedidoId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!regPedido) throw erroFluxo("Pedido não encontrado.", 400);
+    if (!regPedido) throw criarErro("Pedido não encontrado.");
     if (["Cancelado", "Concluido"].includes(regPedido.status)) {
-        throw erroFluxo("O pedido vinculado já está encerrado.", 409);
+        throw criarErro("O pedido vinculado já está encerrado.", 409);
     }
     if (tipoServico !== regPedido.tipo_pedido) {
-        throw erroFluxo("O tipo da OS deve corresponder ao pedido vinculado.", 400);
+        throw criarErro("O tipo da OS deve corresponder ao pedido vinculado.");
     }
 
     if (["Em Andamento", "Finalizada"].includes(novoStatus)) {
         if (!regPedido.orcamento_enviado || regPedido.status_aprovacao !== "Aprovado" || regPedido.bloqueio_fabricacao) {
-            throw erroFluxo("Execução bloqueada: aguarde a aprovação do orçamento pelo cliente.", 400);
+            throw criarErro("Execução bloqueada: aguarde a aprovação do orçamento pelo cliente.");
         }
         if (ehManutencao(regPedido) && !regPedido.diagnostico_tecnico?.trim()) {
-            throw erroFluxo("Registre o diagnóstico técnico antes do atendimento.", 400);
+            throw criarErro("Registre o diagnóstico técnico antes do atendimento.");
         }
     }
 
     if (novoStatus === "Finalizada") {
         if (statusAnterior === "Cancelada") {
-            throw erroFluxo("Uma OS cancelada não pode ser finalizada.", 409);
+            throw criarErro("Uma OS cancelada não pode ser finalizada.", 409);
         }
         if (!parecer?.trim() || !assinatura?.trim()) {
-            throw erroFluxo("Informe o parecer técnico e a assinatura do cliente para finalizar.", 400);
+            throw criarErro("Informe o parecer técnico e a assinatura do cliente para finalizar.");
         }
         const tecnico = tecnicoId
             ? await usuario.findOne({ where: { id: tecnicoId, perfil: "TECNICO", ativo: true }, transaction })
             : null;
         if (!tecnico) {
-            throw erroFluxo("Atribua um técnico ativo antes de finalizar a OS.", 400);
+            throw criarErro("Atribua um técnico ativo antes de finalizar a OS.");
         }
         if (tipoServico === "Instalacao") {
             const cm = await checklist_medicao.findOne({ where: { pedido_id: regPedido.id }, transaction });
             const pedidoComChecklist = { tipo_pedido: regPedido.tipo_pedido, checklist_medicao: cm };
             if (regPedido.status !== "Pronto para Instalacao" || !avaliacaoAprovada(pedidoComChecklist)) {
-                throw erroFluxo("Conclua a produção e aprove a medição antes de finalizar a instalação.", 400);
+                throw criarErro("Conclua a produção e aprove a medição antes de finalizar a instalação.");
             }
         }
     }
@@ -124,7 +123,7 @@ async function atualizar(id, dados) {
         const registro = await ordem_servico.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
         if (!registro) return null;
         if (registro.status_os === "Finalizada") {
-            throw erroFluxo("Esta OS já foi finalizada e não pode ser alterada.", 409);
+            throw criarErro("Esta OS já foi finalizada e não pode ser alterada.", 409);
         }
 
         const payload = { ...dados };
@@ -174,7 +173,7 @@ async function deletar(id) {
         const registro = await ordem_servico.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
         if (!registro) return null;
         if (registro.status_os === "Finalizada") {
-            throw erroFluxo("Uma OS finalizada não pode ser excluída.", 409);
+            throw criarErro("Uma OS finalizada não pode ser excluída.", 409);
         }
         await registro.destroy({ transaction });
         return registro;

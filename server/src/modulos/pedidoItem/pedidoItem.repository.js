@@ -1,5 +1,6 @@
 const { sequelize, pedido_item, pedido, item_catalogo } = require("../../database/models");
 const { validarOrcamentoEditavel } = require("../../utils/fluxoPedido");
+const { criarErro } = require("../../utils/criarErro");
 
 function obterIncludes() {
     const includes = [];
@@ -78,7 +79,7 @@ async function atualizar(id, dados) {
         const registro = await pedido_item.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
         if (!registro) return null;
         if (dados.pedido_id !== undefined && Number(dados.pedido_id) !== Number(registro.pedido_id)) {
-            throw Object.assign(new Error("Não é permitido transferir itens entre orçamentos."), { status: 400 });
+            throw criarErro("Não é permitido transferir itens entre orçamentos.");
         }
         await travarPedidoEditavel(registro.pedido_id, transaction);
         const atualizado = await registro.update(dados, { transaction });

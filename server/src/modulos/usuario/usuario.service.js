@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
 const { validarGmail } = require("../../utils/validacaoEmail");
+const { criarErro } = require("../../utils/criarErro");
 
 const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
 const SALT_ROUNDS = 10;
@@ -20,9 +21,7 @@ function normalizarPerfil(perfil) {
 function validarUsuario(dados, isUpdate = false) {
     if (!isUpdate || dados.nome_completo !== undefined) {
         if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
-            const erro = new Error("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
         }
     }
 
@@ -32,30 +31,22 @@ function validarUsuario(dados, isUpdate = false) {
 
     if (!isUpdate) {
         if (!dados.senha_hash || typeof dados.senha_hash !== "string" || !dados.senha_hash.trim()) {
-            const erro = new Error("O campo 'senha_hash' é obrigatório.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'senha_hash' é obrigatório.");
         }
     } else if (dados.senha !== undefined && dados.senha !== "") {
         if (typeof dados.senha !== "string" || !dados.senha.trim()) {
-            const erro = new Error("A 'senha' informada deve ser um texto válido.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("A 'senha' informada deve ser um texto válido.");
         }
     }
 
     if (dados.perfil !== undefined && dados.perfil !== null) {
         if (!PERFIS_VALIDOS.includes(String(dados.perfil).trim().toUpperCase())) {
-            const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
         }
     }
 
     if (dados.ativo !== undefined && typeof dados.ativo !== "boolean") {
-        const erro = new Error("O campo 'ativo' deve ser um booleano.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O campo 'ativo' deve ser um booleano.");
     }
 }
 
@@ -66,9 +57,7 @@ async function listar() {
 async function buscarPorId(id) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
     return usuarioRepository.buscarPorId(idNum);
 }
@@ -87,9 +76,7 @@ async function criar(dados) {
 async function atualizar(id, dados) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
 
     validarUsuario(dados, true);
@@ -113,9 +100,7 @@ async function atualizar(id, dados) {
 async function deletar(id) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
     return usuarioRepository.deletar(idNum);
 }

@@ -7,6 +7,7 @@ const {
     checklist_medicao,
     ordem_servico,
 } = require("../../database/models");
+const { criarErro } = require("../../utils/criarErro");
 
 async function buscarClientePorUsuarioId(usuarioId) {
     return cliente.findOne({
@@ -82,7 +83,7 @@ async function atualizarPedido(regPedido, dados) {
         where: { id: regPedido.id, cliente_id: regPedido.cliente_id, status_aprovacao: "Pendente", orcamento_enviado: true,
             status: { [Op.notIn]: ["Cancelado", "Concluido"] } }, returning: true,
     });
-    if (!alterados) throw Object.assign(new Error("Este orçamento foi atualizado. Recarregue antes de responder."), { status: 409 });
+    if (!alterados) throw criarErro("Este orçamento foi atualizado. Recarregue antes de responder.", 409);
     return registros[0];
 }
 

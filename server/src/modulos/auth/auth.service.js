@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const authRepository = require("./auth.repository");
 const { validarGmail } = require("../../utils/validacaoEmail");
+const { criarErro } = require("../../utils/criarErro");
 
 const SALT_ROUNDS = 10;
 // Hash bcrypt fictício para garantir tempo de resposta constante e evitar enumeração de usuários
@@ -20,9 +21,7 @@ function limparAcentosUpper(texto) {
 function normalizarPerfil(perfil, estrito = false) {
     if (!perfil) {
         if (estrito) {
-            const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
         }
         return "TECNICO";
     }
@@ -31,9 +30,7 @@ function normalizarPerfil(perfil, estrito = false) {
     if (upper === "ADMIN" || upper === "ADMINISTRADOR") return "ADM";
 
     if (estrito) {
-        const erro = new Error("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O campo 'perfil' deve ser 'ADM', 'TECNICO' ou 'CLIENTE'.");
     }
     return "TECNICO";
 }
@@ -99,15 +96,11 @@ function solicitanteAdm(solicitante) {
 
 async function criarNovoUsuario(dados, solicitante = null) {
     if (!solicitante) {
-        const erro = new Error("Cadastro público não permitido. É necessário estar autenticado como administrador.");
-        erro.status = 401;
-        throw erro;
+        throw criarErro("Cadastro público não permitido. É necessário estar autenticado como administrador.", 401);
     }
 
     if (!solicitanteAdm(solicitante)) {
-        const erro = new Error("Apenas administradores têm permissão para cadastrar novos usuários.");
-        erro.status = 403;
-        throw erro;
+        throw criarErro("Apenas administradores têm permissão para cadastrar novos usuários.", 403);
     }
 
     const nome = (dados.nome_completo || "").trim();
@@ -115,25 +108,18 @@ async function criarNovoUsuario(dados, solicitante = null) {
     const perfil = dados.perfil ? normalizarPerfil(dados.perfil, true) : "TECNICO";
 
     if (!nome) {
-        const erro = new Error("O campo 'nome_completo' é obrigatório.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O campo 'nome_completo' é obrigatório.");
     }
 
     const email = validarGmail(dados.email, "O campo 'email' é obrigatório.");
 
     if (!senha) {
-        const erro = new Error("O campo 'senha' é obrigatório.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O campo 'senha' é obrigatório.");
     }
 
     const usuarioExistente = await authRepository.buscarPorEmail(email);
     if (usuarioExistente) {
-        const erro = new Error("Já existe um usuário cadastrado com este e-mail.");
-        erro.status = 409;
-        erro.code = "23505";
-        throw erro;
+        throw criarErro("Já existe um usuário cadastrado com este e-mail.", 409, { code: "23505" });
     }
 
     const senha_hash = await hashearSenha(senha);
@@ -176,23 +162,17 @@ async function alterarSenhaUsuario(usuarioId, dados = {}) {
     const novaSenha = dados.nova_senha || "";
 
     if (!senhaAtual || !novaSenha || String(novaSenha).trim().length < 4) {
-        const erro = new Error("Informe a senha atual e uma nova senha com pelo menos 4 caracteres.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("Informe a senha atual e uma nova senha com pelo menos 4 caracteres.");
     }
 
     const reg = await authRepository.buscarPorId(usuarioId);
     if (!reg) {
-        const erro = new Error("Usuário não encontrado.");
-        erro.status = 404;
-        throw erro;
+        throw criarErro("Usuário não encontrado.", 404);
     }
 
     const valida = await verificarSenha(senhaAtual, reg.senha_hash);
     if (!valida) {
-        const erro = new Error("Senha atual incorreta.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("Senha atual incorreta.");
     }
 
     const novoHash = await hashearSenha(String(novaSenha).trim());

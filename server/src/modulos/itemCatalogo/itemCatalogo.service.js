@@ -1,64 +1,49 @@
 const itemCatalogoRepository = require("./itemCatalogo.repository");
+const { criarErro } = require("../../utils/criarErro");
 
 function validarItemCatalogo(dados, isUpdate = false) {
     if (!isUpdate) {
         const tipoIdNum = Number(dados.tipo_id);
         if (!dados.tipo_id || !Number.isInteger(tipoIdNum) || tipoIdNum <= 0) {
-            const erro = new Error("O campo 'tipo_id' é obrigatório e deve ser um ID válido.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'tipo_id' é obrigatório e deve ser um ID válido.");
         }
 
         const categoriaIdNum = Number(dados.categoria_id);
         if (!dados.categoria_id || !Number.isInteger(categoriaIdNum) || categoriaIdNum <= 0) {
-            const erro = new Error("O campo 'categoria_id' é obrigatório e deve ser um ID válido.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'categoria_id' é obrigatório e deve ser um ID válido.");
         }
 
         if (!dados.descricao || typeof dados.descricao !== "string" || !dados.descricao.trim()) {
-            const erro = new Error("O campo 'descricao' é obrigatório e deve ser um texto válido.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'descricao' é obrigatório e deve ser um texto válido.");
         }
 
         if (!dados.unidade_medida || typeof dados.unidade_medida !== "string" || !dados.unidade_medida.trim()) {
-            const erro = new Error("O campo 'unidade_medida' é obrigatório e deve ser um texto válido.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O campo 'unidade_medida' é obrigatório e deve ser um texto válido.");
         }
     } else {
         if (dados.tipo_id !== undefined) {
             const tipoIdNum = Number(dados.tipo_id);
             if (!Number.isInteger(tipoIdNum) || tipoIdNum <= 0) {
-                const erro = new Error("O campo 'tipo_id' deve ser um ID válido.");
-                erro.status = 400;
-                throw erro;
+                throw criarErro("O campo 'tipo_id' deve ser um ID válido.");
             }
         }
 
         if (dados.categoria_id !== undefined) {
             const categoriaIdNum = Number(dados.categoria_id);
             if (!Number.isInteger(categoriaIdNum) || categoriaIdNum <= 0) {
-                const erro = new Error("O campo 'categoria_id' deve ser um ID válido.");
-                erro.status = 400;
-                throw erro;
+                throw criarErro("O campo 'categoria_id' deve ser um ID válido.");
             }
         }
 
         if (dados.descricao !== undefined) {
             if (!dados.descricao || typeof dados.descricao !== "string" || !dados.descricao.trim()) {
-                const erro = new Error("O campo 'descricao' deve ser um texto válido.");
-                erro.status = 400;
-                throw erro;
+                throw criarErro("O campo 'descricao' deve ser um texto válido.");
             }
         }
 
         if (dados.unidade_medida !== undefined) {
             if (!dados.unidade_medida || typeof dados.unidade_medida !== "string" || !dados.unidade_medida.trim()) {
-                const erro = new Error("O campo 'unidade_medida' deve ser um texto válido.");
-                erro.status = 400;
-                throw erro;
+                throw criarErro("O campo 'unidade_medida' deve ser um texto válido.");
             }
         }
     }
@@ -66,27 +51,21 @@ function validarItemCatalogo(dados, isUpdate = false) {
     if (dados.valor_unitario_padrao !== undefined && dados.valor_unitario_padrao !== null) {
         const valNum = Number(dados.valor_unitario_padrao);
         if (isNaN(valNum) || valNum < 0) {
-            const erro = new Error("O 'valor_unitario_padrao' deve ser um número maior ou igual a zero.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O 'valor_unitario_padrao' deve ser um número maior ou igual a zero.");
         }
     }
 
     if (dados.quantidade_atual !== undefined && dados.quantidade_atual !== null) {
         const qtdNum = Number(dados.quantidade_atual);
         if (isNaN(qtdNum) || qtdNum < 0) {
-            const erro = new Error("A 'quantidade_atual' deve ser um número maior ou igual a zero.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("A 'quantidade_atual' deve ser um número maior ou igual a zero.");
         }
     }
 
     if (dados.estoque_minimo !== undefined && dados.estoque_minimo !== null) {
         const minNum = Number(dados.estoque_minimo);
         if (isNaN(minNum) || minNum < 0) {
-            const erro = new Error("O 'estoque_minimo' deve ser um número maior ou igual a zero.");
-            erro.status = 400;
-            throw erro;
+            throw criarErro("O 'estoque_minimo' deve ser um número maior ou igual a zero.");
         }
     }
 }
@@ -119,9 +98,7 @@ async function listarAlertasEstoqueMinimo() {
 async function buscarPorId(id) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
     return itemCatalogoRepository.buscarPorId(idNum);
 }
@@ -140,9 +117,7 @@ async function criar(dados) {
 async function atualizar(id, dados) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
 
     validarItemCatalogo(dados, true);
@@ -156,9 +131,7 @@ async function atualizar(id, dados) {
 async function deletar(id) {
     const idNum = Number(id);
     if (!Number.isInteger(idNum) || idNum <= 0) {
-        const erro = new Error("O 'id' informado deve ser um número inteiro válido.");
-        erro.status = 400;
-        throw erro;
+        throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
     return itemCatalogoRepository.deletar(idNum);
 }
