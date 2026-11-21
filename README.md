@@ -9,13 +9,35 @@ Aplicação web full stack para gestão de orçamentos, pedidos, estoque, mediç
 
 ## Pré-requisitos
 
-Tenha instalados e em execução na sua máquina (Linux, Windows ou macOS):
+Tenha instalados na sua máquina (Linux, Windows ou macOS):
 
 - **Node.js** (versão LTS recomendada)
 - **[Yarn](https://classic.yarnpkg.com/en/docs/install)**
 - **PostgreSQL** (com o serviço em execução e `psql` disponível no terminal ou via ferramenta gráfica como pgAdmin/DBeaver)
 
-## Iniciar o projeto
+O sistema depende de três processos: PostgreSQL (banco, porta padrão `5432`), backend (API, porta `3000`) e frontend (interface, porta `5173`). Os comandos `yarn dev` iniciam apenas o backend e o frontend; eles não instalam nem iniciam o PostgreSQL.
+
+## Iniciar o PostgreSQL
+
+Antes de preparar o banco ou iniciar a aplicação, confira se o serviço PostgreSQL está em execução no computador que será usado:
+
+| Sistema / instalação | Como iniciar o serviço já instalado |
+| --- | --- |
+| macOS com Homebrew e PostgreSQL 17 | Execute `brew services start postgresql@17`. Se instalou outra versão, ajuste o nome da fórmula. |
+| Windows com PostgreSQL instalado como serviço | Pressione `Win + R`, abra `services.msc`, localize o serviço PostgreSQL e clique em **Iniciar**. O nome do serviço depende da instalação. |
+| Linux com systemd e serviço chamado `postgresql` | Execute `sudo systemctl start postgresql`. O nome do serviço pode variar conforme a distribuição e a instalação. |
+
+No macOS, o comando `brew services start` também registra a inicialização automática ao entrar na conta do usuário. Essa configuração pertence àquele computador e usuário: ela não é salva no repositório nem transferida ao clonar o projeto. Veja a [documentação do Homebrew](https://docs.brew.sh/Manpage#services-subcommand).
+
+Se as ferramentas do PostgreSQL estiverem disponíveis no terminal, verifique a porta configurada (por padrão, `5432`):
+
+```bash
+pg_isready -h localhost -p 5432
+```
+
+O resultado esperado contém `accepting connections`. Isso confirma que o servidor aceita conexões; as credenciais e a existência do banco ainda precisam estar corretas. Veja a [documentação do pg_isready](https://www.postgresql.org/docs/current/app-pg-isready.html).
+
+## Preparação inicial (uma vez por computador)
 
 Comece na pasta raiz do projeto, onde ficam `client` e `server`.
 
@@ -63,7 +85,11 @@ Comece na pasta raiz do projeto, onde ficam `client` e `server`.
    JWT_EXPIRES_IN=1h
    ```
 
-4. **Em um terminal, inicie o backend:**
+## Uso diário
+
+Com a preparação inicial concluída, mantenha o PostgreSQL em execução. Se ele já inicia automaticamente, não é necessário iniciá-lo manualmente a cada uso. Instalar dependências, criar o banco e importar o SQL não são tarefas de cada inicialização.
+
+1. **Em um terminal, inicie o backend:**
 
    ```bash
    cd server
@@ -72,14 +98,22 @@ Comece na pasta raiz do projeto, onde ficam `client` e `server`.
 
    A API será executada em [http://localhost:3000](http://localhost:3000).
 
-5. **Em outro terminal, inicie o frontend:**
+2. **Em outro terminal, inicie o frontend:**
 
    ```bash
    cd client
    yarn dev
    ```
 
-6. Abra **[http://localhost:5173](http://localhost:5173)** no navegador.
+3. Abra **[http://localhost:5173](http://localhost:5173)** no navegador.
+
+## Apresentar em outro computador
+
+Clonar ou copiar o repositório leva o código e o arquivo `server/aportec.sql`, mas não instala o PostgreSQL, não copia o banco local e não configura os serviços do sistema. O arquivo `server/.env` também não é versionado e deve ser preenchido com as credenciais do computador de destino.
+
+Para executar localmente em um computador da faculdade, siga **Pré-requisitos**, **Iniciar o PostgreSQL** e **Preparação inicial** nesse computador antes da apresentação. Depois, siga **Uso diário** e teste o login. As contas na seção abaixo são as criadas pela importação de `server/aportec.sql`; um banco já existente pode ter outras contas.
+
+Confirme antecipadamente se há permissão para instalar os programas e iniciar o serviço do banco. Se a máquina não permitir essa preparação, use um computador já preparado ou uma versão da aplicação hospedada com backend e banco acessíveis. Nesse segundo caso, o frontend precisa apontar para a API hospedada por meio de `VITE_API_URL`; a URL padrão `http://localhost:3000` aponta para o computador em que o navegador está aberto.
 
 ## Testar o login
 
