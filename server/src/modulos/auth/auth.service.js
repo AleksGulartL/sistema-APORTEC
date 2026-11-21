@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const authRepository = require("./auth.repository");
-const { validarGmail } = require("../../utils/validacaoEmail");
+const { validarEmail } = require("../../utils/validacaoEmail");
 const { criarErro } = require("../../utils/criarErro");
 
 const SALT_ROUNDS = 10;
@@ -56,7 +56,7 @@ async function verificarSenha(senha, hash) {
 }
 
 async function autenticarUsuario(emailInput, senhaInput) {
-    const loginEmail = (emailInput || "").trim();
+    const loginEmail = (emailInput || "").trim().toLowerCase();
     const loginSenha = senhaInput || "";
 
     if (!loginEmail || !loginSenha) {
@@ -111,7 +111,7 @@ async function criarNovoUsuario(dados, solicitante = null) {
         throw criarErro("O campo 'nome_completo' é obrigatório.");
     }
 
-    const email = validarGmail(dados.email, "O campo 'email' é obrigatório.");
+    const email = validarEmail(dados.email, "O campo 'email' é obrigatório.");
 
     if (!senha) {
         throw criarErro("O campo 'senha' é obrigatório.");

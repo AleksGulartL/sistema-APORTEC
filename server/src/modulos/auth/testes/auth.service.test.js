@@ -152,8 +152,8 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
             });
         });
 
-        test("Deve lançar erro 400 se o e-mail não terminar com @gmail.com", async () => {
-            for (const emailInvalido of ["teste@gmail", "teste@aportec.com", "teste@hotmail.com", "usuario"]) {
+        test("Deve lançar erro 400 se o e-mail não contiver '@' e '.com'", async () => {
+            for (const emailInvalido of ["teste@gmail", "teste@empresa.org", "usuario", "@empresa.com", "teste@.com", "a@b@c.com"]) {
                 await expect(
                     authService.criarNovoUsuario(
                         { nome_completo: "Teste", email: emailInvalido, senha: "123" },
@@ -161,9 +161,21 @@ describe("AuthService - Testes Unitários de Autenticação", () => {
                     )
                 ).rejects.toMatchObject({
                     status: 400,
-                    message: expect.stringContaining("@gmail.com"),
+                    message: expect.stringContaining(".com"),
                 });
             }
+        });
+
+        test("Deve aceitar outros provedores além de gmail desde que contenham '@' e '.com'", async () => {
+            authRepository.buscarPorEmail.mockResolvedValue(null);
+            authRepository.criar.mockImplementation(async (dados) => ({ id: 9, ...dados }));
+
+            const resultado = await authService.criarNovoUsuario(
+                { nome_completo: "Empresa", email: "  Contato@Aportec.COM ", senha: "123" },
+                solicitanteAdm
+            );
+
+            expect(resultado.email).toBe("contato@aportec.com");
         });
 
         test("Deve lançar erro 400 se senha for omitida", async () => {

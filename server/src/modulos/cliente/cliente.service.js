@@ -1,8 +1,9 @@
 const clienteRepository = require("./cliente.repository");
-const { validarGmail } = require("../../utils/validacaoEmail");
+const { validarEmail } = require("../../utils/validacaoEmail");
 const { criarErro } = require("../../utils/criarErro");
 
 function validarCliente(dados, isUpdate = false) {
+    let emailNormalizado;
     const temUsuarioId =
         dados.usuario_id !== undefined && dados.usuario_id !== null && String(dados.usuario_id).trim() !== "";
 
@@ -10,6 +11,9 @@ function validarCliente(dados, isUpdate = false) {
         const idUsuarioNum = Number(dados.usuario_id);
         if (!Number.isInteger(idUsuarioNum) || idUsuarioNum <= 0) {
             throw criarErro("O campo 'usuario_id' deve ser um número inteiro válido.");
+        }
+        if (dados.email !== undefined) {
+            emailNormalizado = validarEmail(dados.email);
         }
     } else if (!isUpdate || dados.nome_completo !== undefined || dados.email !== undefined) {
         if (!isUpdate || dados.nome_completo !== undefined) {
@@ -19,7 +23,7 @@ function validarCliente(dados, isUpdate = false) {
         }
 
         if (!isUpdate || dados.email !== undefined) {
-            validarGmail(dados.email);
+            emailNormalizado = validarEmail(dados.email);
         }
     }
 
@@ -46,6 +50,8 @@ function validarCliente(dados, isUpdate = false) {
             throw criarErro("A senha do cliente deve ter pelo menos 4 caracteres.");
         }
     }
+
+    return emailNormalizado;
 }
 
 async function listar() {
@@ -61,8 +67,8 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    validarCliente(dados, false);
-    const payload = dados.email !== undefined ? { ...dados, email: validarGmail(dados.email) } : dados;
+    const emailNormalizado = validarCliente(dados, false);
+    const payload = emailNormalizado !== undefined ? { ...dados, email: emailNormalizado } : dados;
     return clienteRepository.criar(payload);
 }
 
@@ -72,8 +78,8 @@ async function atualizar(id, dados) {
         throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
 
-    validarCliente(dados, true);
-    const payload = dados.email !== undefined ? { ...dados, email: validarGmail(dados.email) } : dados;
+    const emailNormalizado = validarCliente(dados, true);
+    const payload = emailNormalizado !== undefined ? { ...dados, email: emailNormalizado } : dados;
     return clienteRepository.atualizar(idNum, payload);
 }
 

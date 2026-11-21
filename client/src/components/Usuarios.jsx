@@ -44,10 +44,10 @@ import CabecalhoOrdenavel from "./comum/CabecalhoOrdenavel";
 import api from "../services/api";
 import { ordenarLista, usuarioEhAdm } from "../utils/permissoes";
 import {
-    emailEhGmail,
-    MENSAGEM_ERRO_GMAIL,
-    normalizarEmailGmail,
-    obterAjudaEmailGmail,
+    emailEhValido,
+    MENSAGEM_ERRO_EMAIL,
+    normalizarEmail,
+    obterAjudaEmail,
 } from "../utils/validacoes";
 
 const COR_PERFIL = {
@@ -159,7 +159,7 @@ export default function Usuarios({ usuario }) {
             senha: "",
             ativo: registro.ativo !== false,
         });
-        setEmailTocado(Boolean(emailAtual.trim()) && !emailEhGmail(emailAtual));
+        setEmailTocado(Boolean(emailAtual.trim()) && !emailEhValido(emailAtual));
         setMostrarSenha(false);
         setErroModal("");
         setModalAberto(true);
@@ -169,14 +169,14 @@ export default function Usuarios({ usuario }) {
         event.preventDefault();
         setErroModal("");
 
-        if (!emailEhGmail(form.email)) {
+        if (!emailEhValido(form.email)) {
             setEmailTocado(true);
-            setErroModal(MENSAGEM_ERRO_GMAIL);
+            setErroModal(MENSAGEM_ERRO_EMAIL);
             return;
         }
 
         setSalvando(true);
-        const emailNormalizado = normalizarEmailGmail(form.email);
+        const emailNormalizado = normalizarEmail(form.email);
 
         try {
             if (modoEdicao) {
@@ -532,19 +532,19 @@ export default function Usuarios({ usuario }) {
                                 fullWidth
                                 type="text"
                                 label="E-mail de Acesso"
-                                placeholder="nome@gmail.com"
+                                placeholder="nome@empresa.com"
                                 autoComplete="email"
                                 inputProps={{ inputMode: "email" }}
                                 value={form.email}
                                 onChange={(e) => {
                                     const novoEmail = e.target.value;
                                     setForm({ ...form, email: novoEmail });
-                                    if (erroModal === MENSAGEM_ERRO_GMAIL && emailEhGmail(novoEmail)) {
+                                    if (erroModal === MENSAGEM_ERRO_EMAIL && emailEhValido(novoEmail)) {
                                         setErroModal("");
                                     }
                                 }}
                                 onBlur={() => setEmailTocado(true)}
-                                {...obterAjudaEmailGmail(form.email, emailTocado)}
+                                {...obterAjudaEmail(form.email, emailTocado)}
                             />
 
                             {modoEdicao && form.perfil === "CLIENTE" ? (

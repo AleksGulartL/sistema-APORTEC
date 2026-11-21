@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const usuarioRepository = require("./usuario.repository");
-const { validarGmail } = require("../../utils/validacaoEmail");
+const { validarEmail } = require("../../utils/validacaoEmail");
 const { criarErro } = require("../../utils/criarErro");
 
 const PERFIS_VALIDOS = ["ADM", "TECNICO", "CLIENTE"];
@@ -19,6 +19,8 @@ function normalizarPerfil(perfil) {
 }
 
 function validarUsuario(dados, isUpdate = false) {
+    let emailNormalizado;
+
     if (!isUpdate || dados.nome_completo !== undefined) {
         if (!dados.nome_completo || typeof dados.nome_completo !== "string" || !dados.nome_completo.trim()) {
             throw criarErro("O campo 'nome_completo' é obrigatório e deve ser um texto válido.");
@@ -26,7 +28,7 @@ function validarUsuario(dados, isUpdate = false) {
     }
 
     if (!isUpdate || dados.email !== undefined) {
-        validarGmail(dados.email);
+        emailNormalizado = validarEmail(dados.email);
     }
 
     if (!isUpdate) {
@@ -48,6 +50,8 @@ function validarUsuario(dados, isUpdate = false) {
     if (dados.ativo !== undefined && typeof dados.ativo !== "boolean") {
         throw criarErro("O campo 'ativo' deve ser um booleano.");
     }
+
+    return emailNormalizado;
 }
 
 async function listar() {
@@ -63,10 +67,10 @@ async function buscarPorId(id) {
 }
 
 async function criar(dados) {
-    validarUsuario(dados, false);
+    const emailNormalizado = validarUsuario(dados, false);
     const payload = {
         ...dados,
-        email: validarGmail(dados.email),
+        email: emailNormalizado,
         perfil: normalizarPerfil(dados.perfil),
     };
     delete payload.id;
@@ -79,11 +83,11 @@ async function atualizar(id, dados) {
         throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
 
-    validarUsuario(dados, true);
+    const emailNormalizado = validarUsuario(dados, true);
     const payload = { ...dados };
 
-    if (payload.email !== undefined) {
-        payload.email = validarGmail(payload.email);
+    if (emailNormalizado !== undefined) {
+        payload.email = emailNormalizado;
     }
     if (payload.perfil) {
         payload.perfil = String(payload.perfil).trim().toUpperCase();

@@ -46,32 +46,32 @@ describe("UsuarioService - Testes Unitários", () => {
             .toMatchObject({ message: "O campo 'email' é obrigatório e deve ser um texto válido.", status: 400 });
     });
 
-    test("Deve lançar erro 400 se o e-mail não terminar com @gmail.com na criação ou atualização", async () => {
+    test("Deve lançar erro 400 se o e-mail não contiver '@' e '.com' na criação ou atualização", async () => {
         await expect(
             usuarioService.criar({ nome_completo: "João Silva", email: "joao@gmail", senha_hash: "123" })
         )
             .rejects
-            .toMatchObject({ status: 400, message: expect.stringContaining("@gmail.com") });
+            .toMatchObject({ status: 400, message: expect.stringContaining(".com") });
 
-        await expect(usuarioService.atualizar(2, { email: "joao@outlook.com" }))
+        await expect(usuarioService.atualizar(2, { email: "joao@.com" }))
             .rejects
-            .toMatchObject({ status: 400, message: expect.stringContaining("@gmail.com") });
+            .toMatchObject({ status: 400, message: expect.stringContaining(".com") });
     });
 
-    test("Deve criar usuário com sucesso quando dados forem válidos e normalizar @gmail.com", async () => {
+    test("Deve criar usuário com sucesso com qualquer domínio '.com' e normalizar e-mail", async () => {
         const dadosValidos = {
             nome_completo: "João Silva",
-            email: "  Joao.Silva@Gmail.COM ",
+            email: "  Joao.Silva@Outlook.COM ",
             senha_hash: "hash123",
             perfil: "TECNICO",
         };
 
-        usuarioRepository.criar.mockResolvedValue({ id: 1, ...dadosValidos, email: "joao.silva@gmail.com" });
+        usuarioRepository.criar.mockResolvedValue({ id: 1, ...dadosValidos, email: "joao.silva@outlook.com" });
 
         const resultado = await usuarioService.criar(dadosValidos);
 
         expect(usuarioRepository.criar).toHaveBeenCalledWith(
-            expect.objectContaining({ email: "joao.silva@gmail.com", perfil: "TECNICO" })
+            expect.objectContaining({ email: "joao.silva@outlook.com", perfil: "TECNICO" })
         );
         expect(resultado).toHaveProperty("id", 1);
     });

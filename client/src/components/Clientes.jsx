@@ -37,10 +37,10 @@ import Tabela from "./Tabela";
 import api from "../services/api";
 import { usuarioEhAdm, usuarioEhFuncionario } from "../utils/permissoes";
 import {
-    emailEhGmail,
-    MENSAGEM_ERRO_GMAIL,
-    normalizarEmailGmail,
-    obterAjudaEmailGmail,
+    emailEhValido,
+    MENSAGEM_ERRO_EMAIL,
+    normalizarEmail,
+    obterAjudaEmail,
 } from "../utils/validacoes";
 
 function gerarSenhaSugerida() {
@@ -147,7 +147,7 @@ export default function Clientes({ usuario }) {
             endereco: item.endereco || "",
             senha: "",
         });
-        setEmailTocado(Boolean(emailAtual.trim()) && !emailEhGmail(emailAtual));
+        setEmailTocado(Boolean(emailAtual.trim()) && !emailEhValido(emailAtual));
         setMostrarSenha(true);
         setErroModal("");
         setModalAberto(true);
@@ -157,9 +157,9 @@ export default function Clientes({ usuario }) {
         event.preventDefault();
         setErroModal("");
 
-        if (!emailEhGmail(form.email)) {
+        if (!emailEhValido(form.email)) {
             setEmailTocado(true);
-            setErroModal(MENSAGEM_ERRO_GMAIL);
+            setErroModal(MENSAGEM_ERRO_EMAIL);
             return;
         }
 
@@ -176,7 +176,7 @@ export default function Clientes({ usuario }) {
             nome_completo: form.nome_completo.trim(),
             cnpj_cpf: form.cnpj_cpf.trim(),
             telefone: form.telefone.trim(),
-            email: normalizarEmailGmail(form.email),
+            email: normalizarEmail(form.email),
             endereco: form.endereco.trim(),
         };
         if (form.senha.trim()) {
@@ -495,19 +495,19 @@ export default function Clientes({ usuario }) {
                                         fullWidth
                                         type="text"
                                         label="E-mail de Login"
-                                        placeholder="nome@gmail.com"
+                                        placeholder="nome@empresa.com"
                                         autoComplete="email"
                                         inputProps={{ inputMode: "email" }}
                                         value={form.email}
                                         onChange={(e) => {
                                             const novoEmail = e.target.value;
                                             setForm({ ...form, email: novoEmail });
-                                            if (erroModal === MENSAGEM_ERRO_GMAIL && emailEhGmail(novoEmail)) {
+                                            if (erroModal === MENSAGEM_ERRO_EMAIL && emailEhValido(novoEmail)) {
                                                 setErroModal("");
                                             }
                                         }}
                                         onBlur={() => setEmailTocado(true)}
-                                        {...obterAjudaEmailGmail(form.email, emailTocado)}
+                                        {...obterAjudaEmail(form.email, emailTocado)}
                                     />
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
                                         <TextField

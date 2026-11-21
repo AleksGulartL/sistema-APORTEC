@@ -46,8 +46,8 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
             .toMatchObject({ message: "O campo 'cnpj_cpf' é obrigatório e deve ser um texto válido.", status: 400 });
     });
 
-    test("Deve lançar erro HTTP 400 quando o e-mail não terminar com @gmail.com", async () => {
-        for (const emailInvalido of ["cliente01@gmail", "contato@empresa.com", "cliente01", "@gmail.com"]) {
+    test("Deve lançar erro HTTP 400 quando o e-mail não contiver '@' e '.com'", async () => {
+        for (const emailInvalido of ["cliente01@gmail", "contato@empresa.org", "cliente01", "@empresa.com", "cliente@.com"]) {
             await expect(
                 clienteService.criar({
                     nome_completo: "Empresa X",
@@ -60,33 +60,33 @@ describe("ClienteService - Testes Unitários das Regras de Negócio", () => {
                 .rejects
                 .toMatchObject({
                     status: 400,
-                    message: expect.stringContaining("@gmail.com"),
+                    message: expect.stringContaining(".com"),
                 });
         }
 
-        await expect(clienteService.atualizar(1, { email: "cliente@hotmail.com" }))
+        await expect(clienteService.atualizar(1, { email: "cliente@hotmail" }))
             .rejects
             .toMatchObject({
                 status: 400,
-                message: expect.stringContaining("@gmail.com"),
+                message: expect.stringContaining(".com"),
             });
     });
 
-    test("Deve cadastrar cliente com sucesso quando todos os dados obrigatórios forem válidos e normalizar @gmail.com", async () => {
+    test("Deve cadastrar cliente com sucesso com qualquer provedor '.com' e normalizar e-mail", async () => {
         const dadosValidos = {
             nome_completo: "Empresa X",
             cnpj_cpf: "12345678000199",
             telefone: "4999999999",
-            email: "  Contato@Gmail.COM ",
+            email: "  Contato@Empresa.COM ",
             endereco: "Rua Central, 100",
         };
 
-        clienteRepository.criar.mockResolvedValue({ usuario_id: 1, ...dadosValidos, email: "contato@gmail.com" });
+        clienteRepository.criar.mockResolvedValue({ usuario_id: 1, ...dadosValidos, email: "contato@empresa.com" });
 
         const resultado = await clienteService.criar(dadosValidos);
 
         expect(clienteRepository.criar).toHaveBeenCalledWith(
-            expect.objectContaining({ email: "contato@gmail.com" })
+            expect.objectContaining({ email: "contato@empresa.com" })
         );
         expect(resultado).toHaveProperty("usuario_id", 1);
     });

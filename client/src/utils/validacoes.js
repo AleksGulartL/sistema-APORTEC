@@ -1,23 +1,22 @@
-export const REGEX_GMAIL = /^[^\s@]+@gmail\.com$/i;
+export const REGEX_EMAIL = /^[^\s@]+@[^\s@.]+\.com$/i;
 
-export const MENSAGEM_ERRO_GMAIL =
-    "E-mail inválido: utilize apenas endereços terminados em @gmail.com (ex: nome@gmail.com). Ajuste o e-mail para continuar.";
+export const MENSAGEM_ERRO_EMAIL =
+    "E-mail inválido: informe um endereço com '@' e '.com' (ex: nome@empresa.com). Ajuste o e-mail para continuar.";
 
-export function emailEhGmail(email) {
-    if (!email || typeof email !== "string") return false;
-    return REGEX_GMAIL.test(email.trim());
+export function emailEhValido(email) {
+    return typeof email === "string" && REGEX_EMAIL.test(email.trim());
 }
 
-export function normalizarEmailGmail(email) {
+export function normalizarEmail(email) {
     return String(email || "").trim().toLowerCase();
 }
 
-export function obterAjudaEmailGmail(email, mostrarErro) {
-    const invalido = Boolean(mostrarErro) && !emailEhGmail(email);
+export function obterAjudaEmail(email, mostrarErro) {
+    const invalido = Boolean(mostrarErro) && !emailEhValido(email);
     return {
         error: invalido,
         helperText: invalido
-            ? MENSAGEM_ERRO_GMAIL
-            : "Aceita apenas endereços @gmail.com (ex: nome@gmail.com).",
+            ? MENSAGEM_ERRO_EMAIL
+            : "Informe um e-mail com '@' e '.com' (ex: nome@empresa.com).",
     };
 }

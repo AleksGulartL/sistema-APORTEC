@@ -1,30 +1,29 @@
-// O módulo validarGmail.js centraliza a lógica de validação de endereços de e-mail no formato @gmail.com.
-// Isso garante que todos os locais do sistema que precisam validar e-mail usem a mesma regra, evitando inconsistências.
+// Centraliza a validação e normalização de e-mails exigindo '@' e '.com' (ex: nome@empresa.com).
 const { criarErro } = require("./criarErro");
 
-const REGEX_GMAIL = /^[^\s@]+@gmail\.com$/i;
+const REGEX_EMAIL = /^[^\s@]+@[^\s@.]+\.com$/i;
 
-const MENSAGEM_ERRO_GMAIL =
-    "O e-mail deve ser válido e terminar com @gmail.com (ex: nome@gmail.com). Corrija o e-mail para continuar.";
+const MENSAGEM_ERRO_EMAIL =
+    "O e-mail deve ser válido e conter '@' e '.com' (ex: nome@empresa.com). Corrija o e-mail para continuar.";
 
-function validarGmail(
+function validarEmail(
     email,
     mensagemObrigatorio = "O campo 'email' é obrigatório e deve ser um texto válido."
 ) {
-    if (!email || typeof email !== "string" || !email.trim()) {
+    if (typeof email !== "string" || !email.trim()) {
         throw criarErro(mensagemObrigatorio);
     }
 
     const emailNormalizado = email.trim().toLowerCase();
-    if (!REGEX_GMAIL.test(emailNormalizado)) {
-        throw criarErro(MENSAGEM_ERRO_GMAIL);
+    if (!REGEX_EMAIL.test(emailNormalizado)) {
+        throw criarErro(MENSAGEM_ERRO_EMAIL);
     }
 
     return emailNormalizado;
 }
 
 module.exports = {
-    REGEX_GMAIL,
-    MENSAGEM_ERRO_GMAIL,
-    validarGmail,
+    REGEX_EMAIL,
+    MENSAGEM_ERRO_EMAIL,
+    validarEmail,
 };
