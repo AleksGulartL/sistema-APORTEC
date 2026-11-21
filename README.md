@@ -1,24 +1,25 @@
-# APORTEC
+# APORTEC — Sistema de Gestão Operacional e Produtiva
+
+Aplicação web full stack para gestão de orçamentos, pedidos, estoque, medições técnicas em obra, ordens de serviço, prontuário de portas instaladas e portal do cliente.
+
+## Tecnologias
+
+- **Backend (`server/`):** Node.js, Express 5, Sequelize, PostgreSQL (`pg`), JWT e bcrypt.
+- **Frontend (`client/`):** React 18, Vite 6, Material UI v6 e Axios.
+
+## Pré-requisitos
+
+Tenha instalados e em execução na sua máquina (Linux, Windows ou macOS):
+
+- **Node.js** (versão LTS recomendada)
+- **[Yarn](https://classic.yarnpkg.com/en/docs/install)**
+- **PostgreSQL** (com o serviço em execução e `psql` disponível no terminal ou via ferramenta gráfica como pgAdmin/DBeaver)
 
 ## Iniciar o projeto
 
-1. Tenha Node.js e Homebrew instalados. No macOS, instale o [Yarn Classic](https://classic.yarnpkg.com/en/docs/install) e o [PostgreSQL 17](https://formulae.brew.sh/formula/postgresql@17), e inicie o banco:
+Comece na pasta raiz do projeto, onde ficam `client` e `server`.
 
-   ```bash
-   npm install --global yarn@1.22.22
-   brew install postgresql@17
-   brew services start postgresql@17
-   ```
-
-   Para disponibilizar o comando `psql`, adicione esta linha ao arquivo `~/.zprofile`:
-
-   ```bash
-   export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
-   ```
-
-   Recarregue a configuração com `source ~/.zprofile`. Comece os próximos passos na pasta raiz do projeto, onde ficam `client` e `server`.
-
-2. Instale as dependências:
+1. **Instale as dependências:**
 
    ```bash
    cd server
@@ -28,65 +29,67 @@
    cd ..
    ```
 
-3. Na primeira execução, crie o banco e importe os dados de `server/aportec.sql`. Se já tem o banco com dados, pule esta etapa e use as migrações após configurar o `.env` no passo 4:
+2. **Crie o banco de dados `aportec` e importe `server/aportec.sql`:**
+
+   Substitua `seu_usuario_postgres` pelo usuário configurado no seu PostgreSQL (por exemplo, `postgres`):
 
    ```bash
-   psql -h localhost -p 5432 -U "$(whoami)" -d postgres -c "CREATE DATABASE aportec;"
-   psql -h localhost -p 5432 -U "$(whoami)" -d aportec -X -1 -v ON_ERROR_STOP=1 -f server/aportec.sql
+   psql -h localhost -p 5432 -U seu_usuario_postgres -d postgres -c "CREATE DATABASE aportec;"
+   psql -h localhost -p 5432 -U seu_usuario_postgres -d aportec -X -1 -v ON_ERROR_STOP=1 -f server/aportec.sql
    ```
 
-   Na instalação local pelo Homebrew, o usuário inicial do PostgreSQL tem o mesmo nome do usuário do macOS, obtido por `whoami`; o usuário `postgres` não é criado automaticamente. Se o banco `aportec` já existir, pule o comando de criação. A importação apaga e recria as tabelas do projeto; execute apenas no banco local de desenvolvimento.
+   *(Se o banco `aportec` já existir, pule o primeiro comando. Você também pode criar o banco e executar o conteúdo de `server/aportec.sql` diretamente pelo pgAdmin ou DBeaver. Atenção: o script apaga e recria todas as tabelas com os dados iniciais de demonstração.)*
 
-4. Se ainda não existir `server/.env`, copie o arquivo de exemplo:
+3. **Configure as variáveis de ambiente do backend (`server/.env`):**
+
+   Crie o arquivo `server/.env` a partir de `server/.env.example`:
 
    ```bash
    cp server/.env.example server/.env
    ```
+   *(No Windows PowerShell/CMD, copie o arquivo manualmente ou use `copy server\.env.example server\.env`.)*
 
-   Configure `server/.env` com os dados do seu PostgreSQL:
+   Preencha `server/.env` com as credenciais do seu PostgreSQL:
 
    ```dotenv
    DOTENV_CONFIG_QUIET=true
    PORT=3000
    DB_NAME=aportec
-   DB_USER=seu_usuario_do_mac
-   DB_PASS=
+   DB_USER=seu_usuario_postgres
+   DB_PASS=sua_senha_postgres
    DB_HOST=localhost
    DB_PORT=5432
    JWT_SECRET=aportec_segredo_super_secreto_jwt_2026
    JWT_EXPIRES_IN=1h
    ```
 
-   Substitua `DB_USER` pelo resultado de `whoami` (`bruno` nesta máquina). Na instalação padrão local pelo Homebrew, `DB_PASS` pode ficar vazio. Se você configurou uma senha para o banco, preencha esse campo. Essas credenciais são do banco, diferentes das contas de acesso ao app.
-
-5. Em um terminal na raiz do projeto, inicie o backend e mantenha-o aberto:
+4. **Em um terminal, inicie o backend:**
 
    ```bash
    cd server
-   yarn run dev
+   yarn dev
    ```
 
    A API será executada em [http://localhost:3000](http://localhost:3000).
 
-6. Em outro terminal na raiz do projeto, inicie o frontend e mantenha-o aberto:
+5. **Em outro terminal, inicie o frontend:**
 
    ```bash
    cd client
-   yarn run dev
+   yarn dev
    ```
 
-7. Abra [http://localhost:5173](http://localhost:5173) no navegador.
+6. Abra **[http://localhost:5173](http://localhost:5173)** no navegador.
 
 ## Testar o login
 
-1. Na tela de login, preencha **E-mail** com `admin@gmail.com` e **Senha** com `senha123`.
+1. Na tela de login, preencha **E-mail** com `admin@aportec.com` e **Senha** com `senha123`.
 2. Clique em **Entrar**.
 3. Confira se o **Dashboard** foi aberto e se a barra superior mostra **Ana Administradora (ADM)**.
-4. Para entrar com outra conta, clique em **Sair** e repita o login com um dos usuários cadastrados em `server/aportec.sql`:
+4. Para testar outros perfis, clique em **Sair** e entre com uma das contas iniciais cadastradas em `server/aportec.sql`:
 
    | Perfil | E-mail | Senha | Tela após o login |
    | --- | --- | --- | --- |
-   | Administrador | `admin@gmail.com` | `senha123` | Dashboard |
-   | Administrador | `alekslopes7@gmail.com` | `senha123` | Dashboard |
-   | Técnico | `tecnico@gmail.com` | `senha123` | Dashboard |
-   | Cliente | `clara@gmail.com` | `senha123` | Portal do cliente, na aba Início |
+   | Administrador | `admin@aportec.com` | `senha123` | Dashboard |
+   | Técnico | `tecnico@aportec.com` | `senha123` | Dashboard |
+   | Cliente | `clara@aportec.com` | `senha123` | Portal do cliente, na aba Início |
