@@ -57,6 +57,7 @@ import {
 } from "../../utils/permissoes";
 import { VisualizarAssinatura } from "../comum/AssinaturaDigital";
 import { obterPendenciasOrcamento } from "../../utils/pendenciasOrcamento";
+import CampoComSugestoes from "../comum/CampoComSugestoes";
 
 const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 
@@ -90,6 +91,10 @@ const SENTIDOS_ABERTURA = [
     "Pivotante",
     "Outro",
 ];
+
+const MEDIDAS_SUGERIDAS = ["2,00 m x 2,10 m", "2,40 m x 2,20 m", "2,80 m x 2,20 m", "3,00 m x 2,50 m"];
+const VIDROS_SUGERIDOS = ["Temperado 8 mm incolor", "Temperado 10 mm incolor", "Temperado 10 mm fumê", "Laminado 8 mm", "Não se aplica"];
+const AUTOMATIZADORES_SUGERIDOS = ["APORTEC Slim 200", "Deslizante", "Basculante", "Pivotante", "Não se aplica"];
 
 export default function PedidoDetalhe({
     pedido,
@@ -176,6 +181,16 @@ export default function PedidoDetalhe({
             mapa[Number(it.id)] = it;
         }
         return mapa;
+    }, [itensCatalogo]);
+
+    const sugestoesMedicao = useMemo(() => {
+        const descricoes = (termo) => itensCatalogo
+            .filter((item) => `${item.categoria?.nome || ""} ${item.descricao || ""}`.toLowerCase().includes(termo))
+            .map((item) => item.descricao).filter(Boolean);
+        return {
+            vidros: [...new Set([...VIDROS_SUGERIDOS, ...descricoes("vidro")])],
+            automatizadores: [...new Set([...AUTOMATIZADORES_SUGERIDOS, ...descricoes("automatiza")])],
+        };
     }, [itensCatalogo]);
 
     const indiceEtapaAtual = useMemo(() => {
@@ -964,14 +979,15 @@ export default function PedidoDetalhe({
 
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
+                                        <CampoComSugestoes
                                             required
-                                            fullWidth
                                             label="Medidas do Vão (Largura x Altura)"
-                                            placeholder="Ex: 2.80m x 2.20m"
+                                            placeholder="Ex: 2,40 m x 2,20 m"
+                                            options={MEDIDAS_SUGERIDAS}
+                                            helperText="Selecione uma sugestão ou informe a medida real do local."
                                             value={formMedicao.medidas_vao || ""}
-                                            onChange={(e) =>
-                                                setFormMedicao({ ...formMedicao, medidas_vao: e.target.value })
+                                            onChange={(texto) =>
+                                                setFormMedicao({ ...formMedicao, medidas_vao: texto })
                                             }
                                         />
                                     </Grid>
@@ -1013,26 +1029,28 @@ export default function PedidoDetalhe({
                                     </Grid>
 
                                     <Grid item xs={12} sm={4}>
-                                        <TextField
-                                            fullWidth
+                                        <CampoComSugestoes
                                             label="Tipo de Vidro"
                                             placeholder="Ex: Temperado 10mm Incolor"
+                                            options={sugestoesMedicao.vidros}
+                                            helperText="Selecione uma sugestão ou digite outro tipo."
                                             value={formMedicao.tipo_vidro || ""}
-                                            onChange={(e) =>
-                                                setFormMedicao({ ...formMedicao, tipo_vidro: e.target.value })
+                                            onChange={(texto) =>
+                                                setFormMedicao({ ...formMedicao, tipo_vidro: texto })
                                             }
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        <TextField
-                                            fullWidth
+                                        <CampoComSugestoes
                                             label="Modelo do Automatizador"
                                             placeholder="Ex: APORTEC Slim 200"
+                                            options={sugestoesMedicao.automatizadores}
+                                            helperText="Selecione uma sugestão ou digite outro modelo."
                                             value={formMedicao.modelo_automatizador || ""}
-                                            onChange={(e) =>
+                                            onChange={(texto) =>
                                                 setFormMedicao({
                                                     ...formMedicao,
-                                                    modelo_automatizador: e.target.value,
+                                                    modelo_automatizador: texto,
                                                 })
                                             }
                                         />
