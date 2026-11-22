@@ -79,6 +79,18 @@ describe("ClienteRoutes - Testes de Integracao de Rotas e Status HTTP", () => {
         expect(res.body).toEqual({ erro: "Já existe um cliente cadastrado com este CNPJ/CPF." });
     });
 
+    test("POST /cliente - Deve responder com status 400 em conflito de duplicidade de e-mail ou telefone (erro DB 23505)", async () => {
+        clienteService.criar.mockRejectedValueOnce({ code: "23505", parent: { constraint: "uq_usuario_email" } });
+        const resEmail = await request(app).post("/cliente").set(comoAdm).send({ nome_completo: "Empresa X" });
+        expect(resEmail.status).toBe(400);
+        expect(resEmail.body).toEqual({ erro: "Já existe um usuário/cliente cadastrado com este e-mail." });
+
+        clienteService.criar.mockRejectedValueOnce({ code: "23505", parent: { constraint: "uq_cliente_telefone" } });
+        const resTel = await request(app).post("/cliente").set(comoAdm).send({ nome_completo: "Empresa X" });
+        expect(resTel.status).toBe(400);
+        expect(resTel.body).toEqual({ erro: "Já existe um cliente cadastrado com este telefone." });
+    });
+
     test("DELETE /cliente/:id - Deve responder com status 200 ao remover o cliente com sucesso", async () => {
         // MOCK: Simula remoção bem-sucedida retornando o registro excluído
         clienteService.deletar.mockResolvedValue({ usuario_id: 1 });

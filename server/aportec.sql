@@ -59,6 +59,7 @@ CREATE TABLE cliente (
 );
 
 CREATE UNIQUE INDEX uq_cliente_cnpj_cpf ON cliente (cnpj_cpf) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_cliente_telefone ON cliente (telefone) WHERE deleted_at IS NULL;
 
 
 CREATE TABLE tipo_item (
