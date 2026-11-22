@@ -94,12 +94,13 @@ async function criar(dados) {
     if (dados.status && !["Rascunho", "Recebida"].includes(dados.status)) {
         throw criarErro("O cadastro deve iniciar como Rascunho ou Recebida.");
     }
-    if (dados.status === "Recebida" && (typeof dados.descricao_solicitacao !== "string" || !dados.descricao_solicitacao.trim())) {
+    const rascunho = dados.status === "Rascunho";
+    if (!rascunho && (typeof dados.descricao_solicitacao !== "string" || !dados.descricao_solicitacao.trim())) {
         throw criarErro("Descreva o serviço solicitado.");
     }
     const dadosFormatados = {
         ...dados,
-        status: dados.status || "Rascunho",
+        status: rascunho ? "Rascunho" : dados.responsavel_producao_id ? "Em Avaliacao" : "Recebida",
         status_aprovacao: "Pendente",
         bloqueio_fabricacao: true,
         custo_total: 0,
@@ -158,7 +159,7 @@ async function atualizarStatusEtapa(id, dados = {}) {
         throw criarErro("O 'id' informado deve ser um número inteiro válido.");
     }
 
-    const novoStatus = dados.status;
+    let novoStatus = dados.status;
     if (novoStatus === "Concluido") {
         throw criarErro("Finalize a OS com parecer e assinatura para concluir este pedido.");
     }
@@ -169,6 +170,12 @@ async function atualizarStatusEtapa(id, dados = {}) {
     const existente = await pedidoRepository.buscarPorId(idNum);
     if (!existente) return null;
     if (existente.status === "Concluido") throw criarErro("Este pedido já foi concluído.", 409);
+
+    if (["Recebida", "Em Avaliacao"].includes(novoStatus)) {
+        if (!existente.descricao_solicitacao?.trim()) throw criarErro("Descreva o serviço solicitado antes de encaminhar para avaliação.");
+        if (novoStatus === "Em Avaliacao" && !existente.responsavel_producao_id) throw criarErro("Atribua um técnico antes de encaminhar para avaliação.");
+        novoStatus = existente.responsavel_producao_id ? "Em Avaliacao" : "Recebida";
+    }
 
     if (
         ETAPAS_FABRICACAO.includes(novoStatus) &&

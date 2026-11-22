@@ -48,3 +48,26 @@ test('atribuir técnico coloca a solicitação em avaliação', async () => {
     await service.atualizar(9, { responsavel_producao_id: 3 });
     expect(repo.atualizar).toHaveBeenCalledWith(9, { responsavel_producao_id: 3, status: 'Em Avaliacao' });
 });
+
+test.each([
+    [{}, 'Recebida'],
+    [{ responsavel_producao_id: 3 }, 'Em Avaliacao'],
+    [{ status: 'Rascunho', responsavel_producao_id: 3 }, 'Rascunho'],
+])('criação determina o estado inicial sem pular aprovação: %j', async (dados, status) => {
+    await service.criar({ cliente_id: 4, descricao_solicitacao: 'Instalar porta', ...dados });
+    expect(repo.criar).toHaveBeenCalledWith(expect.objectContaining({ status, status_aprovacao: 'Pendente', bloqueio_fabricacao: true }));
+});
+test('exige descrição ao encaminhar e permite salvar rascunho incompleto', async () => {
+    await expect(service.criar({ cliente_id: 4 })).rejects.toThrow('Descreva o serviço');
+    await service.criar({ cliente_id: 4, status: 'Rascunho' });
+    expect(repo.criar).toHaveBeenCalledWith(expect.objectContaining({ status: 'Rascunho' }));
+});
+test('encaminhar rascunho com técnico inicia avaliação e sem técnico aguarda atribuição', async () => {
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, status: 'Rascunho', descricao_solicitacao: 'Instalar porta' });
+    await service.atualizarStatusEtapa(9, { status: 'Recebida' });
+    expect(repo.atualizar).toHaveBeenLastCalledWith(9, { status: 'Em Avaliacao' });
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, status: 'Rascunho', responsavel_producao_id: null, descricao_solicitacao: 'Instalar porta' });
+    await service.atualizarStatusEtapa(9, { status: 'Recebida' });
+    expect(repo.atualizar).toHaveBeenLastCalledWith(9, { status: 'Recebida' });
+    await expect(service.atualizarStatusEtapa(9, { status: 'Em Avaliacao' })).rejects.toThrow('Atribua um técnico');
+});

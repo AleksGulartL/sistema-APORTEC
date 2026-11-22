@@ -60,6 +60,9 @@ import { VisualizarAssinatura } from "../comum/AssinaturaDigital";
 const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 
 const ETAPAS_STEPPER = [
+    "Rascunho",
+    "Recebida",
+    "Em Avaliacao",
     "Pendente",
     "Aguardando",
     "Planejada",
@@ -101,7 +104,7 @@ export default function PedidoDetalhe({
     onConsultarOs,
 }) {
     const manutencao = pedido?.tipo_pedido !== "Instalacao";
-    const etapas = manutencao ? ["Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Em Atendimento", "Concluido"] : ETAPAS_STEPPER;
+    const etapas = manutencao ? ["Rascunho", "Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Em Atendimento", "Concluido"] : ETAPAS_STEPPER;
     const [diagnostico, setDiagnostico] = useState("");
     const [aba, setAba] = useState(0);
     const [erro, setErro] = useState("");
@@ -128,6 +131,7 @@ export default function PedidoDetalhe({
             status_aprovacao: pedido.status_aprovacao || "Pendente",
             percentual_acrescimo: String(pedido.percentual_acrescimo ?? 0),
             endereco_instalacao: pedido.endereco_instalacao || "",
+            descricao_solicitacao: pedido.descricao_solicitacao || "",
             forma_pagamento: pedido.forma_pagamento || "",
             condicoes_pagamento: pedido.condicoes_pagamento || "",
             data_previsao_fim: extrairChaveDataLocal(pedido.data_previsao_fim) || "",
@@ -190,6 +194,7 @@ export default function PedidoDetalhe({
             tipo_pedido: formComercial.tipo_pedido,
             percentual_acrescimo: percNum,
             endereco_instalacao: formComercial.endereco_instalacao.trim() || null,
+            descricao_solicitacao: formComercial.descricao_solicitacao.trim() || null,
             forma_pagamento: formComercial.forma_pagamento.trim() || null,
             condicoes_pagamento: formComercial.condicoes_pagamento.trim() || null,
             data_previsao_fim: formComercial.data_previsao_fim || null,
@@ -495,6 +500,16 @@ export default function PedidoDetalhe({
                 </Alert>
             )}
 
+            {ehAdm && pedido.status === "Rascunho" && (
+                <Alert severity="info" sx={{ mb: 2 }} action={
+                    <Button disabled={salvando} onClick={async () => {
+                        if (await salvarDadosComerciais()) await alterarEtapaProducao("Recebida");
+                    }}>Encaminhar para avaliação</Button>
+                }>
+                    Rascunho salvo. Confira os dados e a descrição do serviço antes de encaminhar o atendimento.
+                </Alert>
+            )}
+
             <Paper elevation={2} sx={{ borderRadius: 2, overflow: "hidden" }}>
                 <Tabs
                     value={aba}
@@ -687,6 +702,11 @@ export default function PedidoDetalhe({
                                 </Grid>
 
                                 <Divider />
+
+                                <TextField fullWidth multiline label="Descrição da solicitação"
+                                    disabled={!ehAdm || pedido.orcamento_enviado}
+                                    value={formComercial.descricao_solicitacao || ""}
+                                    onChange={(event) => setFormComercial({ ...formComercial, descricao_solicitacao: event.target.value })} />
 
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={4}>

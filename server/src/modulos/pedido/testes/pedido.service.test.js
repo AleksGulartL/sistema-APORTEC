@@ -81,10 +81,10 @@ describe("PedidoService - Testes Unitários (RF04, RF08, RF12, RF13, RF15)", () 
 
 });
 
-test("novo orçamento sempre começa em rascunho, sem aprovação nem custo arbitrário", async () => {
-    await pedidoService.criar({ cliente_id: 3, usuario_criador_id: 1, status_aprovacao: "Aprovado", custo_total: 999 });
+test("nova solicitação começa recebida, sem aprovação nem custo arbitrário", async () => {
+    await pedidoService.criar({ cliente_id: 3, usuario_criador_id: 1, descricao_solicitacao: "Instalar porta", status_aprovacao: "Aprovado", custo_total: 999 });
     expect(pedidoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
-        status: "Rascunho", status_aprovacao: "Pendente", custo_total: 0, bloqueio_fabricacao: true,
+        status: "Recebida", status_aprovacao: "Pendente", custo_total: 0, bloqueio_fabricacao: true,
     }));
 });
 
@@ -93,7 +93,7 @@ test("não permite escolher uma etapa operacional na criação", async () => {
 });
 
 test("aceita formas e condições personalizadas e rejeita valores que não são texto", async () => {
-    await pedidoService.criar({ cliente_id: 3, forma_pagamento: "Pagamento combinado", condicoes_pagamento: "30% agora e restante em 45 dias" });
+    await pedidoService.criar({ cliente_id: 3, status: "Rascunho", forma_pagamento: "Pagamento combinado", condicoes_pagamento: "30% agora e restante em 45 dias" });
     expect(pedidoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
         forma_pagamento: "Pagamento combinado", condicoes_pagamento: "30% agora e restante em 45 dias",
     }));

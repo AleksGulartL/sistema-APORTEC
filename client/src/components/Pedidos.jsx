@@ -199,12 +199,17 @@ export default function Pedidos({
         }
     }
 
-    async function criarNovoPedido(event) {
+    async function criarNovoPedido(event, salvarRascunho = false) {
         event.preventDefault();
         setErroNovo("");
 
         if (!formNovo.cliente_id) {
             setErroNovo("Selecione o cliente do pedido.");
+            return;
+        }
+
+        if (!salvarRascunho && !formNovo.descricao_solicitacao.trim()) {
+            setErroNovo("Descreva o serviço solicitado.");
             return;
         }
 
@@ -222,7 +227,7 @@ export default function Pedidos({
                 : null,
             tipo_pedido: formNovo.tipo_pedido,
             descricao_solicitacao: formNovo.descricao_solicitacao.trim() || null,
-            status: formNovo.status,
+            status: salvarRascunho ? "Rascunho" : "Recebida",
             status_aprovacao: formNovo.status_aprovacao,
             percentual_acrescimo: percNum,
             endereco_instalacao: formNovo.endereco_instalacao.trim() || null,
@@ -239,7 +244,7 @@ export default function Pedidos({
             const criado = res.data;
             setModalNovoAberto(false);
             setFormNovo(FORM_INICIAL);
-            setSucessoMsg(`Pedido #${criado.id} criado! Adicione os itens e realize a medição.`);
+            setSucessoMsg(salvarRascunho ? `Rascunho #${criado.id} salvo.` : `Pedido #${criado.id} criado: ${criado.status}.`);
             await carregarDados();
             setPedidoSelecionadoId(criado.id);
         } catch (err) {
@@ -642,8 +647,11 @@ export default function Pedidos({
 
                             <Grid container spacing={2}>
                                 <Grid item xs={12} sm={6}>
-                                    <TextField fullWidth label="Estado inicial" value={formNovo.status} disabled
-                                        helperText="Definido automaticamente pelo tipo de cadastro." />
+                                    <Alert severity="info">
+                                        Ao criar: <strong>{formNovo.responsavel_producao_id ? "Em avaliação" : "Recebida"}</strong>.
+                                        {formNovo.responsavel_producao_id ? " O técnico fará o levantamento." : " Aguardando atribuição de técnico."}
+                                        {" Para preparar sem encaminhar, use Salvar rascunho."}
+                                    </Alert>
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -659,7 +667,7 @@ export default function Pedidos({
                                 </Grid>
                             </Grid>
 
-                            <TextField fullWidth multiline label="Descrição da solicitação" required={formNovo.status === "Recebida"}
+                            <TextField fullWidth multiline label="Descrição da solicitação"
                                 value={formNovo.descricao_solicitacao} onChange={(e) => setFormNovo({ ...formNovo, descricao_solicitacao: e.target.value })} />
                             <FormControl fullWidth>
                                 <InputLabel id="novo-ped-resp-label">Técnico responsável (opcional)</InputLabel>
@@ -698,6 +706,9 @@ export default function Pedidos({
                     <DialogActions sx={{ p: 2 }}>
                         <Button onClick={() => setModalNovoAberto(false)} color="inherit" disabled={salvandoNovo}>
                             Cancelar
+                        </Button>
+                        <Button type="button" disabled={salvandoNovo} onClick={(event) => criarNovoPedido(event, true)}>
+                            Salvar rascunho
                         </Button>
                         <Button type="submit" variant="contained" disabled={salvandoNovo}>
                             {salvandoNovo ? <CircularProgress size={22} color="inherit" /> : formNovo.status === "Recebida" ? "Registrar solicitação" : "Criar orçamento"}
