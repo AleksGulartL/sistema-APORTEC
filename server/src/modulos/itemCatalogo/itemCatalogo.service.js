@@ -103,6 +103,11 @@ async function buscarPorId(id) {
     return itemCatalogoRepository.buscarPorId(idNum);
 }
 
+function normalizarCodigoReferencia(valor) {
+    if (typeof valor !== "string") return valor;
+    return valor.trim() || null;
+}
+
 async function criar(dados) {
     validarItemCatalogo(dados, false);
     const payload = {
@@ -110,6 +115,9 @@ async function criar(dados) {
         tipo_id: Number(dados.tipo_id),
         categoria_id: Number(dados.categoria_id),
     };
+    if (payload.codigo_referencia !== undefined) {
+        payload.codigo_referencia = normalizarCodigoReferencia(payload.codigo_referencia);
+    }
     delete payload.id;
     return itemCatalogoRepository.criar(payload);
 }
@@ -124,6 +132,9 @@ async function atualizar(id, dados) {
     const payload = { ...dados };
     if (payload.tipo_id !== undefined) payload.tipo_id = Number(payload.tipo_id);
     if (payload.categoria_id !== undefined) payload.categoria_id = Number(payload.categoria_id);
+    if (payload.codigo_referencia !== undefined) {
+        payload.codigo_referencia = normalizarCodigoReferencia(payload.codigo_referencia);
+    }
     delete payload.id;
     return itemCatalogoRepository.atualizar(idNum, payload);
 }

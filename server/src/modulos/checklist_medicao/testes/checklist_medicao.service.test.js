@@ -58,4 +58,24 @@ describe("ChecklistMedicaoService - Testes Unitários (RF07 e RF08)", () => {
             status: 400,
         });
     });
+
+    test("Deve bloquear aprovação em PUT parcial quando o checklist existente tiver pendência de infraestrutura", async () => {
+        checklistMedicaoRepository.buscarPorId.mockResolvedValue({
+            id: 5,
+            viga_ok: false,
+            piso_ok: true,
+            ponto_eletrico_ok: true,
+            status_aprovacao: "Reprovado",
+        });
+
+        await expect(
+            checklistMedicaoService.atualizar(5, { status_aprovacao: "Aprovado" })
+        ).rejects.toMatchObject({
+            message:
+                "Não é possível aprovar o checklist de medição com pendências de infraestrutura (viga, piso ou ponto elétrico).",
+            status: 400,
+        });
+
+        expect(checklistMedicaoRepository.atualizar).not.toHaveBeenCalled();
+    });
 });

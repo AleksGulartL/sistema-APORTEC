@@ -65,7 +65,9 @@ const pedido = sequelize.define(
             type: DataTypes.BIGINT, 
             allowNull: true,
             field: "pedido_origem_id",
-
+            get() {
+                return toNumberOrNull(this.getDataValue("pedido_origem_id"));
+            },
         },
         endereco_instalacao: {
             type: DataTypes.TEXT,

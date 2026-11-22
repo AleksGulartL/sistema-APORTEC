@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
-const { cliente, usuario, sequelize } = require("../../database/models");
+const { cliente, usuario, pedido, sequelize } = require("../../database/models");
+const { criarErro } = require("../../utils/criarErro");
 
 function obterIncludes() {
     const includes = [];
@@ -117,6 +118,10 @@ async function atualizar(id, dados) {
 async function deletar(id) {
     const registro = await cliente.findByPk(id);
     if (!registro) return null;
+
+    if (pedido && (await pedido.count({ where: { cliente_id: registro.usuario_id } })) > 0) {
+        throw criarErro("Não é possível excluir este cliente pois ele possui pedidos ou ordens de serviço vinculados.", 400);
+    }
 
     const transaction = sequelize?.transaction ? await sequelize.transaction() : null;
     const opcoesTx = transaction ? { transaction } : undefined;

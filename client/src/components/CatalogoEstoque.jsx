@@ -92,6 +92,7 @@ export default function CatalogoEstoque({ usuario }) {
 
     const [busca, setBusca] = useState("");
     const [filtroTipoId, setFiltroTipoId] = useState("TODOS");
+    const [filtroCategoriaId, setFiltroCategoriaId] = useState("TODOS");
     const [somenteAlertas, setSomenteAlertas] = useState(false);
     const [ordenacao, setOrdenacao] = useState({ campo: "id", direcao: "asc" });
 
@@ -172,6 +173,7 @@ export default function CatalogoEstoque({ usuario }) {
             const critico = Number(it.quantidade_atual ?? 0) <= Number(it.estoque_minimo ?? 0);
             if (somenteAlertas && !critico) return false;
             if (filtroTipoId !== "TODOS" && Number(it.tipo_id) !== Number(filtroTipoId)) return false;
+            if (filtroCategoriaId !== "TODOS" && Number(it.categoria_id) !== Number(filtroCategoriaId)) return false;
             if (!termo) return true;
             const nomeTipo = String(it.tipo?.nome || "").toLowerCase();
             const nomeCategoria = String(it.categoria?.nome || "").toLowerCase();
@@ -184,7 +186,7 @@ export default function CatalogoEstoque({ usuario }) {
             );
         });
         return ordenarLista(filtrados, ordenacao.campo, ordenacao.direcao, EXTRATORES_ITEM);
-    }, [itens, busca, filtroTipoId, somenteAlertas, ordenacao]);
+    }, [itens, busca, filtroTipoId, filtroCategoriaId, somenteAlertas, ordenacao]);
 
     function abrirNovoItem() {
         setModoEdicao(false);
@@ -463,29 +465,48 @@ export default function CatalogoEstoque({ usuario }) {
                     justifyContent="space-between"
                     alignItems={{ xs: "stretch", md: "center" }}
                 >
-                    <TextField
-                        size="small"
-                        placeholder="Buscar por código, descrição, tipo ou categoria..."
-                        value={busca}
-                        onChange={(e) => setBusca(e.target.value)}
-                        sx={{ minWidth: { xs: "100%", md: 320 } }}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon color="action" />
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ flexWrap: "wrap" }}>
+                        <TextField
+                            size="small"
+                            placeholder="Buscar por código, descrição, tipo ou categoria..."
+                            value={busca}
+                            onChange={(e) => setBusca(e.target.value)}
+                            sx={{ minWidth: { xs: "100%", sm: 280 } }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon color="action" />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                        <FormControl size="small" sx={{ minWidth: 190 }}>
+                            <InputLabel id="est-filtro-cat-label">Categoria</InputLabel>
+                            <Select
+                                labelId="est-filtro-cat-label"
+                                label="Categoria"
+                                value={filtroCategoriaId}
+                                onChange={(e) => setFiltroCategoriaId(e.target.value)}
+                            >
+                                <MenuItem value="TODOS">Todas as categorias</MenuItem>
+                                {categorias.map((c) => (
+                                    <MenuItem key={c.id} value={String(c.id)}>
+                                        {c.nome}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Stack>
 
                     <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center">
                         <Chip
                             size="small"
                             label={`Todos (${itens.length})`}
-                            color={filtroTipoId === "TODOS" && !somenteAlertas ? "primary" : "default"}
-                            variant={filtroTipoId === "TODOS" && !somenteAlertas ? "filled" : "outlined"}
+                            color={filtroTipoId === "TODOS" && filtroCategoriaId === "TODOS" && !somenteAlertas ? "primary" : "default"}
+                            variant={filtroTipoId === "TODOS" && filtroCategoriaId === "TODOS" && !somenteAlertas ? "filled" : "outlined"}
                             onClick={() => {
                                 setFiltroTipoId("TODOS");
+                                setFiltroCategoriaId("TODOS");
                                 setSomenteAlertas(false);
                             }}
                         />

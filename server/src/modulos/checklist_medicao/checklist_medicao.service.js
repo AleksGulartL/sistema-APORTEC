@@ -3,6 +3,16 @@ const { criarErro } = require("../../utils/criarErro");
 
 const STATUS_APROVACAO = ["Pendente", "Aprovado", "Reprovado"];
 
+function validarAprovacaoInfraestrutura(dados) {
+    const temPendenciaInfra =
+        dados.viga_ok === false || dados.piso_ok === false || dados.ponto_eletrico_ok === false;
+    if (dados.status_aprovacao === "Aprovado" && temPendenciaInfra) {
+        throw criarErro(
+            "Não é possível aprovar o checklist de medição com pendências de infraestrutura (viga, piso ou ponto elétrico)."
+        );
+    }
+}
+
 function validarChecklistMedicao(dados, isUpdate = false) {
     if (!isUpdate) {
         const pedidoIdNum = Number(dados.pedido_id);
@@ -58,14 +68,7 @@ function validarChecklistMedicao(dados, isUpdate = false) {
         if (!STATUS_APROVACAO.includes(dados.status_aprovacao)) {
             throw criarErro("O campo 'status_aprovacao' deve ser 'Pendente', 'Aprovado' ou 'Reprovado'.");
         }
-
-        const temPendenciaInfra =
-            dados.viga_ok === false || dados.piso_ok === false || dados.ponto_eletrico_ok === false;
-        if (dados.status_aprovacao === "Aprovado" && temPendenciaInfra) {
-            throw criarErro(
-                "Não é possível aprovar o checklist de medição com pendências de infraestrutura (viga, piso ou ponto elétrico)."
-            );
-        }
+        validarAprovacaoInfraestrutura(dados);
     }
 }
 
@@ -103,6 +106,17 @@ async function atualizar(id, dados) {
     }
 
     validarChecklistMedicao(dados, true);
+    if (typeof checklist_medicaoRepository.buscarPorId === "function") {
+        const existente = await checklist_medicaoRepository.buscarPorId(idNum);
+        if (existente) {
+            validarAprovacaoInfraestrutura({
+                status_aprovacao: dados.status_aprovacao ?? existente.status_aprovacao,
+                viga_ok: dados.viga_ok ?? existente.viga_ok,
+                piso_ok: dados.piso_ok ?? existente.piso_ok,
+                ponto_eletrico_ok: dados.ponto_eletrico_ok ?? existente.ponto_eletrico_ok,
+            });
+        }
+    }
     const dadosFormatados = { ...dados };
 
     if (dados.pedido_id !== undefined) {

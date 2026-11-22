@@ -11,6 +11,7 @@ const {
     ordem_servico,
 } = require("../../database/models");
 const { validarEdicaoPedido } = require("../../utils/fluxoPedido");
+const { criarErro } = require("../../utils/criarErro");
 
 function obterIncludes() {
     const includes = [{ model: pedido, as: "pedido_origem", attributes: ["id", "numero_serie", "fim_garantia", "endereco_instalacao"] }];
@@ -94,6 +95,15 @@ async function atualizar(id, dados) {
 async function deletar(id) {
     const registro = await pedido.findByPk(id);
     if (!registro) return null;
+
+    const [qtdOs, qtdFilhos] = await Promise.all([
+        ordem_servico ? ordem_servico.count({ where: { pedido_id: id } }) : 0,
+        pedido.count({ where: { pedido_origem_id: id } }),
+    ]);
+    if (qtdOs > 0 || qtdFilhos > 0) {
+        throw criarErro("Não é possível excluir este pedido pois ele possui Ordens de Serviço ou manutenções vinculadas.", 400);
+    }
+
     await registro.destroy();
     return registro;
 }

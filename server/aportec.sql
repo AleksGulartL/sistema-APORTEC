@@ -87,7 +87,6 @@ CREATE TABLE item_catalogo (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT uq_item_catalogo_codigo UNIQUE (codigo_referencia),
     CONSTRAINT fk_item_catalogo_tipo FOREIGN KEY (tipo_id)
         REFERENCES tipo_item (id) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_item_catalogo_categoria FOREIGN KEY (categoria_id)
@@ -99,6 +98,7 @@ CREATE TABLE item_catalogo (
     )
 );
 
+CREATE UNIQUE INDEX uq_item_catalogo_codigo ON item_catalogo (codigo_referencia) WHERE deleted_at IS NULL;
 CREATE INDEX idx_item_catalogo_alerta_minimo
     ON item_catalogo (id, quantidade_atual, estoque_minimo)
     WHERE quantidade_atual <= estoque_minimo AND deleted_at IS NULL;
@@ -124,7 +124,7 @@ CREATE TABLE pedido (
     percentual_acrescimo NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
     forma_pagamento TEXT,
     condicoes_pagamento TEXT,
-    numero_serie VARCHAR(100) UNIQUE,
+    numero_serie VARCHAR(100),
     fim_garantia DATE NULL,
     assinatura_cliente_instalacao TEXT NULL,
     data_aprovacao TIMESTAMPTZ NULL,
@@ -153,6 +153,7 @@ CREATE TABLE pedido (
     )
 );
 
+CREATE UNIQUE INDEX uq_pedido_numero_serie ON pedido (numero_serie) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pedido_cliente_id ON pedido (cliente_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pedido_status_bloqueio ON pedido (status, bloqueio_fabricacao) WHERE deleted_at IS NULL;
 
@@ -170,12 +171,12 @@ CREATE TABLE pedido_item (
         REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_pedido_item_catalogo FOREIGN KEY (item_id)
         REFERENCES item_catalogo (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT uq_pedido_item_unico UNIQUE (pedido_id, item_id),
     CONSTRAINT chk_pedido_item_valores CHECK (
         quantidade > 0 AND valor_unitario >= 0
     )
 );
 
+CREATE UNIQUE INDEX uq_pedido_item_unico ON pedido_item (pedido_id, item_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pedido_item_pedido_id ON pedido_item (pedido_id) WHERE deleted_at IS NULL;
 
 
@@ -195,7 +196,6 @@ CREATE TABLE checklist_medicao (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT uq_checklist_pedido UNIQUE (pedido_id),
     CONSTRAINT fk_checklist_pedido FOREIGN KEY (pedido_id)
         REFERENCES pedido (id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_checklist_tecnico FOREIGN KEY (tecnico_id)
@@ -206,6 +206,8 @@ CREATE TABLE checklist_medicao (
         OR (viga_ok = TRUE AND piso_ok = TRUE AND ponto_eletrico_ok = TRUE)
     )
 );
+
+CREATE UNIQUE INDEX uq_checklist_pedido ON checklist_medicao (pedido_id) WHERE deleted_at IS NULL;
 
 
 CREATE TABLE ordem_servico (

@@ -1,5 +1,6 @@
 const { Op, Sequelize } = require("sequelize");
-const { item_catalogo, tipo_item, categoria_item } = require("../../database/models");
+const { item_catalogo, tipo_item, categoria_item, pedido_item } = require("../../database/models");
+const { criarErro } = require("../../utils/criarErro");
 
 function obterIncludes() {
     const includes = [];
@@ -62,6 +63,9 @@ async function atualizar(id, dados) {
 async function deletar(id) {
     const item = await item_catalogo.findByPk(id);
     if (!item) return null;
+    if (pedido_item && (await pedido_item.count({ where: { item_id: id } })) > 0) {
+        throw criarErro("Não é possível excluir este item pois ele está vinculado a um ou mais pedidos.", 400);
+    }
     await item.destroy();
     return item;
 }

@@ -134,4 +134,25 @@ describe("ItemCatalogoService - Testes Unitários", () => {
         expect(resultado).toEqual(mockAlertas);
         expect(itemCatalogoRepository.listarAlertasEstoqueMinimo).toHaveBeenCalledTimes(1);
     });
+
+    test("Deve converter codigo_referencia vazio para null na criação e atualização", async () => {
+        itemCatalogoRepository.criar.mockResolvedValue({ id: 2, codigo_referencia: null });
+        await itemCatalogoService.criar({
+            codigo_referencia: "   ",
+            tipo_id: 4,
+            categoria_id: 1,
+            descricao: "Item Sem Código",
+            unidade_medida: "UN",
+        });
+        expect(itemCatalogoRepository.criar).toHaveBeenCalledWith(
+            expect.objectContaining({ codigo_referencia: null })
+        );
+
+        itemCatalogoRepository.atualizar.mockResolvedValue({ id: 2, codigo_referencia: null });
+        await itemCatalogoService.atualizar(2, { codigo_referencia: "" });
+        expect(itemCatalogoRepository.atualizar).toHaveBeenCalledWith(
+            2,
+            expect.objectContaining({ codigo_referencia: null })
+        );
+    });
 });

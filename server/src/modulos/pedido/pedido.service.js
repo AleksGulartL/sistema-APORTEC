@@ -271,7 +271,8 @@ async function reabrirOrcamento(id) {
     if (!reg.orcamento_enviado || !["Rascunho", "Recebida", "Em Avaliacao", "Pendente", "Aguardando", "Planejada"].includes(reg.status) || reg.ordens_servico?.some((os) => ["Em Andamento", "Finalizada"].includes(os.status_os))) {
         throw criarErro("Não é possível revisar um orçamento em execução ou encerrado.");
     }
-    return pedidoRepository.atualizar(Number(id), { orcamento_enviado: false, status: "Rascunho", status_aprovacao: "Pendente",
+    const statusReabertura = reg.responsavel_producao_id ? "Em Avaliacao" : "Recebida";
+    return pedidoRepository.atualizar(Number(id), { orcamento_enviado: false, status: statusReabertura, status_aprovacao: "Pendente",
         data_aprovacao: null, bloqueio_fabricacao: true, motivo_bloqueio: "Orçamento em revisão; aguardando novo envio e aprovação." });
 }
 
