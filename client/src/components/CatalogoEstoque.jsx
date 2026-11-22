@@ -826,7 +826,7 @@ export default function CatalogoEstoque({ usuario }) {
                                             required
                                             fullWidth
                                             type="number"
-                                            inputProps={{ min: 0, step: "0.01" }}
+                                            inputProps={{ step: "0.01" }}
                                             label="Valor Unitário"
                                             value={form.valor_unitario_padrao}
                                             onChange={(e) =>
@@ -842,7 +842,7 @@ export default function CatalogoEstoque({ usuario }) {
                                             required
                                             fullWidth
                                             type="number"
-                                            inputProps={{ min: 0, step: "0.01" }}
+                                            inputProps={{ step: "0.01" }}
                                             label={modoEdicao ? "Saldo Atual" : "Saldo Inicial"}
                                             value={form.quantidade_atual}
                                             onChange={(e) =>
@@ -862,7 +862,7 @@ export default function CatalogoEstoque({ usuario }) {
                                             required
                                             fullWidth
                                             type="number"
-                                            inputProps={{ min: 0, step: "0.01" }}
+                                            inputProps={{ step: "0.01" }}
                                             label="Estoque Mínimo"
                                             value={form.estoque_minimo}
                                             onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })}
@@ -935,7 +935,7 @@ export default function CatalogoEstoque({ usuario }) {
                                 required
                                 fullWidth
                                 type="number"
-                                inputProps={{ min: 0.01, step: "0.01" }}
+                                inputProps={{ step: "0.01" }}
                                 label={`Quantidade (${itemMov?.unidade_medida || "UN"})`}
                                 value={qtdMov}
                                 onChange={(e) => setQtdMov(e.target.value)}
