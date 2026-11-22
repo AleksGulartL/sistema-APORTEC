@@ -8,6 +8,9 @@ function extrairMensagemUnicidade(erro) {
     if (constraint === "uq_usuario_email" || campo === "email") {
         return "Já existe um usuário/cliente cadastrado com este e-mail.";
     }
+    if (constraint === "uq_cliente_telefone" || campo === "telefone") {
+        return "Já existe um cliente cadastrado com este telefone.";
+    }
     return "Já existe um cliente cadastrado com este CNPJ/CPF.";
 }
 

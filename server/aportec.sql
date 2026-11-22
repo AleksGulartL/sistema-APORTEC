@@ -40,9 +40,10 @@ CREATE TABLE usuario (
     ativo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT uq_usuario_email UNIQUE (email)
+    deleted_at TIMESTAMPTZ NULL
 );
+
+CREATE UNIQUE INDEX uq_usuario_email ON usuario (email) WHERE deleted_at IS NULL;
 
 
 CREATE TABLE cliente (
@@ -53,10 +54,12 @@ CREATE TABLE cliente (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT uq_cliente_cnpj_cpf UNIQUE (cnpj_cpf),
     CONSTRAINT fk_cliente_usuario FOREIGN KEY (usuario_id)
         REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX uq_cliente_cnpj_cpf ON cliente (cnpj_cpf) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_cliente_telefone ON cliente (telefone) WHERE deleted_at IS NULL;
 
 
 CREATE TABLE tipo_item (

@@ -117,8 +117,26 @@ async function atualizar(id, dados) {
 async function deletar(id) {
     const registro = await cliente.findByPk(id);
     if (!registro) return null;
-    await registro.destroy();
-    return registro;
+
+    const transaction = sequelize?.transaction ? await sequelize.transaction() : null;
+    const opcoesTx = transaction ? { transaction } : undefined;
+    try {
+        await registro.destroy(opcoesTx);
+
+        if (usuario) {
+            const usuarioAssociado = await usuario.findByPk(registro.usuario_id, opcoesTx);
+            if (usuarioAssociado && usuarioAssociado.perfil === "CLIENTE") {
+                await usuarioAssociado.update({ ativo: false }, opcoesTx);
+                await usuarioAssociado.destroy(opcoesTx);
+            }
+        }
+
+        if (transaction) await transaction.commit();
+        return registro;
+    } catch (erro) {
+        if (transaction) await transaction.rollback();
+        throw erro;
+    }
 }
 
 module.exports = {
