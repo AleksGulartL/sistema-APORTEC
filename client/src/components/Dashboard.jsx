@@ -91,8 +91,18 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     );
 
     useEffect(() => {
-        carregarDados(false);
-    }, [carregarDados]);
+        let ativo = true;
+        let timer;
+        async function atualizar(silencioso) {
+            await carregarDados(silencioso);
+            if (ativo && ehFuncionario) timer = window.setTimeout(() => atualizar(true), 5000);
+        }
+        atualizar(false);
+        return () => {
+            ativo = false;
+            window.clearTimeout(timer);
+        };
+    }, [carregarDados, ehFuncionario]);
 
     if (!ehFuncionario) {
         return (
@@ -106,6 +116,13 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
     }
 
     const pedidosEmAndamento = pedidos.filter((p) => !["Concluido", "Cancelado"].includes(p.status));
+    const avaliacoesTecnico = pedidos.filter((p) =>
+        Number(p.responsavel_producao_id) === Number(usuario?.id) &&
+        ["Recebida", "Em Avaliacao"].includes(p.status) && !p.orcamento_enviado &&
+        (p.tipo_pedido === "Instalacao"
+            ? !p.checklist_medicao?.medidas_vao?.trim() || p.checklist_medicao.status_aprovacao !== "Aprovado"
+            : !p.diagnostico_tecnico?.trim())
+    ).sort((a, b) => Number(b.id) - Number(a.id));
     const pedidosConcluidos = pedidos.filter((p) => p.status === "Concluido").length;
     const totalBloqueados = pedidosEmAndamento.filter((p) => p.bloqueio_fabricacao).length;
     const osAbertas = ordensServico.filter((os) => ["Aberta", "Em Andamento"].includes(os.status_os));
@@ -154,7 +171,29 @@ export default function Dashboard({ usuario, onAbrirPedido }) {
                 </Box>
             ) : (
                 <>
-                    {pedidos.some((p) => ["Recebida", "Em Avaliacao"].includes(p.status)) && (
+                    {usuario?.perfil === "TECNICO" && (
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
+                                Minhas avaliações pendentes ({avaliacoesTecnico.length})
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 2 }}>
+                                Visitas atribuídas a você para levantamento e orçamento. Atualização automática a cada 5 segundos.
+                            </Typography>
+                            <Stack spacing={1}>
+                                {avaliacoesTecnico.length === 0 && <Alert severity="success">Você não tem levantamentos pendentes.</Alert>}
+                                {avaliacoesTecnico.map((p) => <Alert key={p.id} severity="warning" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+                                    <Typography fontWeight="bold">Pedido #{p.id} — {p.cliente?.usuario?.nome_completo || `Cliente #${p.cliente_id}`}</Typography>
+                                    <Typography variant="body2">{p.tipo_pedido} • {p.endereco_instalacao || "Consulte o endereço no pedido"}</Typography>
+                                    <Typography variant="body2" sx={{ mb: 1 }}>{p.descricao_solicitacao}</Typography>
+                                    <Button variant="contained" size="small" onClick={() => {
+                                        onAbrirPedido?.(p.id);
+                                        window.scrollTo({ top: 0 });
+                                    }}>{p.tipo_pedido === "Instalacao" ? "Preencher medição" : "Registrar diagnóstico"}</Button>
+                                </Alert>)}
+                            </Stack>
+                        </Box>
+                    )}
+                    {ehAdm && pedidos.some((p) => ["Recebida", "Em Avaliacao"].includes(p.status)) && (
                         <Stack spacing={1} sx={{ mb: 3 }}>
                             <Typography variant="h6">Solicitações de serviço</Typography>
                             {pedidos.filter((p) => ["Recebida", "Em Avaliacao"].includes(p.status)).map((p) => (

@@ -123,6 +123,10 @@ export default function PedidoDetalhe({
     const [checklistPreSaida, setChecklistPreSaida] = useState(null);
 
     useEffect(() => {
+        if (usuario?.perfil === "TECNICO" && !pedido.orcamento_enviado) setAba(manutencao ? 0 : 2);
+    }, [pedido.id, usuario?.perfil, manutencao]);
+
+    useEffect(() => {
         if (!pedido) return;
         setDiagnostico(pedido.diagnostico_tecnico || "");
         setFormComercial({
