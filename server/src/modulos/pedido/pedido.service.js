@@ -2,6 +2,7 @@ const { ehManutencao, avaliacaoAprovada, exigirLiberacao } = require("../../util
 const { validarTecnico } = require("../../utils/validarTecnico");
 const { criarErro } = require("../../utils/criarErro");
 const pedidoRepository = require("./pedido.repository");
+const { obterPendenciasOrcamento } = require("../../utils/pendenciasOrcamento");
 
 const STATUS_VALIDOS = [
     "Recebida",
@@ -104,6 +105,7 @@ async function criar(dados) {
         status_aprovacao: "Pendente",
         bloqueio_fabricacao: true,
         custo_total: 0,
+        percentual_acrescimo: 0,
         orcamento_enviado: false,
         diagnostico_tecnico: null,
         cliente_id: Number(dados.cliente_id),
@@ -130,6 +132,18 @@ async function atualizar(id, dados) {
     await validarTecnico(dados.responsavel_producao_id);
     const existente = await pedidoRepository.buscarPorId(idNum);
     if (!existente) return null;
+    if (dados.percentual_acrescimo !== undefined && Number(dados.percentual_acrescimo) !== Number(existente.percentual_acrescimo || 0)) {
+        const pendencias = obterPendenciasOrcamento({
+            status: existente.status,
+            tipo_pedido: dados.tipo_pedido ?? existente.tipo_pedido,
+            responsavel_producao_id: dados.responsavel_producao_id !== undefined ? dados.responsavel_producao_id : existente.responsavel_producao_id,
+            diagnostico_tecnico: existente.diagnostico_tecnico,
+            checklist_medicao: existente.checklist_medicao,
+            itens: existente.itens,
+            custo_total: existente.custo_total,
+        });
+        if (pendencias.length) throw criarErro(`Acréscimo indisponível: ${pendencias.join(" ")}`);
+    }
     if (dados.status_aprovacao !== undefined && dados.status_aprovacao !== existente.status_aprovacao) {
         throw criarErro("A aprovação deve ser registrada pelo cliente no orçamento enviado.");
     }
@@ -244,11 +258,9 @@ async function enviarOrcamento(id) {
     if (reg.orcamento_enviado || ["Cancelado", "Concluido", "Em Atendimento"].includes(reg.status)) {
         throw criarErro("Este orçamento não está disponível para envio.");
     }
+    const pendencias = obterPendenciasOrcamento(reg);
+    if (pendencias.length) throw criarErro(`Não é possível enviar o orçamento: ${pendencias.join(" ")}`);
     await validarTecnico(reg.responsavel_producao_id);
-    if (!reg.responsavel_producao_id || (ehManutencao(reg) ? !reg.diagnostico_tecnico?.trim() : !reg.checklist_medicao)) {
-        throw criarErro("Atribua um técnico e registre a avaliação técnica antes de enviar o orçamento.");
-    }
-    if (!reg.itens?.length) throw criarErro("Adicione os itens ou serviços ao orçamento antes de enviar.");
     return pedidoRepository.atualizar(Number(id), { orcamento_enviado: true, status: "Pendente", status_aprovacao: "Pendente",
         bloqueio_fabricacao: true, motivo_bloqueio: "Aguardando aprovação do orçamento pelo cliente.", data_aprovacao: null });
 }

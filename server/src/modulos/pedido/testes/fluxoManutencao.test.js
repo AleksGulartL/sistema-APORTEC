@@ -8,7 +8,7 @@ jest.mock('../../../utils/validarTecnico');
 jest.mock('../../portalCliente/portalCliente.repository');
 const manutencao = { id: 9, tipo_pedido: 'Manutencao Corretiva', status: 'Recebida', responsavel_producao_id: 3,
     diagnostico_tecnico: '', orcamento_enviado: false, status_aprovacao: 'Pendente', bloqueio_fabricacao: true,
-    itens: [{ id: 1 }], ordens_servico: [] };
+    itens: [{ id: 1, quantidade: 1, valor_unitario: 380 }], custo_total: 380, percentual_acrescimo: 0, ordens_servico: [] };
 beforeEach(() => { jest.resetAllMocks(); repo.buscarPorId.mockResolvedValue({ ...manutencao }); repo.atualizar.mockImplementation(async (id, data) => ({ id, ...data })); });
 test('somente o técnico atribuído pode registrar o diagnóstico', async () => {
     await expect(service.registrarAvaliacao(9, { diagnostico_tecnico: 'Sensor defeituoso' }, { id: 4 })).rejects.toMatchObject({ status: 403 });
@@ -70,4 +70,38 @@ test('encaminhar rascunho com técnico inicia avaliação e sem técnico aguarda
     await service.atualizarStatusEtapa(9, { status: 'Recebida' });
     expect(repo.atualizar).toHaveBeenLastCalledWith(9, { status: 'Recebida' });
     await expect(service.atualizarStatusEtapa(9, { status: 'Em Avaliacao' })).rejects.toThrow('Atribua um técnico');
+});
+
+test('mensagem de levantamento pendente não pede atribuir técnico já vinculado', async () => {
+    await expect(service.enviarOrcamento(9)).rejects.toThrow('Aguarde o técnico registrar o diagnóstico.');
+    await expect(service.enviarOrcamento(9)).rejects.not.toThrow('Atribua um técnico');
+});
+test('instalação depende da medição, enquanto manutenção depende do diagnóstico', async () => {
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, tipo_pedido: 'Instalacao', diagnostico_tecnico: 'não substitui medição' });
+    await expect(service.enviarOrcamento(9)).rejects.toThrow('checklist de medição');
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, tipo_pedido: 'Instalacao', checklist_medicao: { medidas_vao: '2.40 x 2.20 m' } });
+    await expect(service.enviarOrcamento(9)).resolves.toMatchObject({ orcamento_enviado: true });
+});
+test.each([
+    [{ responsavel_producao_id: null }, 'Atribua um técnico'],
+    [{ itens: [] }, 'Adicione os itens'],
+    [{ custo_total: 0 }, 'maior que zero'],
+    [{ status: 'Rascunho' }, 'Encaminhe o rascunho'],
+])('envio aponta a pendência real: %s', async (dados, mensagem) => {
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, diagnostico_tecnico: 'Trocar sensor', ...dados });
+    await expect(service.enviarOrcamento(9)).rejects.toThrow(mensagem);
+    expect(repo.atualizar).not.toHaveBeenCalled();
+});
+test('acréscimo só pode mudar depois do levantamento e com custo positivo', async () => {
+    await expect(service.atualizar(9, { percentual_acrescimo: 20 })).rejects.toThrow('Acréscimo indisponível');
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, diagnostico_tecnico: 'Trocar sensor' });
+    await service.atualizar(9, { percentual_acrescimo: 20 });
+    expect(repo.atualizar).toHaveBeenLastCalledWith(9, { percentual_acrescimo: 20 });
+    await expect(service.atualizar(9, { percentual_acrescimo: 20, responsavel_producao_id: null })).rejects.toThrow('Atribua um técnico');
+    repo.buscarPorId.mockResolvedValue({ ...manutencao, diagnostico_tecnico: 'Trocar sensor', custo_total: 0 });
+    await expect(service.atualizar(9, { percentual_acrescimo: 20 })).rejects.toThrow('maior que zero');
+});
+test('cadastro não aceita percentual antecipado enviado diretamente pela API', async () => {
+    await service.criar({ cliente_id: 4, descricao_solicitacao: 'Instalar porta', percentual_acrescimo: 50 });
+    expect(repo.criar).toHaveBeenCalledWith(expect.objectContaining({ percentual_acrescimo: 0 }));
 });

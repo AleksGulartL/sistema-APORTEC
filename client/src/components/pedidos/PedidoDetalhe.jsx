@@ -56,6 +56,7 @@ import {
     formatarMoedaBr,
 } from "../../utils/permissoes";
 import { VisualizarAssinatura } from "../comum/AssinaturaDigital";
+import { obterPendenciasOrcamento } from "../../utils/pendenciasOrcamento";
 
 const TIPOS_PEDIDO = ["Instalacao", "Manutencao Preventiva", "Manutencao Corretiva"];
 
@@ -158,6 +159,12 @@ export default function PedidoDetalhe({
     const checklist = pedido?.checklist_medicao || null;
     const nomeCliente = pedido?.cliente?.usuario?.nome_completo || `Cliente #${pedido?.cliente_id}`;
     const valorFinalPedido = calcularValorTotalPedido(pedido);
+    const pendenciasOrcamento = obterPendenciasOrcamento({
+        ...pedido,
+        tipo_pedido: formComercial.tipo_pedido || pedido.tipo_pedido,
+        responsavel_producao_id: formComercial.responsavel_producao_id ?? pedido.responsavel_producao_id,
+    });
+    const podePrepararProposta = pendenciasOrcamento.length === 0;
 
     const itensCatalogoMap = useMemo(() => {
         const mapa = {};
@@ -172,7 +179,7 @@ export default function PedidoDetalhe({
         return idx >= 0 ? idx : 0;
     }, [pedido?.status]);
 
-    async function salvarDadosComerciais(event) {
+    async function salvarDadosComerciais(event, silencioso = false) {
         if (event) event.preventDefault();
         setErro("");
         setSucesso("");
@@ -192,7 +199,7 @@ export default function PedidoDetalhe({
                 ? Number(formComercial.responsavel_producao_id)
                 : null,
             tipo_pedido: formComercial.tipo_pedido,
-            percentual_acrescimo: percNum,
+            ...(podePrepararProposta ? { percentual_acrescimo: percNum } : {}),
             endereco_instalacao: formComercial.endereco_instalacao.trim() || null,
             descricao_solicitacao: formComercial.descricao_solicitacao.trim() || null,
             forma_pagamento: formComercial.forma_pagamento.trim() || null,
@@ -203,7 +210,7 @@ export default function PedidoDetalhe({
 
         try {
             await api.put(`/pedido/${pedido.id}`, payload);
-            setSucesso("Dados comerciais do pedido atualizados com sucesso!");
+            if (!silencioso) setSucesso("Dados comerciais do pedido atualizados com sucesso!");
             await onPedidoAtualizado?.(pedido.id);
             return true;
         } catch (err) {
@@ -216,7 +223,14 @@ export default function PedidoDetalhe({
     }
 
     async function acaoOrcamento(acao) {
-        if (acao === "enviar-orcamento" && !(await salvarDadosComerciais())) return;
+        if (acao === "enviar-orcamento") {
+            if (pendenciasOrcamento.length) {
+                setSucesso("");
+                setErro(pendenciasOrcamento.join(" "));
+                return;
+            }
+            if (!(await salvarDadosComerciais(null, true))) return;
+        }
         if (acao === "reabrir-orcamento" && !window.confirm("Revisar este orçamento cancela a aprovação anterior e exige novo envio ao cliente. Continuar?")) return;
         setSalvando(true); setErro("");
         try {
@@ -557,10 +571,19 @@ export default function PedidoDetalhe({
                                     <Typography variant="h6" fontWeight="bold">
                                         Proposta Comercial e Prazos
                                     </Typography>
-                                    {ehAdm && <Button variant="contained" disabled={salvando} onClick={() => acaoOrcamento(pedido.orcamento_enviado ? "reabrir-orcamento" : "enviar-orcamento")}>
+                                    {ehAdm && <Button variant="contained" disabled={salvando || (!pedido.orcamento_enviado && (!podePrepararProposta || ["Cancelado", "Concluido"].includes(pedido.status)))} onClick={() => acaoOrcamento(pedido.orcamento_enviado ? "reabrir-orcamento" : "enviar-orcamento")}>
                                         {pedido.orcamento_enviado ? "Revisar orçamento" : "Enviar orçamento ao cliente"}
                                     </Button>}
                                 </Stack>
+
+                                {ehAdm && !pedido.orcamento_enviado && pendenciasOrcamento.length > 0 && (
+                                    <Alert severity="info">
+                                        <strong>Aguardando levantamento para preparar e enviar a proposta:</strong>
+                                        <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                                            {pendenciasOrcamento.map((pendencia) => <li key={pendencia}>{pendencia}</li>)}
+                                        </Box>
+                                    </Alert>
+                                )}
 
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={4}>
@@ -602,12 +625,13 @@ export default function PedidoDetalhe({
                                             </Select>
                                         </FormControl>
                                     </Grid>
-                                    <Grid item xs={12} sm={4}>
+                                    {ehAdm && podePrepararProposta && <Grid item xs={12} sm={4}>
                                         <TextField
                                             fullWidth
                                             type="number"
                                             inputProps={{ min: 0, step: "0.01" }}
                                             label="Acréscimo Comercial (%)"
+                                            helperText="Aplicado sobre o custo dos itens após o levantamento técnico."
                                             disabled={!ehAdm || pedido.orcamento_enviado}
                                             value={formComercial.percentual_acrescimo ?? "0"}
                                             onChange={(e) =>
@@ -617,7 +641,7 @@ export default function PedidoDetalhe({
                                                 })
                                             }
                                         />
-                                    </Grid>
+                                    </Grid>}
 
                                     <Grid item xs={12} sm={4}>
                                         <FormControl fullWidth disabled>

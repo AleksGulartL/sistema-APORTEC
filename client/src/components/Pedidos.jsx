@@ -60,7 +60,6 @@ const FORM_INICIAL = {
     status: "Rascunho",
     descricao_solicitacao: "",
     status_aprovacao: "Pendente",
-    percentual_acrescimo: "0",
     endereco_instalacao: "",
     forma_pagamento: "",
     condicoes_pagamento: "",
@@ -213,12 +212,6 @@ export default function Pedidos({
             return;
         }
 
-        const percNum = Number(formNovo.percentual_acrescimo || 0);
-        if (isNaN(percNum) || percNum < 0) {
-            setErroNovo("O percentual de acréscimo deve ser maior ou igual a zero.");
-            return;
-        }
-
         const payload = {
             cliente_id: Number(formNovo.cliente_id),
             usuario_criador_id: Number(usuario?.id),
@@ -229,7 +222,6 @@ export default function Pedidos({
             descricao_solicitacao: formNovo.descricao_solicitacao.trim() || null,
             status: salvarRascunho ? "Rascunho" : "Recebida",
             status_aprovacao: formNovo.status_aprovacao,
-            percentual_acrescimo: percNum,
             endereco_instalacao: formNovo.endereco_instalacao.trim() || null,
             forma_pagamento: formNovo.forma_pagamento.trim() || null,
             condicoes_pagamento: formNovo.condicoes_pagamento.trim() || null,
@@ -630,18 +622,6 @@ export default function Pedidos({
                                             ))}
                                         </Select>
                                     </FormControl>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        type="number"
-                                        inputProps={{ min: 0, step: "0.01" }}
-                                        label="Acréscimo / Margem (%)"
-                                        value={formNovo.percentual_acrescimo}
-                                        onChange={(e) =>
-                                            setFormNovo({ ...formNovo, percentual_acrescimo: e.target.value })
-                                        }
-                                    />
                                 </Grid>
                             </Grid>
 
